@@ -1,7 +1,6 @@
 # -*- coding: utf-8 -*-
 import sys
 import os
-import time
 import logging
 from matplotlib.backends.qt_compat import QtCore, QtWidgets
 from PyQt5.QtCore    import *
