@@ -87,6 +87,7 @@ class ADCMonitoringData(QMainWindow):
                 
         close_button = QPushButton("close")
         close_button.setIcon(QIcon('graphics_Utils/icons/icon_close.jpg'))
+        close_button.clicked.connect(self.stop_timer)
         close_button.clicked.connect(self.close)
 
         HBox.addWidget(send_button)
