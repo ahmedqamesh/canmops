@@ -1,5 +1,26 @@
 image: "ruby:2.5"
 
+variables:
+  DOCKER_HOST: tcp://localhost:2375
+  DOCKER_DRIVER: overlay2
+
+services:
+  - docker:18-dind
+
+assets:
+  stage: build
+  image: node:10-alpine
+  script:
+    - npm ci
+    - NODE_ENV=production npm run build
+  artifacts:
+    expire_in: 1 day
+    paths:
+      - public/assets
+  tags:
+    - docker
+
+
 before_script:
   - apt-get update -qq && apt-get install -y -qq sqlite3 libsqlite3-dev nodejs
   - ruby -v
