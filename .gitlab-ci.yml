@@ -1,177 +1,23 @@
 # Tests using RD53 and FPGA co-simulation
-test:rd53:
+test:canmops:
     variables:
         # Otherwise lock file of cancelled runs might stall future check outs
-        # https://gitlab.cern.ch/silab/bdaq53/issues/293
         GIT_STRATEGY: clone
     tags:  # tags to differentiate runners able to run the job
-      - rd53
+      - canmops
     before_script:
-      - sudo yum install -y Xvfb mesa-libGL.x86_64
       # Install miniconda python with required binary packages
       - curl -L https://repo.continuum.io/miniconda/Miniconda3-latest-Linux-x86_64.sh -o miniconda.sh
       - bash miniconda.sh -b -p $HOME/miniconda
       - export PATH=$HOME/miniconda/bin:$PATH
       - conda update --yes conda
-      - conda install --yes numpy bitarray pytest pyyaml scipy numba pytables pyqt matplotlib tqdm pyzmq blosc psutil pexpect coloredlogs ptyprocess iminuit lxml
-      # Setup co-simulation
-      - pip install cocotb==1.0.dev3
-      - git clone -b development --depth 1 https://github.com/SiLab-Bonn/basil.git; cd basil; python setup.py develop; cd ..;
-      # - if [ -z "$CI_COMMIT_TAG"]; then git clone -b v3.0.0 --depth 1 https://github.com/SiLab-Bonn/basil.git; cd basil; python setup.py develop; cd ..; else git clone -b development --depth 1 https://github.com/SiLab-Bonn/basil.git; cd basil; python setup.py develop; cd ..; fi
-      - export PATH="${PATH}:${MTI_HOME}/bin"
-      - export SIM=questa
+      - conda install --yes conda install python=3.7 bitarray contextlib2 cython ipython matplotlib mock nose numba numpy pyqt pyserial pytables pyyaml pyzmq qtpy scipy
+      - conda install --yes pywin32
+      - conda install -c bioconda aenum
+      - conda install -c bioconda/label/cf201901 aenum
+      - pip install lxml tqdm kafe seaborn aenum verboselogs qtawesome coloredlogs termcolor progressbar-latest pyvisa pyvisa-py pyqtgraph
 
     script:
-      - python setup.py develop
-      - cd bdaq53/tests
-      - source setup_questa.sh > /dev/null
-      - pytest -s -v rd53a/test_rd53
-
-# Tests for software without hardware co-simulation
-test:software:
-    variables:
-      # Otherwise lock file of cancelled runs might stall future check outs
-      # https://gitlab.cern.ch/silab/bdaq53/issues/293
-      GIT_STRATEGY: clone
-    tags:  # tags to differentiate runners able to run the job
-      - docker  # Use CERN shared runners
-    image: continuumio/miniconda3:latest  # Ubuntu based miniconda image
-    before_script:
-      # Install git-lfs
-      - apt-get update --fix-missing
-      - apt-get install -y curl
-      - curl -s https://packagecloud.io/install/repositories/github/git-lfs/script.deb.sh | bash
-      - apt-get install -y git-lfs
-      - git lfs install
-      - git submodule sync --recursive
-      - git submodule update --init --recursive
-      # Update miniconda python and install required binary packages
-      - conda update --yes conda
-      - conda install --yes numpy bitarray pytest pyyaml scipy numba pytables pyqt matplotlib tqdm pyzmq blosc psutil pexpect coloredlogs iminuit lxml
-      # - conda install pytest-xdist  # Allow testing in parallel
-      # Install virtual x server for bdaq53 monitor Qt gui tests
-      - apt-get install -y xvfb
-      - pip install xvfbwrapper pytest-cov
-      # Install basil tag from github
-      - git clone -b development --depth 1 https://github.com/SiLab-Bonn/basil.git; cd basil; python setup.py develop; cd ..;
-      # - if [ -z "$CI_COMMIT_TAG"]; then git clone -b v3.0.0 --depth 1 https://github.com/SiLab-Bonn/basil.git; cd basil; python setup.py develop; cd ..; else git clone -b development --depth 1 https://github.com/SiLab-Bonn/basil.git; cd basil; python setup.py develop; cd ..; fi
-    script:
-      - python setup.py develop
-      # Try to activate conda evironment in the newest broken miniconda docker
-      - conda init bash  # https://github.com/ContinuumIO/docker-images/issues/89
-      - source ~/.bashrc  # since ==> For changes to take effect, close and re-open your current shell. <==
-      - conda activate  # to link properly to pytest
-      # Do not run virtual x server tests (monitor) in this runner due to segfault
-      - pytest --cov=bdaq53 bdaq53/tests/test_software/ --ignore=bdaq53/tests/test_software/test_monitor.py --ignore=bdaq53/tests/test_software/test_eudaq.py
-    coverage: '/^TOTAL.+?(\d+\%)$/'
-      
-# Tests for eudaq newest v1.x-dev branch compatibility
-test:eudaq:
-    variables:
-      # Otherwise lock file of cancelled runs might stall future check outs
-      # https://gitlab.cern.ch/silab/bdaq53/issues/293
-      GIT_STRATEGY: clone
-    tags:  # tags to differentiate runners able to run the job
-      - docker  # Use CERN shared runners
-    image: continuumio/miniconda3:latest  # Ubuntu based miniconda image
-    before_script:
-      # Install git-lfs
-      - apt-get update --fix-missing
-      - apt-get install -y curl
-      - curl -s https://packagecloud.io/install/repositories/github/git-lfs/script.deb.sh | bash
-      - apt-get install -y git-lfs
-      - git lfs install
-      - git submodule sync --recursive
-      - git submodule update --init --recursive
-      - apt-get install -y build-essential cmake  # to be able to compile EUDAQ
-      # Update miniconda python and install required binary packages
-      - conda update --yes conda
-      - conda install --yes numpy bitarray pytest pyyaml scipy numba pytables pyqt matplotlib tqdm pyzmq blosc psutil pexpect coloredlogs iminuit lxml
-      # Install basil tag from github
-      - git clone -b development --depth 1 https://github.com/SiLab-Bonn/basil.git; cd basil; python setup.py develop; cd ..;
-      # - if [ -z "$CI_COMMIT_TAG"]; then git clone -b v3.0.0 --depth 1 https://github.com/SiLab-Bonn/basil.git; cd basil; python setup.py develop; cd ..; else git clone -b development --depth 1 https://github.com/SiLab-Bonn/basil.git; cd basil; python setup.py develop; cd ..; fi
-    script:
-       # Install EUDAQ
-      - source bdaq53/tests/setup_eudaq.sh
-      - python setup.py develop
-      # Try to activate conda evironment in the newest broken miniconda docker
-      - conda init bash  # https://github.com/ContinuumIO/docker-images/issues/89
-      - source ~/.bashrc  # since ==> For changes to take effect, close and re-open your current shell. <==
-      - conda activate  # to link properly to pytest
-      # Do not run virtual x server tests (monitor) in this runner due to segfault
-      - pytest -v bdaq53/tests/test_software/test_eudaq.py
-
-# Tests that need bdaq53 readout hardware and RD53 FE
-# Needs Ubuntu system with xvfb, Miniconda3 and full Xilinx installed and
-# Gitlab-runner with shell executor: https://docs.gitlab.com/runner/executors/
-test:hardware:
-    allow_failure: true
-    variables:
-      # Otherwise lock file of cancelled runs might stall future check outs
-      # https://gitlab.cern.ch/silab/bdaq53/issues/293
-      GIT_STRATEGY: clone
-    tags:  # tags to differentiate runners able to run the job
-      - hardware  # Use Silab hardware runner
-    before_script:
-      # Install required binary python packages
-      - echo $PATH
-      - echo $HOME
-      - export PATH=$HOME/miniconda3/condabin:$HOME/miniconda3/bin:/opt/Xilinx/Vivado/2018.2/bin:$PATH
-      - conda install python=3.7
-      - conda install --yes numpy bitarray pytest pyyaml scipy numba pytables pyqt matplotlib tqdm pyzmq blosc psutil pexpect coloredlogs ptyprocess gitpython iminuit lxml
-      # Install virtual x server for matplotlib Qt error
-      - pip install xvfbwrapper
-      # Update basil development from github
-      - cd ..
-      - if [ ! -d ./basil ]; then git clone -b development --depth 1 https://github.com/SiLab-Bonn/basil.git; fi
-      - cd basil; git reset --hard origin/development; git pull
-      - python setup.py develop
-      - cd ..; cd bdaq53
-      # Source vivado settings
-      - source /opt/Xilinx/Vivado/2018.2/settings64.sh
-    script:
-      - python setup.py develop
-      # Compile firmware if changes detected and flash
-      #- if [[ `git diff ..development -- firmware` ]]; then bdaq_firmware --firmware BDAQ53_RX640 -c; bdaq_firmware --firmware BDAQ53_1LANE_RX640.bit --target fpga; else bdaq_firmware --bdaq_firmware dev_BDAQ53_1LANE_RX640 --target fpga; fi
-      - bdaq_firmware --firmware BDAQ53_RX640 -c; bdaq_firmware --firmware BDAQ53_1LANE_RX640.bit --target fpga
-      - pytest -v bdaq53/tests/test_hardware
-      # use the hardware runner for online monitor test, since cern gitlab software runner segfaults when using xserver
-      # - pytest -v bdaq53/tests/test_software/test_monitor.py
-#    after_script:
-#      - cd ..; cd ..
-#      - if [ -d ./artifacts ]; then rm -R ./artifacts; fi
-#      - mkdir artifacts
-#      - if [ -f silab/bdaq53/firmware/vivado/vivado.log ]; then cp -p silab/bdaq53/firmware/vivado/vivado.log artifacts/vivado.log; fi
-#      - if [ -d silab/bdaq53/bdaq53/scans/output_data/ ]; then cp -rp silab/bdaq53/bdaq53/scans/output_data/ artifacts/output_data/; fi
-#      - if [ -f silab/bdaq53/BDAQ53_1LANE_RX640.bit ]; then cp -p silab/bdaq53/BDAQ53_1LANE_RX640.bit artifacts/BDAQ53_1LANE_RX640.bit; fi
-#      - rm -R  silab/bdaq53
-    artifacts:
-      when: always  # also upload verilog log on failure
-      paths:
-        - "vivado.log"
-        - "output_data/"
-        - "BDAQ53_1LANE_RX640.bit"
-      expire_in: 1 month
-
-# Tests for code style violations in new code lines
-test:code_style:
-    variables:
-      # Otherwise lock file of cancelled runs might stall future check outs
-      # https://gitlab.cern.ch/silab/bdaq53/issues/293
-      GIT_STRATEGY: clone
-    tags:  # tags to differentiate runners able to run the job
-      - docker  # Use CERN shared runners
-    image: continuumio/miniconda3:latest  # Ubuntu based miniconda image
-    before_script:
-      # Update miniconda python and install required binary packages
-      - conda update --yes conda
-      - conda install --yes numpy bitarray pytest pyyaml scipy numba pytables pyqt matplotlib tqdm pyzmq blosc psutil pexpect coloredlogs flake8 iminuit lxml
-      - pip install flake8-diff
-      # Install basil tag from github
-      - git clone -b development --depth 1 https://github.com/SiLab-Bonn/basil.git; cd basil; python setup.py develop; cd ..;
-      # - if [ -z "$CI_COMMIT_TAG"]; then git clone -b v3.0.0 --depth 1 https://github.com/SiLab-Bonn/basil.git; cd basil; python setup.py develop; cd ..; else git clone -b development --depth 1 https://github.com/SiLab-Bonn/basil.git; cd basil; python setup.py develop; cd ..; fi
-    script:
-      - python setup.py develop
-      - flake8-diff origin/development  # check code style flaws of changed lines agains development branch
-
+      - python CANMOPS_test.py
+      - python CANMOPS_GUI.py
 
