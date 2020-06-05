@@ -26,6 +26,7 @@ test:software:
       - pip install python-can
       #Installing libsocketcan package
       - git clone https://git.pengutronix.de/git/tools/libsocketcan
+      - cd libsocketcan
       - ./autogen.sh
       - ./configure
       - make CFLAGS='-fPIC'# to compile the package
