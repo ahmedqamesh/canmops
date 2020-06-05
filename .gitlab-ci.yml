@@ -35,7 +35,7 @@ test:software:
       - cd libsocketcan
       - sudo ./autogen.sh
       - sudo ./configure --disable-dependency-tracking
-      - make CFLAGS='-fPIC'# to compile the package
+      - sudo make CFLAGS='-fPIC'# to compile the package
       - sudo make install #to install the programs and any data files
       #Installing SocketCAN can-utils
       - sudo apt-get  install can-utils
