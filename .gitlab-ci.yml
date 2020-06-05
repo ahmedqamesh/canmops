@@ -27,9 +27,9 @@ test:software:
       #Installing libsocketcan package
       - git clone https://git.pengutronix.de/git/tools/libsocketcan
       - cd libsocketcan
-      - ./autogen.sh
-      - ./configure
-      - make CFLAGS='-fPIC'# to compile the package
+      - sudo ./autogen.sh
+      - sudo ./configure
+      - sudo  make CFLAGS='-fPIC'# to compile the package
       - sudo make install #to install the programs and any data files
       #Installing SocketCAN can-utils
       - sudo apt-get  install can-utils
