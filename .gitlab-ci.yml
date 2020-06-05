@@ -17,8 +17,7 @@ test:software:
       #- bash miniconda.sh -b -p $HOME/miniconda
       #- --yes
       #- export PATH=$HOME/miniconda/bin:$PATH
-
-      - conda update --yes conda
+     # - conda update --yes conda
       - conda install --yes conda install python=3.7 bitarray contextlib2 cython ipython matplotlib mock nose numba numpy pyqt pyserial pytables pyyaml pyzmq qtpy scipy
       - conda install --yes pywin32
       - conda install -c bioconda aenum
