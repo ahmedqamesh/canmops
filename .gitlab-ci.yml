@@ -33,7 +33,7 @@ test:software:
       - git clone https://git.pengutronix.de/git/tools/libsocketcan
       - cd libsocketcan
       - sudo ./autogen.sh
-      - sudo ./configure
+      - sudo ./configure --disable-dependency-tracking
       - sudo  make CFLAGS='-fPIC'# to compile the package
       - sudo make install #to install the programs and any data files
       #Installing SocketCAN can-utils
