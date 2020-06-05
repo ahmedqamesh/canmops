@@ -39,24 +39,26 @@ test:software:
       - make install #to install the programs and any data files
       #Installing SocketCAN can-utils
       - sudo apt-get  install can-utils
-     # Installing AnaGate CAN interface
-      - cd ..
-      - pip install packages/anagate-0.1.0-py3-none-any.whl
-    #Installing Canlib package
-      - pip install packages/canlib-1.6.615-py2.py3-none-any.whl
+      #Installing Canlib package
       - cd linuxcan
       - make 
       - make install #to install all drivers
+      # install canlib
       - cd canlib
       - make 
       - make install #to install all drivers
       - cd ..
+      # install Kcommon
       - cd common
       - make 
       - sudo ./installscript.sh
       - cd ..
       - make KV_Debug_ON=1 #To build with debug printouts:
-      
+      # install extra libraries of canlib
+      - cd ..
+      - pip install packages/canlib-1.6.615-py2.py3-none-any.whl
+     # Installing AnaGate CAN interface
+      - pip install packages/anagate-0.1.0-py3-none-any.whl
     script:
       - python CANMOPS_test.py
       - python CANMOPS_GUI.py
