@@ -33,10 +33,10 @@ test:software:
       #Installing libsocketcan package
       - git clone https://git.pengutronix.de/git/tools/libsocketcan
       - cd libsocketcan
-      - sudo ./autogen.sh
-      - sudo ./configure --disable-dependency-tracking
-      - sudo make CFLAGS='-fPIC'# to compile the package
-      - sudo make install #to install the programs and any data files
+      - ./autogen.sh
+      - ./configure  #--disable-dependency-tracking
+      - make CFLAGS='-fPIC' # to compile the package
+      - make install #to install the programs and any data files
       #Installing SocketCAN can-utils
       - sudo apt-get  install can-utils
      # Installing AnaGate CAN interface
