@@ -11,6 +11,7 @@ test:software:
     before_script:
       - apt-get update --fix-missing
       - apt-get install -y curl
+      - sudo apt-get install autoconf
       - su -
       #Install sudo by running:
       - apt-get install sudo -y
