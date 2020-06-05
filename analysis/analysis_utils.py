@@ -24,7 +24,6 @@ import pandas as pd
 import time
 import random
 from numba import njit
-from graphics_Utils import menuWindow
 from pathlib import Path
 from logging.handlers import RotatingFileHandler
 import coloredlogs as cl
@@ -76,17 +75,34 @@ def get_subindex_description_yaml(dictionary = None, index =None, subindex = Non
     subindex_description_items = subindex_items[subindex]
     return subindex_description_items
 
-def get_index_description_yaml(dictionary = None, index =None):
+def get_info_yaml(dictionary = None, index =None, subindex = "description_items"):
     index_item = [dictionary[i] for i in [index] if i in dictionary]
-    index_description_items = index_item[0]["description_items"]
+    index_description_items = index_item[0][subindex]
     return index_description_items
             
-def get_subindex_yaml(dictionary = None, index =None):
+def get_subindex_yaml(dictionary = None, index =None, subindex = "subindex_items"):
     index_item = [dictionary[i] for i in [index] if i in dictionary]
-    subindex_items = index_item[0]["subindex_items"]
+    subindex_items = index_item[0][subindex]
     return subindex_items.keys()
 
 def get_project_root() -> Path:
     """Returns project root folder."""
     return Path(__file__).parent.parent
-
+def save_adc_date(directory = None,channel = None):
+    File = tb.open_file(directory + "ch_"+channel+ ".h5", 'w')
+    description = np.zeros((1,), dtype=np.dtype([("TimeStamp", "f8"), ("Channel", "f8"), ("Id", "f8"), ("Flg", "f8"), ("DLC", "f8"), ("ADCChannel", "f8"), ("ADCData", "f8"),("ADCDataConverted", "f8")])).dtype
+    table = File.create_table(File.root, name='ADC_results', description=description)
+    table.flush()
+    row = table.row
+    for i in np.arange(length_v):
+        row["TimeStamp"] = voltage_array[i]
+        row["Channel"] = mean
+        row["Id"] = std
+        row["DLC"] = voltage_array[i]
+        row["ADCChannel"] = mean
+        row["ADCData"] = std
+        row["ADCDataConverted"] = std
+        row.append()
+    File.create_array(File.root, 'current_array', current_array, "current_array")
+    File.close()
+    logging.info("Start creating table")     
