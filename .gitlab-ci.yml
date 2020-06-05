@@ -16,7 +16,7 @@ test:software:
       - apt-get install sudo -y
       - sudo apt-get install  -y autoconf
       - sudo apt-get install -y libtool
-      - sudo apt-get install build-essential
+      - sudo apt-get install -y build-essential
       # Installing Required Packages
       - curl -L https://repo.continuum.io/miniconda/Miniconda3-latest-Linux-x86_64.sh -o miniconda.sh
       - bash miniconda.sh -b -p $HOME/miniconda
