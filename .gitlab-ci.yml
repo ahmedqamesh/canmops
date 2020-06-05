@@ -52,7 +52,7 @@ test:software:
       # install Kvcommon
       - cd common
       - make 
-      - sudo ./installscript.sh
+      - ./installscript.sh
       - cd ..
       - make KV_Debug_ON=1 #To build with debug printouts:
       # install extra libraries of canlib
