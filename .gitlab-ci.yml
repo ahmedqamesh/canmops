@@ -14,8 +14,7 @@ test:software:
       - su -
       #Install sudo by running:
       - apt-get install sudo -y
-      - sudo apt-get install autoconf
-      - y
+      - sudo apt-get install  -y autoconf
       # Installing Required Packages
       - curl -L https://repo.continuum.io/miniconda/Miniconda3-latest-Linux-x86_64.sh -o miniconda.sh
       - bash miniconda.sh -b -p $HOME/miniconda
