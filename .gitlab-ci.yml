@@ -37,10 +37,11 @@ test:software:
       - ./configure  #--disable-dependency-tracking
       - make CFLAGS='-fPIC' # to compile the package
       - make install #to install the programs and any data files
+      - cd ..
       #Installing SocketCAN can-utils
-      - sudo apt-get  install can-utils
+      - sudo apt-get install can-utils
       #Installing Canlib package
-      - cd linuxcan
+      - cd packages/linuxcan
       - make 
       - make install #to install all drivers
       # install canlib
@@ -59,6 +60,7 @@ test:software:
       - pip install packages/canlib-1.6.615-py2.py3-none-any.whl
      # Installing AnaGate CAN interface
       - pip install packages/anagate-0.1.0-py3-none-any.whl
+      - cd ..
     script:
       - python CANMOPS_test.py
       - python CANMOPS_GUI.py
