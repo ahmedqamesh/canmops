@@ -30,6 +30,7 @@ test:software:
       #Installing libsocketcan package
       - git clone https://git.pengutronix.de/git/tools/libsocketcan
       - cd libsocketcan
+      - pwd
       - sudo ./autogen.sh
       - sudo ./configure
       - sudo  make CFLAGS='-fPIC'# to compile the package
