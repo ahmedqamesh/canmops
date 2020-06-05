@@ -43,13 +43,13 @@ test:software:
       #Installing Canlib package
       - cd packages/linuxcan
       - make 
-      - make install #to install all drivers
+      - sudo make install #to install all drivers
       # install canlib
       - cd canlib
       - make 
       - make install #to install all drivers
       - cd ..
-      # install Kcommon
+      # install Kvcommon
       - cd common
       - make 
       - sudo ./installscript.sh
