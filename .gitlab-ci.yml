@@ -17,7 +17,6 @@ test:software:
       - export PATH=$HOME/miniconda/bin:$PATH
       - conda update --yes conda
       - conda install --yes python=3.7 bitarray contextlib2 cython ipython matplotlib mock nose numba numpy pyqt pyserial pytables pyyaml pyzmq qtpy scipy
-      - conda install --yes pywin32
       - conda install -c bioconda aenum
       - conda install -c bioconda/label/cf201901 aenum
       - pip install lxml tqdm kafe seaborn aenum verboselogs qtawesome coloredlogs termcolor progressbar-latest pyvisa pyvisa-py pyqtgraph
