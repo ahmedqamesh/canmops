@@ -6,12 +6,12 @@ test:software:
       GIT_STRATEGY: clone
     tags:  # tags to differentiate runners able to run the job
       - docker  # Use CERN shared runners
-    image: continuumio/miniconda3:latest  # Ubuntu based miniconda image
+    #image: continuumio/miniconda3:latest  # Ubuntu based miniconda image
     
     before_script:
       # Install miniconda python with required binary packages
       - curl -L https://repo.continuum.io/miniconda/Miniconda3-latest-Linux-x86_64.sh -o miniconda.sh
-      - bash miniconda.sh -b -p $HOME/miniconda
+      - bash miniconda.sh  -u -p $HOME/miniconda
       - export PATH=$HOME/miniconda/bin:$PATH
       - conda update --yes conda
       - conda install --yes conda install python=3.7 bitarray contextlib2 cython ipython matplotlib mock nose numba numpy pyqt pyserial pytables pyyaml pyzmq qtpy scipy
