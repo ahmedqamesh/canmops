@@ -1,10 +1,13 @@
 # Tests using RD53 and FPGA co-simulation
-test:canmops:
+test:software:
     variables:
-        # Otherwise lock file of cancelled runs might stall future check outs
-        GIT_STRATEGY: clone
+      # Otherwise lock file of cancelled runs might stall future check outs
+      # https://gitlab.cern.ch/silab/bdaq53/issues/293
+      GIT_STRATEGY: clone
     tags:  # tags to differentiate runners able to run the job
-      - canmops
+      - docker  # Use CERN shared runners
+    image: continuumio/miniconda3:latest  # Ubuntu based miniconda image
+    
     before_script:
       # Install miniconda python with required binary packages
       - curl -L https://repo.continuum.io/miniconda/Miniconda3-latest-Linux-x86_64.sh -o miniconda.sh
@@ -20,4 +23,8 @@ test:canmops:
     script:
       - python CANMOPS_test.py
       - python CANMOPS_GUI.py
+      # Try to activate conda evironment in the newest broken miniconda docker
+      - conda init bash  # https://github.com/ContinuumIO/docker-images/issues/89
+      - source ~/.bashrc  # since ==> For changes to take effect, close and re-open your current shell. <==
+      - conda activate  # to link properly to pytest
 
