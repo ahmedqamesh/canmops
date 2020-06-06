@@ -41,9 +41,9 @@ test:software:
       #Installing SocketCAN can-utils
       - sudo apt-get install can-utils
       #Installing Canlib package
-      - cd packages/linuxcan
-      - make 
-      - sudo make install #to install all drivers
+      #- cd packages/linuxcan
+      #- make 
+      #- sudo make install #to install all drivers
       # install canlib
       - cd canlib
       - make 
