@@ -59,9 +59,9 @@ test:software:
       #- make KV_Debug_ON=1 #To build with debug printouts:
       # install extra libraries of canlib
       - cd ..
-      - pip install packages/canlib-1.6.615-py2.py3-none-any.whl
+      - pip install canlib-1.6.615-py2.py3-none-any.whl
      # Installing AnaGate CAN interface
-      - pip install packages/anagate-0.1.0-py3-none-any.whl
+      - pip install anagate-0.1.0-py3-none-any.whl
       - cd ..
     script:
       - python CANMOPS_test.py
