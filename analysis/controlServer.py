@@ -42,7 +42,7 @@ except:
     print (colored("Warning: Canlib Package is not installed.......", 'red'), colored("Please ignore the warning if you are not using any Kvaser commercial controllers.", "green"))
 
 try:
-    import ../analib
+    import analib
 except:
     print (colored("Warning: AnaGate Package is not installed.......", 'red'), colored("Please ignore the warning if you are not using any AnaGate commercial controllers.", "green"))
 
