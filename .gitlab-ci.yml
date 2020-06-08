@@ -66,7 +66,8 @@ test:software:
      # Installing AnaGate CAN interface
       #- pip install anagate-0.1.0-py3-none-any.whl
       - cd ..
-    #script:
+    script:
+      - sudo apt-get install -y build-essential
       #- python CANMOPS_test.py
       #- python CANMOPS_GUI.py
       # Try to activate conda evironment in the newest broken miniconda docker
