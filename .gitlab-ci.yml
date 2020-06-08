@@ -23,6 +23,9 @@ test:software:
       - curl -L https://repo.continuum.io/miniconda/Miniconda3-latest-Linux-x86_64.sh -o miniconda.sh
       - bash miniconda.sh -b -p $HOME/miniconda
       - export PATH=$HOME/miniconda/bin:$PATH
+      - conda init bash  # https://github.com/ContinuumIO/docker-images/issues/89
+      - source ~/.bashrc  # since ==> For changes to take effect, close and re-open your current shell. <==
+      - conda activate  # to link properly to pytest
       - conda update --yes conda
       - conda install --yes python=3.7 bitarray contextlib2 cython ipython matplotlib mock nose numba numpy pyqt pyserial pytables pyyaml pyzmq qtpy scipy
       - conda install -c bioconda aenum
@@ -64,10 +67,7 @@ test:software:
       #- pip install anagate-0.1.0-py3-none-any.whl
       - cd ..
     script:
-      - python CANMOPS_test.py
-      - python CANMOPS_GUI.py
+      #- python CANMOPS_test.py
+      #- python CANMOPS_GUI.py
       # Try to activate conda evironment in the newest broken miniconda docker
-      - conda init bash  # https://github.com/ContinuumIO/docker-images/issues/89
-      - source ~/.bashrc  # since ==> For changes to take effect, close and re-open your current shell. <==
-      - conda activate  # to link properly to pytest
 
