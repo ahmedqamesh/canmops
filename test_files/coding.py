@@ -5,6 +5,7 @@ import signal
 import time
 from tqdm import tqdm
 from time import sleep
+print(bin(67))
 original = bytearray(b'\x00P\x80\xfe\x01(\x02\x00')
 ioriginal = int.from_bytes(original, byteorder=sys.byteorder)
 b1, b2, b3, b4, b5, b6, b7, b8 = ioriginal.to_bytes(8, 'little')
@@ -15,4 +16,8 @@ print(["#ededed", "#f7e5b2","#fcc48d","#e64e4b","#984071","#58307b","#432776","#
        "#cfe8b7","#d2d2ba","#bab59e","#8b7c99","#6a5c9d"",#4c428d","#3a3487","#31222c"])
 i = int("10", 16)
 print(i)
-n_channels = np.arange(3, 35)
+
+original1 = bytearray(b'\x01')
+ioriginal1 = int.from_bytes(original1, byteorder=sys.byteorder)
+b11, b21, b31, b41 = ioriginal.to_bytes(4, 'little')
+print(hex(b11)[2:], hex(b21)[2:], hex(b31)[2:], hex(b41)[2:])

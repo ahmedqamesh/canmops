@@ -7,18 +7,16 @@ Application:
                                 "------" :  {"description_items" :"<html><b>-----</b></html>",
                                              "subindex_items"    :{     "-----":"<html><b>-----</b></html>"}} 
                                ,"0x1000" :  {"description_items" :"<html><b> Device type</b> [Default 191(hex)]</b></html>",
-                                             "subindex_items"    :{     "0":"<html><b>-----</b></html>"}}      
+                                             "subindex_items"    :{     "0":"<html><b>Device type</b></html>"}}      
                                ,"0x1001" :  {"description_items" :"<html><b> Error register</b> [Default 0]</b></html>",
-                                             "subindex_items"    :{     "0":"<html><b>-----</b></html>"}}
+                                             "subindex_items"    :{     "0":"<html><b>Error register</b></html>"}}
                                ,"0x1005" :  {"description_items" :"<html><b> COB-ID SYNC</b> [Default 80(hex)]</b></html>",
-                                             "subindex_items"    :  {   "0":"<html><b>-----</b></html>"}}
+                                             "subindex_items"    :  {   "0":"<html><b>COB-ID SYNC</b></html>"}}
                                ,"0x1014" :  {"description_items" :"<html><b> COB-ID EMCY</b> [Default 80(hex)+NodeId]</b></html>",
-                                             "subindex_items"    :  {   "0":"<html><b>-----</b></html>"}}
-                                            
+                                             "subindex_items"    :  {   "0":"<html><b>COB-ID EMCY</b></html>"}}
                                ,"0x1018" :  {"description_items" :"<html><b> Identity object needs</b></html>",
-                                             "subindex_items"    :  {   "0":"<html><u>subindex 0:</u> Number of entries [Default 1]</html>",
-                                                                        "1":"<html><u>subindex 1:</u> Vendor Id [Default 12345678(hex)+NodeId]</p></html>"}}                                          
-
+                                             "subindex_items"    :  {   "0":"<html><b>Number of entries</b></html>",
+                                                                        "1":"<html><b>Vendor Id</b></html>"}}                                                                           
                                ,"0x1200" :  {"description_items" :"<html><b>Server SDO parameter 0</b></html>",
                                             "subindex_items"    :  {    "0":"<html><u>subindex 0:Number of entries [Default 2]</u></html>",
                                                                         "1":"<html><u>subindex 1:COB-ID client to server [Default 600 (hex) + NodeId]</u></html>",
@@ -48,7 +46,7 @@ Application:
                                ,"0x2000" : {"description_items" : "<html><b> Read monitoring values of all FEs</b></html>",
                                             "subindex_items"    :  {"0":"<html><b>-----</b></html>"}}
                                ,"0x2001" : {"description_items" :"<html><b> Read PSPP monitoring data</b></html>",
-                                            "subindex_items"    :  {"0":"<html><b>-----</b></html>"}}                                                                                               
+                                            "subindex_items"    :  {"0":"<html><b>PSPP Mon. data</b></html>"}}                                                                                               
                                ,"0x2100":  {"description_items" :"<html><b> FE monitoring values</b></html>",
                                             "subindex_items"    :  {    "0":"<html><u>subindex 0</u>:Number of entries [Default 2]</html>",
                                                                         "1":"<html><u>subindex 1</u>:Temperature ADC count</html>",
@@ -113,6 +111,7 @@ Application:
                                             "subindex_items"    :  {    "0":"<html><u>subindex 0</u>:Number of entries [Default 2]</html>",
                                                                         "1":"<html><u>subindex 1</u>:Temperature ADC count</html>",
                                                                         "2":"<html><u>subindex 2</u>:Voltage ADC count</html>"}} 
+                                                                    
                                ,"0x2200":  {"description_items" :"<html><b> PSPP parameter</b></html>",
                                             "subindex_items"    :  {    "0":"<html><u>subindex 0</u>:Number of entries [Default 23]</html>",
                                                                         "1":"<html><u>subindex 1</u>:Read monitoring values of PSPP</html>",
@@ -124,12 +123,6 @@ Application:
                                                                         "7":"<html><u>subindex 7</u>:reserved</html>",
                                                                         "8":"<html><u>subindex 8</u>:reserved</html>",
                                                                         "9":"<html><u>subindex 9</u>:reserved</html>",
-                                                                        "A":"<html><u>subindex A</u>:reserved</html>",
-                                                                        "B":"<html><u>subindex B</u>:reserved</html>",
-                                                                        "C":"<html><u>subindex C</u>:reserved</html>",
-                                                                        "D":"<html><u>subindex D</u>:reserved</html>",
-                                                                        "E":"<html><u>subindex E</u>:reserved</html>",
-                                                                        "F":"<html><u>subindex F</u>:reserved</html>",
                                                                         "10":"<html><u>subindex 10</u>:PSPP Registers</html>",
                                                                         "11":"<html><u>subindex 11</u>:PSPP Registers</html>",
                                                                         "12":"<html><u>subindex 12</u>:PSPP Registers</html>",
@@ -143,27 +136,25 @@ Application:
                                                                         "1A":"<html><u>subindex 1A</u>:PSPP Registers</html>",
                                                                         "1B":"<html><u>subindex 1B</u>:PSPP Registers</html>",
                                                                         "1C":"<html><u>subindex 1C</u>:PSPP Registers</html>",
-                                                                        "1D":"<html><u>subindex 1D</u>:PSPP Registers</html>",                                                     
-                                                                        "1E":"<html><u>subindex 1E</u>:PSPP Registers</html>",
-                                                                        "20":"<html><u>subindex 20</u>:Read ADC channel 0</html>",
+                                                                        "30":"<html><u>subindex 30</u>:ID</html>",                                                                        "30":"<html><u>subindex 30</u>:ID</html>",
+                                                                        "31":"<html><u>subindex 31</u>:BG Trim</html>",
+                                                                        "32":"<html><u>subindex 32</u>:Read SEU counter</html>"}} 
+                               ,"0x2201":  {"description_items" :"<html><b>ADC channels</b></html>",
+                                            "subindex_items"    :  {    "20":"<html><u>subindex 20</u>:Read ADC channel 0</html>",
                                                                         "21":"<html><u>subindex 21</u>:Read ADC channel 1</html>",
                                                                         "22":"<html><u>subindex 22</u>:Read ADC channel 2</html>",
                                                                         "23":"<html><u>subindex 23</u>:Read ADC channel 3</html>",
                                                                         "24":"<html><u>subindex 24</u>:Read ADC channel 4</html>",
                                                                         "25":"<html><u>subindex 25</u>:Read ADC channel 5</html>",
                                                                         "26":"<html><u>subindex 26</u>:Read ADC channel 6</html>",
-                                                                        "27":"<html><u>subindex 27</u>:Read ADC channel 7</html>",
-                                                                        "28":"<html><u>subindex 28</u>:reserved</html>",
-                                                                        "29":"<html><u>subindex 29</u>:reserved</html>",
-                                                                        "2A":"<html><u>subindex 2A</u>:reserved</html>",
-                                                                        "2B":"<html><u>subindex 2B</u>:reserved</html>",
-                                                                        "2C":"<html><u>subindex 2C</u>:reserved</html>",
-                                                                        "2D":"<html><u>subindex 2D</u>:reserved</html>",
-                                                                        "2E":"<html><u>subindex 2E</u>:reserved</html>",
-                                                                        "2F":"<html><u>subindex 2F</u>:reserved</html>",
-                                                                        "30":"<html><u>subindex 30</u>:ID</html>",
-                                                                        "31":"<html><u>subindex 31</u>:BG Trim</html>",
-                                                                        "32":"<html><u>subindex 32</u>:Read SEU counter</html>"}} 
+                                                                        "27":"<html><u>subindex 27</u>:Read ADC channel 7</html>"}} 
+                                                                        
+                               ,"0x2310":  {"description_items" :"<html><b> Read other monitoring values</b></html>",
+                                            "subindex_items"    :  {    "0":"<html><b>Number of entries</b></html>",
+                                                                        "1":"<html><b>VBANDGAP</b></html>",
+                                                                        "2":"<html><b>VCANSEN</b></html>",
+                                                                        "3":"<html><b>VGNDSEN</b></html>"}}
+                                                                                                                                                
                                ,"0x2300":  {"description_items"  :"<html><b> Internal ADC channels</b></html>",
                                             "subindex_items"     :  {   "0":"<html><u>subindex 0</u>:Number of entries [Default 8]</html>",
                                                                         "1":"<html><u>subindex 1</u>:Ch32</html>",
@@ -175,36 +166,16 @@ Application:
                                                                         "7":"<html><u>subindex 7</u>:Ch38</html>",
                                                                         "8":"<html><u>subindex 8</u>:Ch39</html>"}}}
 adc_channels_reg:
-    adc_index               : "0x2200"
-    adc_channels            : {"3":"V",
+    mon_index               : {"0x2310"}
+    conf_index              : {"0x1000","0x1001","0x1018","0x2001"}
+    adc_index               : {"0x2201"}
+    adc_channels            : {"0":"None",
+                               "1":"None",
+                               "2":"V",
+                               "3":"V",
                                "4":"V",
                                "5":"V",
                                "6":"V",
                                "7":"V",
                                "8":"V",
-                               "9":"V",
-                               "10":"V",
-                               "11":"V",
-                               "12":"V",
-                               "13":"V",
-                               "14":"V",
-                               "15":"V",
-                               "16":"T",
-                               "17":"V",
-                               "18":"V",
-                               "19":"T",
-                               "20":"V",
-                               "21":"V",
-                               "22":"T",
-                               "23":"V",
-                               "24":"T",
-                               "25":"V",
-                               "26":"V",
-                               "27":"T",
-                               "28":"V",
-                               "29":"V",
-                               "30":"V",
-                               "31":"V",
-                               "32":"V",
-                               "33":"V",
-                               "34":"V"}  
+                               "9":"V"} 

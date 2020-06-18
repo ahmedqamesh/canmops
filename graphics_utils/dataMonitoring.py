@@ -20,88 +20,6 @@ import matplotlib as mpl
 from analysis import analysis_utils
 from graphics_utils import mainWindow
 
-
-class CollapsibleBox(QtWidgets.QWidget):
-
-    def __init__(self, title="", parent=None):
-        super(CollapsibleBox, self).__init__(parent)
-
-        self.toggle_button = QtWidgets.QToolButton(
-            text=title, checkable=True, checked=False
-        )
-        self.toggle_button.setStyleSheet("QToolButton { border: none; }")
-        self.toggle_button.setToolButtonStyle(QtCore.Qt.ToolButtonIconOnly)
-        self.toggle_button.setArrowType(QtCore.Qt.RightArrow)
-        self.toggle_button.pressed.connect(self.on_pressed)
-
-       
-
-        self.content_area = QtWidgets.QScrollArea(maximumHeight=0, minimumHeight=0, maximumWidth = 500, minimumWidth =0)
-        self.content_area.setSizePolicy(QtWidgets.QSizePolicy.Expanding, QtWidgets.QSizePolicy.Fixed)
-        self.content_area.setFrameShape(QtWidgets.QFrame.NoFrame)
-
-        lay = QtWidgets.QHBoxLayout(self)
-        lay.setSpacing(0)
-        lay.setContentsMargins(0, 0, 0, 0)
-        lay.addWidget(self.toggle_button)
-        lay.addWidget(self.content_area)
-        
-        self.toggle_animation = QtCore.QParallelAnimationGroup(self)
-#         self.toggle_animation.addAnimation(
-#             QtCore.QPropertyAnimation(self, b"minimumHeight")
-#         )
-#         self.toggle_animation.addAnimation(
-#             QtCore.QPropertyAnimation(self, b"maximumHeight")
-#         )
-
-        self.toggle_animation.addAnimation(
-            QtCore.QPropertyAnimation(self.content_area, b"maximumHeight")
-        )
-
-    @QtCore.pyqtSlot()
-    def on_pressed(self):
-        checked = self.toggle_button.isChecked()
-        self.toggle_button.setArrowType(QtCore.Qt.LeftArrow if not checked else QtCore.Qt.RightArrow
-        )
-        self.toggle_animation.setDirection(
-            QtCore.QAbstractAnimation.Forward
-            if not checked
-            else QtCore.QAbstractAnimation.Backward
-        )
-        self.toggle_animation.start()
-
-    def setContentLayout(self, layout):
-        lay = self.content_area.layout()
-        del lay
-        self.content_area.setLayout(layout)
-        collapsed_height = (self.sizeHint().height() - self.content_area.maximumHeight())
-        collapsed_width = (self.sizeHint().width() - 0) #self.content_area.maximumWidth())
-        
-        content_height = layout.sizeHint().height()
-        content_width = layout.sizeHint().width()
-        for i in range(self.toggle_animation.animationCount()):
-            animation = self.toggle_animation.animationAt(i)
-            animation.setDuration(500)
-            animation.setStartValue(collapsed_height)
-            animation.setEndValue(collapsed_height + content_height)
-            
-            #animation.setStartValue(collapsed_width)
-            #animation.setEndValue(collapsed_width + content_width)
-                        
-            #animation.setStartValue(QSize(100, 0))
-            #animation.setEndValue(QSize(100, content_height))
-        
-        content_animation = self.toggle_animation.animationAt(
-            self.toggle_animation.animationCount() - 1
-        )
-        content_animation.setDuration(500)
-        #content_animation.setStartValue(0)
-        #content_animation.setEndValue(content_height)
-        #content_animation.setStartValue(QSize(100, 0))
-        #content_animation.setEndValue(QSize(100, content_height))
-    
-        
-
 class ADCMonitoringData(QMainWindow):
 
     def __init__(self, parent=None, interface=None):
@@ -302,33 +220,33 @@ class LiveMonitoringDistribution(FigureCanvas):
     
     """A canvas that updates itself every second with a new plot."""
 
-    def __init__(self, parent=None, period=200):
+    def __init__(self, parent=None, period=200, data = None):
         self.compute_initial_figure()
         self.main = mainWindow.MainWindow()
-        # self.initiate_timer(period=period)
+        self.initiate_timer(period=period, data =data)
         
     def compute_initial_figure(self):
         fig = Figure(edgecolor="black", linewidth="2.5")  # , facecolor="#e1ddbf")
         self.axes = fig.add_subplot(111)
         FigureCanvas.__init__(self, fig)
         FigureCanvas.setSizePolicy(self, QSizePolicy.Expanding, QSizePolicy.Expanding), FigureCanvas.updateGeometry(self)
-        self.data = list(range(100))  # 100 time points
+        self.data =  list(range(2))  # 100 time points
         self.axes.set_xlabel(r'CAN Data', size=10)
         self.axes.set_ylabel(r'Counts', size=10) 
         self.axes.grid(True)
         plt.tight_layout()
     
-    def initiate_timer(self, period=None):    
+    def initiate_timer(self, period=None, data = None):    
         self.timer = QtCore.QTimer()
-        self.timer.timeout.connect(self.update_figure)
+        self.timer.timeout.connect(lambda: self.update_figure(y = data))
         self.timer.start(period)
     
     def stop_timer(self):
         self.timer.stop() 
                 
-    def update_figure(self):
-        self.main.send_sdo_data()  # to be replaced with send_sdo_can
-        y = self.main.get_data_point()
+    def update_figure(self, y = None):
+        #self.main.send_sdo_data()  # to be replaced with send_sdo_can
+        #y = self.main.get_data_point()
         self.data.append(y)
         # print(len(self.data))
         hist_data, edges = np.histogram(self.data, bins=np.arange(0, 100, 1))  #

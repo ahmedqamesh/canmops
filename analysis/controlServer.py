@@ -488,6 +488,7 @@ class ControlServer(object):
         messageValid = False
         while time.perf_counter() - t0 < timeout / 1000:
             with self.__lock:
+                #check the message validity [nodid, msg size,...]
                 for i, (cobid_ret, ret, dlc, flag, t) in zip(range(len(self.__canMsgQueue)), self.__canMsgQueue):
                     messageValid = (dlc == 8 
                                     and cobid_ret == SDO_TX + nodeId
@@ -512,9 +513,15 @@ class ControlServer(object):
                               f'{nodeId} with abort code {abort_code:08X}')
             self.cnt['SDO read abort'] += 1
             return None
+        #Here some Bitwise Operators are needed to perform  bit by bit operation
+        # ret[0] =67 [bin(ret[0]) = 0b1000011] //from int to binary
+        #(ret[0] >> 2) will divide ret[0] by 2**2 [Returns ret[0] with the bits shifted to the right by 2 places. = 0b10000]
+        #(ret[0] >> 2) & 0b11 & Binary AND Operator [copies a bit to the result if it exists in both operands = 0b0]
+        # 4 - ((ret[0] >> 2) & 0b11) for expedited transfer the object dictionary does not get larger than 4 bytes.
         nDatabytes = 4 - ((ret[0] >> 2) & 0b11) if ret[0] != 0x42 else 4
         data = []
         for i in range(nDatabytes):
+            
             data.append(ret[4 + i])
         self.logger.info(f'Got data: {data}')
         return int.from_bytes(data, 'little')

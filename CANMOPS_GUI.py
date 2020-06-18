@@ -11,7 +11,7 @@ from analysis import controlServer, analysis_utils
 from graphics_utils import  mainWindow
 rootdir = os.path.dirname(os.path.abspath(__file__))
 if __name__=='__main__':
-    qapp = QtWidgets.QApplication(sys.argv)
+    qApp = QtWidgets.QApplication(sys.argv)
     app = mainWindow.MainWindow()
     app.Ui_ApplicationWindow()
-    qapp.exec_()
+    qApp.exec_()

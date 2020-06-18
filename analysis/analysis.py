@@ -40,5 +40,8 @@ class Analysis(object):
             else:
                 value = value * 207 * 10e-6
         return value
+
+    def convertion(self,value =None):
+        return value
 if __name__ == "__main__":
         pass
