@@ -369,23 +369,25 @@ class MainWindow(QMainWindow):
     '''
                
     def send_sdo_can(self, trending=False, print_sdo=True):
-        try:
-            _index = int(self.get_index(), 16)
-            _subIndex = int(self.get_subIndex(), 16)
-            _nodeId = self.get_nodeId()
-            _nodeId = int(_nodeId[0])
-            if self.server == None: 
-                self.server = controlServer.ControlServer()
-                _interface = self.get_interface()
-                self.server.set_interface(_interface)
-                self.server.set_channelConnection(interface=_interface)
-            self.__response = self.server.sdoRead(_nodeId, _index, _subIndex, 3000)
-            #self.set_data_point(self.__response)
-            if print_sdo == True:
-                self.print_sdo_can(nodeId=_nodeId, index=_index, subIndex=_subIndex, response_from_node=self.__response)
-            return self.__response
-        except Exception:
-            pass
+        #try:
+        _index = int(self.get_index(), 16)
+        _subIndex = int(self.get_subIndex(), 16)
+        _nodeId = self.get_nodeId()
+        _nodeId = int(_nodeId[0])
+        if self.server == None: 
+            print("self.__response")
+            #self.server = controlServer.ControlServer()
+            _interface = self.get_interface()
+            #self.server.set_interface(_interface)
+            #self.server.set_channelConnection(interface=_interface)
+            self.server = controlServer.ControlServer(interface=_interface, set_channel=True)           
+        self.__response = self.server.sdoRead(_nodeId, _index, _subIndex, 3000)
+        #self.set_data_point(self.__response)
+        if print_sdo == True:
+            self.print_sdo_can(nodeId=_nodeId, index=_index, subIndex=_subIndex, response_from_node=self.__response)
+        return self.__response
+        #except Exception:
+        #    pass
         
         
     def error_message(self, text=False, checknode=False):
@@ -1026,13 +1028,13 @@ class MainWindow(QMainWindow):
                 if grid_location < col_len:
                     FirstGridLayout.addWidget(icon, grid_location, 0)
                     # FirstGridLayout.addWidget(self.trendingBox[s], s, 1)
-                    FirstGridLayout.addWidget(self.trendingBotton[a], grid_location, 2)
+                    #FirstGridLayout.addWidget(self.trendingBotton[a], grid_location, 2)
                     FirstGridLayout.addWidget(labelChannel[a], grid_location, 3)
                     FirstGridLayout.addWidget(self.ChannelBox[a], grid_location, 4)
                 else:
                     FirstGridLayout.addWidget(icon, grid_location - col_len, 5)
                     # FirstGridLayout.addWidget(self.trendingBox[s], i-16, 6)
-                    FirstGridLayout.addWidget(self.trendingBotton[a], grid_location - col_len, 7)
+                    #FirstGridLayout.addWidget(self.trendingBotton[a], grid_location - col_len, 7)
                     FirstGridLayout.addWidget(labelChannel[a], grid_location - col_len, 8)
                     FirstGridLayout.addWidget(self.ChannelBox[a], grid_location - col_len , 9)
                 a =a+1          
@@ -1227,16 +1229,14 @@ class MainWindow(QMainWindow):
         for i in np.arange(len(_mon_indices)):
             _subIndexItems = list(analysis_utils.get_subindex_yaml(dictionary=_dictionary, index=_mon_indices[i], subindex ="subindex_items"))
             self.set_index(_mon_indices[i])# set index for later usage
-            pbar = tqdm(total=len(_subIndexItems)*10,desc="Monitoring Values",iterable=True)
+            pbar = tqdm(total=len(_subIndexItems)*1,desc="Monitoring Values",iterable=True)
             for s in np.arange(0, len(_subIndexItems)):
                 self.set_subIndex(_subIndexItems[s])
                 data_point = self.send_sdo_can(print_sdo=False)
                 self.monValueBox[a].setText(str(analysis.Analysis().convertion(data_point)))
                 a =a+1
-                pbar.update(10)
+                pbar.update(1)
             pbar.close()
-    
-
     def readConfigurationValues(self):
         _conf_index = self.__conf_index
         _adc_channels_reg = self.get_adc_channels_reg()
@@ -1246,13 +1246,13 @@ class MainWindow(QMainWindow):
         for i in np.arange(len(_conf_indices)):
             _subIndexItems = list(analysis_utils.get_subindex_yaml(dictionary=_dictionary, index=_conf_indices[i], subindex ="subindex_items"))
             self.set_index(_conf_indices[i])# set index for later usage
-            pbar = tqdm(total=len(_subIndexItems)*10,desc="Configuration Values",iterable=True)
+            pbar = tqdm(total=len(_subIndexItems)*1,desc="Configuration Values",iterable=True)
             for s in np.arange(0, len(_subIndexItems)):
                 self.set_subIndex(_subIndexItems[s])
                 data_point = self.send_sdo_can(print_sdo=False)
                 self.confValueBox[a].setText(str(analysis.Analysis().convertion(data_point)))
                 a =a+1
-                pbar.update(10)
+                pbar.update(1)
             pbar.close()
                 
     def stateBox(self, checked):

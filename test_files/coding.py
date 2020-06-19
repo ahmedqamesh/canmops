@@ -4,6 +4,7 @@ import struct
 import signal
 import time
 from tqdm import tqdm
+from colorama import Fore
 from time import sleep
 print(bin(67))
 original = bytearray(b'\x00P\x80\xfe\x01(\x02\x00')
@@ -19,5 +20,12 @@ print(i)
 
 original1 = bytearray(b'\x01')
 ioriginal1 = int.from_bytes(original1, byteorder=sys.byteorder)
-b11, b21, b31, b41 = ioriginal.to_bytes(4, 'little')
-print(hex(b11)[2:], hex(b21)[2:], hex(b31)[2:], hex(b41)[2:])
+#b11, b21, b31, b41 = ioriginal.to_bytes(4, 'little')
+#print(hex(b11)[2:], hex(b21)[2:], hex(b31)[2:], hex(b41)[2:])
+
+pbar = tqdm(total=100*100,desc="ADC channels",iterable=True)
+for s in np.arange(0,100):
+    time.sleep(0.1)
+    pbar.update(100)
+pbar.close()
+   

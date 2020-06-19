@@ -26,7 +26,7 @@ def test():
     #Example (1): get node Id
     VendorId = server.sdoRead(NodeIds[0], 0x1000,0,3000)
     
-    print(f'VendorId: {VendorId:03X}')
+    print(f'Device type: {VendorId:03X}')
          
     #Example (2): Read channels 
     n_channels = np.arange(3,35)
