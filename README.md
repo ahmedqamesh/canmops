@@ -17,6 +17,7 @@ It has happened that the USB port was not correctly reset after the Kvaser inter
 
 ## Documentation
 Documentation can be found under: https://github.com/ahmedqamesh/CANMoPs/wiki
+
 ### Installation and usage
 Clone the repository to get a copy of the source code (for developers):
 ```

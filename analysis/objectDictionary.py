@@ -36,12 +36,8 @@ import coloredlogs as cl
 import verboselogs
 
 # Other files
-try:
-    from .CANopenConstants import ATTR, VARTYPE, ENTRYTYPE, LIMITS
-    from .extend_logging import extend_logging
-except (ModuleNotFoundError, ImportError):
-    from CANopenConstants import ATTR, VARTYPE, ENTRYTYPE, LIMITS
-    from extend_logging import extend_logging
+from analysis.CANopenConstants import ATTR, VARTYPE, ENTRYTYPE, LIMITS
+#from extend_logging import extend_logging
 
 
 def ifNone(a, b):

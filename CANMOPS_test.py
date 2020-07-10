@@ -22,7 +22,7 @@ def test():
     print(f'ID: {cobid:03X}; Data: {data.hex()}, DLC: {dlc}')
 #   #write sdo message
     print('Writing example CAN Expedited read message ...')
-#       
+   
     #Example (1): get node Id
     VendorId = server.sdoRead(NodeIds[0], 0x1000,0,3000)
     

@@ -22,7 +22,7 @@ import numpy as np
 from random import randint
 from matplotlib.figure import Figure
 from graphics_utils import dataMonitoring , logWindow, childWindow, menuWindow
-from analysis import analysis, analysis_utils , controlServer
+from analysis import analysis, analysis_utils , canWrapper
 import binascii
 from tqdm import tqdm
 import tables as tb
@@ -310,13 +310,13 @@ class MainWindow(QMainWindow):
                     self.channelComboBox.addItems(list(str(_channels)))
                     self.nodeComboBox.clear()
                     self.nodeComboBox.addItems(list(map(str,_nodIds)))
-                    self.server = controlServer.ControlServer(interface=_interface, bitrate = _bitrate, ipAddress = _ipAddress,
+                    self.server = canWrapper.CanWrapper(interface=_interface, bitrate = _bitrate, ipAddress = _ipAddress,
                                                                 channel = _channels, set_channel=True)
                 else:
                     _channel = self.get_channel()
                     _channels = analysis_utils.get_info_yaml(dictionary=self.__conf['CAN_Interfaces'], index=_interface, subindex="channels")
                     _channels[_channel]
-                    self.server = controlServer.ControlServer(interface=_interface, channel = _channel, set_channel=True)
+                    self.server = canWrapper.CanWrapper(interface=_interface, channel = _channel, set_channel=True)
             except:
                 self.connectButton.setChecked(False)
         else:
@@ -360,7 +360,7 @@ class MainWindow(QMainWindow):
             documents = yaml.dump(dict_file, yaml_file, default_flow_style=False)
         
         # Apply the settings to the main server
-        self.server = controlServer.ControlServer(interface=_interface, bitrate = _bitrate, ipAddress = str(_ipAddress),
+        self.server = canWrapper.CanWrapper(interface=_interface, bitrate = _bitrate, ipAddress = str(_ipAddress),
                                             channel = int(_channel), set_channel=True)
 
         
@@ -376,11 +376,11 @@ class MainWindow(QMainWindow):
         _nodeId = int(_nodeId[0])
         if self.server == None: 
             print("self.__response")
-            #self.server = controlServer.ControlServer()
+            #self.server = canWrapper.CanWrapper()
             _interface = self.get_interface()
             #self.server.set_interface(_interface)
             #self.server.set_channelConnection(interface=_interface)
-            self.server = controlServer.ControlServer(interface=_interface, set_channel=True)           
+            self.server = canWrapper.CanWrapper(interface=_interface, set_channel=True)           
         self.__response = self.server.sdoRead(_nodeId, _index, _subIndex, 3000)
         #self.set_data_point(self.__response)
         if print_sdo == True:
@@ -924,7 +924,7 @@ class MainWindow(QMainWindow):
         HLayout = QHBoxLayout()
         close_button = QPushButton("close")
         close_button.setIcon(QIcon('graphics_utils/icons/icon_close.jpg'))
-        close_button.clicked.connect(self.stop_timer)
+        close_button.clicked.connect(self.stopTimer)
         close_button.clicked.connect(ChildWindow.close)
         HLayout.addSpacing(350)
         HLayout.addWidget(close_button)
@@ -957,7 +957,7 @@ class MainWindow(QMainWindow):
         send_button = QPushButton("run")
         send_button.setIcon(QIcon('graphics_utils/icons/icon_start.png'))
         send_button.clicked.connect(__set_bus)
-        send_button.clicked.connect(self.initiate_timer)
+        send_button.clicked.connect(self.initiateTimer)
         
         trend_button = QPushButton("Trend")
         trend_button.setIcon(QIcon('graphics_utils/icons/icon_trend.jpg'))
@@ -965,7 +965,7 @@ class MainWindow(QMainWindow):
         
         stop_button = QPushButton("stop")
         stop_button.setIcon(QIcon('graphics_utils/icons/icon_stop.png'))
-        stop_button.clicked.connect(self.stop_timer)
+        stop_button.clicked.connect(self.stopTimer)
                 
         HBox.addWidget(send_button)
         # HBox.addWidget(trend_button)
@@ -976,7 +976,7 @@ class MainWindow(QMainWindow):
         mainLayout.addWidget(self.SecondGroupBox,2,3,1,5)
         mainLayout.addLayout(HBox , 3, 0)
         self.tab2.setLayout(mainLayout)
-        #self.start_initial_data()
+        #self.startInitialData()
         logframe.setLayout(self.tabLayout)
         
     def adcValuesWindow(self):
@@ -1096,8 +1096,8 @@ class MainWindow(QMainWindow):
         childWindow.setCentralWidget(logframe)
         trendLayout = QHBoxLayout()
         self.WindowGroupBox = QGroupBox("")
-        self.start_initial_data()
-        self.Fig = self.start_initial_figure(index = index)
+        self.startInitialData()
+        self.Fig = self.startInitialFigure(index = index)
         def _initiate_trend_timer(index= None, period = 1000):
             self.trend_timer = QtCore.QTimer()
             self.trend_timer.start(period)
@@ -1127,11 +1127,11 @@ class MainWindow(QMainWindow):
         self.WindowGroupBox.setLayout(trendLayout)
         logframe.setLayout(trendLayout) 
         
-    def start_initial_data(self):
+    def startInitialData(self):
         self.x = list(range(2))  # 100 time points
         self.y = list(range(2)) #[0 for _ in range(2)]  # 100 data points
            
-    def start_initial_figure(self, index = None):
+    def startInitialFigure(self, index = None):
         self.graphWidget = pg.PlotWidget(background="w")
         #n_channels = np.arange(3, 35)
         #self.data_line = [0 for i in np.arange(len(n_channels))]
@@ -1168,7 +1168,7 @@ class MainWindow(QMainWindow):
         self.data_line.setData(self.x, self.y)  # Update the data.
 
 
-    def initiate_timer(self, period=30000):
+    def initiateTimer(self, period=50000):
         # preparing the data table:
 #         output_data ="/output_data"
 #         File = tb.open_file(rootdir[:-14]+output_data + "Adc_data"+ ".h5", 'w')
@@ -1183,7 +1183,7 @@ class MainWindow(QMainWindow):
         self.timer.timeout.connect(self.readConfigurationValues)
         self.timer.start(period)
 
-    def stop_timer(self):
+    def stopTimer(self):
         try:
             self.control_logger.disabled = False
             self.timer.stop() 
@@ -1226,10 +1226,10 @@ class MainWindow(QMainWindow):
         _dictionary = self.__dictionary_items
         _mon_indices =  list(self.__mon_index)
         a = 0
+        pbar = tqdm(total=len(_mon_indices)*1,desc="Monitoring Values",iterable=True)
         for i in np.arange(len(_mon_indices)):
             _subIndexItems = list(analysis_utils.get_subindex_yaml(dictionary=_dictionary, index=_mon_indices[i], subindex ="subindex_items"))
             self.set_index(_mon_indices[i])# set index for later usage
-            pbar = tqdm(total=len(_subIndexItems)*1,desc="Monitoring Values",iterable=True)
             for s in np.arange(0, len(_subIndexItems)):
                 self.set_subIndex(_subIndexItems[s])
                 data_point = self.send_sdo_can(print_sdo=False)
@@ -1243,16 +1243,16 @@ class MainWindow(QMainWindow):
         _dictionary = self.__dictionary_items
         _conf_indices =  list(self.__conf_index)
         a = 0 
+        pbar = tqdm(total=len(_conf_indices)*2,desc="Configuration Values",iterable=True)
         for i in np.arange(len(_conf_indices)):
             _subIndexItems = list(analysis_utils.get_subindex_yaml(dictionary=_dictionary, index=_conf_indices[i], subindex ="subindex_items"))
             self.set_index(_conf_indices[i])# set index for later usage
-            pbar = tqdm(total=len(_subIndexItems)*1,desc="Configuration Values",iterable=True)
             for s in np.arange(0, len(_subIndexItems)):
                 self.set_subIndex(_subIndexItems[s])
                 data_point = self.send_sdo_can(print_sdo=False)
                 self.confValueBox[a].setText(str(analysis.Analysis().convertion(data_point)))
                 a =a+1
-                pbar.update(1)
+                pbar.update(2)
             pbar.close()
                 
     def stateBox(self, checked):

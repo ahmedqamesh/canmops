@@ -23,7 +23,10 @@ from termcolor import colored
 from logging.handlers import RotatingFileHandler
 import verboselogs
 import coloredlogs as cl
-rootdir = os.path.dirname(os.path.abspath(__file__))
+# Other files
+from analysis import __version__
+from analysis import objectDictionary
+    
 try:
     import can
     import socket
@@ -46,12 +49,12 @@ try:
 except:
     print (colored("Warning: AnaGate Package is not installed.......", 'red'), colored("Please ignore the warning if you are not using any AnaGate commercial controllers.", "green"))
 
-    
+scrdir = os.path.dirname(os.path.abspath(__file__))
 class BusEmptyError(Exception):
     pass
 
 
-class ControlServer(object):
+class CanWrapper(object):
 
     def __init__(self, parent=None,
                  config=None, interface=None,
@@ -62,7 +65,7 @@ class ControlServer(object):
                  file_loglevel=logging.INFO,
                  logformat='%(asctime)s - %(levelname)s - %(message)s'):
        
-        super(ControlServer, self).__init__()  # super keyword to call its methods from a subclass:
+        super(CanWrapper, self).__init__()  # super keyword to call its methods from a subclass:
         config_dir = "config/"
         
         """:obj:`~logging.Logger`: Main logger for this class"""
@@ -71,7 +74,7 @@ class ControlServer(object):
         cl.install(fmt=logformat, level=console_loglevel, isatty=True, milliseconds=True)
         # Read configurations from a file
         if config is None:
-            self.__conf = analysis_utils.open_yaml_file(file=config_dir + "main_cfg.yml", directory=rootdir[:-8])
+            self.__conf = analysis_utils.open_yaml_file(file=config_dir + "main_cfg.yml", directory=scrdir[:-8])
         self._index_items = self.__conf["default_values"]["index_items"]
         self.__devices = self.__conf["Devices"]      
         self.__adctrim = self.__conf["default_values"]["adctrim"]
@@ -120,7 +123,14 @@ class ControlServer(object):
         self.__kvaserLock = Lock()
         self.confirmNodes()
         self.logger.success('... Done!')
-        
+        # Import Object Dictionary from EDS
+#         self.logger.notice('Importing Object Dictionary ...')
+#         self.logger.debug('File path for EDS not given. Looking in '
+#                               'the dicrectory of this script.')
+#         edsfile = os.path.join(scrdir, 'DCSControllerOD.eds')
+#         self.__od = objectDictionary.objectDictionary(self.logger).from_eds(self.logger, edsfile, 0)
+#         value = self.__od[0x1800][1]
+#         print(value)
     def __str__(self):
         if self.__interface == 'Kvaser':
             num_channels = canlib.getNumberOfChannels()
@@ -349,7 +359,13 @@ class ControlServer(object):
 
     def get_bytes(self):
         return self.__bytes 
-        
+
+    @property
+    def od(self):
+        """:class:`~dcsControllerServer.objectDictionary.objectDictionary` :
+        Object dictionary for checking access attributes"""
+        return self.__od
+           
     @property
     def lock(self):
         """:class:`~threading.Lock` : Lock object for accessing the incoming
@@ -430,12 +446,6 @@ class ControlServer(object):
     def myDCs(self):
         """:obj:`list` : List of created UA objects"""
         return self.__myDCs
-
-    @property
-    def od(self):
-        """:class:`~dcsControllerServer.objectDictionary.objectDictionary` :
-        Object dictionary for checking access attributes"""
-        return self.__od
         
     def sdoRead(self, nodeId, index, subindex, timeout=100, MAX_DATABYTES=8):
         """Read an object via |SDO|
@@ -648,7 +658,7 @@ class ControlServer(object):
         Pass channel string (example 'can0') to configure OS level drivers and interface.
         '''
         self.logger.info('CAN hardware OS drivers and config for %s'%channel)
-        os.system(". " + rootdir + "/socketcan_install.sh")
+        os.system(". " + scrdir + "/socketcan_install.sh")
             
     def readCanMessages(self):
         """Read incoming |CAN| messages and store them in the queue
