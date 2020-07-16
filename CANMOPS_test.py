@@ -5,26 +5,28 @@ import analib
 import time
 import logging
 import numpy as np
-from analysis import controlServer
+from analysis import canWrapper
 def test():
     # Define parameters
-    NodeIds = server.get_nodeList()
-    interface =server.get_interface()
+    NodeIds = wrapper.get_nodeList()
+    interface =wrapper.get_interface()
     SDO_RX = 0x600
     index = 0x1000
     Byte0= cmd = 0x40 #Defines a read (reads data only from the node) dictionary object in CANOPN standard
     Byte1, Byte2 = index.to_bytes(2, 'little') # divide it into two groups(bytes) of 8 bits each
     Byte3 = subindex = 0
     #write CAN message [read dictionary request from master to node]
-    server.writeCanMessage(SDO_RX + NodeIds[0], [Byte0,Byte1,Byte2,Byte3,0,0,0,0], flag=0, timeout=30)
-    #Response from the node to master
-    cobid, data, dlc, flag, t = server.readCanMessages()
-    print(f'ID: {cobid:03X}; Data: {data.hex()}, DLC: {dlc}')
-#   #write sdo message
+    while True:
+        wrapper.writeCanMessage(SDO_RX + NodeIds[0], [Byte0,Byte1,Byte2,Byte3,0,0,0,0], flag=0, timeout=30)
+        #Response from the node to master
+        cobid, data, dlc, flag, t = wrapper.readCanMessages()
+        print(f'ID: {cobid:03X}; Data: {data.hex()}, DLC: {dlc}')
+        time.sleep(3)
+    #   #write sdo message
     print('Writing example CAN Expedited read message ...')
    
     #Example (1): get node Id
-    VendorId = server.sdoRead(NodeIds[0], 0x1000,0,3000)
+    VendorId = wrapper.sdoRead(NodeIds[0], 0x1000,0,3000)
     
     print(f'Device type: {VendorId:03X}')
          
@@ -36,7 +38,7 @@ def test():
     values = []
     for c_subindex in c_subindices: # Each i represents one channel
          c_index = 0x2400
-         value = server.sdoRead(NodeIds[0], c_index,int(c_subindex,16),3000)
+         value = wrapper.sdoRead(NodeIds[0], c_index,int(c_subindex,16),3000)
          values = np.append(values, value)
     n_channels = n_channels.tolist()
     for channel in n_channels:
@@ -44,12 +46,12 @@ def test():
              print("Channel %i = %0.3f "%(channel,values[n_channels.index(channel)]))
         else:
             print("Channel %i = %s "%(channel,"None"))
-    server.stop()        
+    wrapper.stop()        
 
 
 if __name__=='__main__':
-    #server = controlServer.ControlServer(interface = "AnaGate", set_channel =True)
-    server = controlServer.ControlServer(interface = "socketcan", set_channel =True)
-    #server = controlServer.ControlServer(interface = "Kvaser", set_channel =True)
-    #server.read_adc_channels()
+    #wrapper = controlwrapper.Controlwrapper(interface = "AnaGate", set_channel =True)
+    wrapper = canWrapper.CanWrapper(interface = "socketcan", set_channel =True)
+    #wrapper = controlwrapper.Controlwrapper(interface = "Kvaser", set_channel =True)
+    #wrapper.read_adc_channels()
     test()
