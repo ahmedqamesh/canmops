@@ -471,20 +471,20 @@ class MainWindow(QMainWindow):
     '''
                
     def send_sdo_can(self, trending=False, print_sdo=True):
-        #try:
-        _index = int(self.get_index(), 16)
-        _subIndex = int(self.get_subIndex(), 16)
-        _nodeId = self.get_nodeId()
-        _nodeId = int(_nodeId[0])
-        if self.wrapper == None: 
-            _interface = self.get_interface()
-            self.wrapper = canWrapper.CanWrapper(interface=_interface, set_channel=True)           
-        self.__response = self.wrapper.sdoRead(_nodeId, _index, _subIndex, 3000)
-        if print_sdo == True:
-            self.print_sdo_can(nodeId=_nodeId, index=_index, subIndex=_subIndex, response_from_node=self.__response)
-        return self.__response
-        #except Exception:
-        #    pass
+        try:
+            _index = int(self.get_index(), 16)
+            _subIndex = int(self.get_subIndex(), 16)
+            _nodeId = self.get_nodeId()
+            _nodeId = int(_nodeId[0])
+            if self.wrapper == None: 
+                _interface = self.get_interface()
+                self.wrapper = canWrapper.CanWrapper(interface=_interface, set_channel=True)           
+            self.__response = self.wrapper.sdoRead(_nodeId, _index, _subIndex, 3000)
+            if print_sdo == True:
+                self.print_sdo_can(nodeId=_nodeId, index=_index, subIndex=_subIndex, response_from_node=self.__response)
+            return self.__response
+        except Exception:
+            pass
 
     def error_message(self, text=False, checknode=False):
         if checknode:
@@ -504,19 +504,23 @@ class MainWindow(QMainWindow):
         self.set_textBox_message(comunication_object="SDO_TX", msg=str(response_from_node))
         # print decoded response
         if response_from_node is not None:
-            decoded_response = f'{response_from_node:03X}\n-----------------------------------------------'
-            self.set_table_content(msg=response_from_node,comunication_object="SDO_TX" )
+            decoded_response = f'{response_from_node:03X}\n-----------------------------------------------------------------------'
+            self.set_table_content(bytes=msg, comunication_object="SDO_RX")
+            b1, b2, b3, b4, b5, b6, b7, b8 = response_from_node.to_bytes(8, 'little')
+            bytes = [b1, b2, b3, b4, b5, b6, b7, b8]             
+            self.set_table_content(bytes=bytes,comunication_object="SDO_TX" )
         else:
-            decoded_response  = f'{response_from_node}\n-----------------------------------------------'
+            decoded_response  = f'{response_from_node}\n------------------------------------------------------------------------'
         self.set_textBox_message(comunication_object="Decoded", msg=decoded_response)
             
-    def writeCanMessage(self):
+    def write_can_message(self):
         cobid =self.get_cobid()
         bytes = self.get_bytes()  
         try:
             # Send the can Message
             self.set_textBox_message(comunication_object="SDO_RX", msg=str(bytes))
-            self.wrapper.writeCanMessage(cobid, bytes, flag=0, timeout=200)
+            self.wrapper.write_can_message(cobid, bytes, flag=0, timeout=200)
+            self.set_table_content(bytes=bytes, comunication_object="SDO_RX")
             # receive the message
             self.read_can()
         except Exception:
@@ -528,7 +532,7 @@ class MainWindow(QMainWindow):
         b1, b2, b3, b4, b5, b6, b7, b8 = outtdata.to_bytes(8, 'little') 
         self.logger.info(f'Got data: [{b1:02x}  {b2:02x}  {b3:02x}  {b4:02x}  {b5:02x}  {b6:02x}  {b7:02x} {b8:02x}]')
         if print_sdo == True:
-            self.set_table_content(msg=outtdata, comunication_object="SDO_TX")
+            self.set_table_content(bytes=data, comunication_object="SDO_TX")
             self.set_textBox_message(comunication_object="SDO_TX", msg=str(data.hex()))
 
     '''
@@ -604,7 +608,7 @@ class MainWindow(QMainWindow):
         send_button = QPushButton("Send")
         send_button.setIcon(QIcon('graphics_utils/icons/icon_true.png'))
         send_button.clicked.connect(__set_message)
-        send_button.clicked.connect(self.writeCanMessage)
+        send_button.clicked.connect(self.write_can_message)
         
         close_button = QPushButton("close")
         close_button.setIcon(QIcon('graphics_utils/icons/icon_close.jpg'))
@@ -736,7 +740,7 @@ class MainWindow(QMainWindow):
         except Exception:
             pass
  
-    def random_can(self): 
+    def send_random_can(self): 
         _index = np.random.randint(1000, 2500)
         _subIndex = np.random.randint(0, 8)
         MAX_DATABYTES = 8
@@ -746,7 +750,7 @@ class MainWindow(QMainWindow):
         msg[3] = _subIndex
         try:
             _nodeId = int(self.nodeComboBox.currentText())
-            self.set_table_content(msg=int.from_bytes(msg, 'little'), comunication_object="SDO_RX")
+            self.set_table_content(bytes=msg, comunication_object="SDO_RX")
             self.__response = self.wrapper.sdoRead(_nodeId, _index, _subIndex, 3000)
             self.print_sdo_can(nodeId=_nodeId, index=_index, subIndex=_subIndex, response_from_node=self.__response)       
         except:
@@ -1071,15 +1075,15 @@ class MainWindow(QMainWindow):
         stop_button.clicked.connect(self.stopTimer)
                 
         HBox.addWidget(send_button)
-        # HBox.addWidget(trend_button)
         HBox.addWidget(stop_button)
+        #HBox.addWidget(trend_button)
         
         mainLayout.addWidget(self.FirstGroupBox ,0,0,3,3)
         mainLayout.addWidget(self.ThirdGroupBox,0,3,2,5)
         mainLayout.addWidget(self.SecondGroupBox,2,3,1,5)
         mainLayout.addLayout(HBox , 3, 0)
         self.tab2.setLayout(mainLayout)
-        #self.startInitialData()
+        #self.initiate_trending_data()
         logframe.setLayout(self.tabLayout)
         
     def adcValuesWindow(self):
@@ -1190,7 +1194,7 @@ class MainWindow(QMainWindow):
                 a = a+1
         self.ThirdGroupBox.setLayout(ThirdGridLayout)
 
-    def trendChildWindow(self,childWindow=None, index=None):
+    def trend_child_window(self,childWindow=None, index=None):
         childWindow.setObjectName("TrendingWindow")
         childWindow.setWindowTitle("Trending Window")
         childWindow.resize(800, 500)  # w*h
@@ -1199,8 +1203,9 @@ class MainWindow(QMainWindow):
         childWindow.setCentralWidget(logframe)
         trendLayout = QHBoxLayout()
         self.WindowGroupBox = QGroupBox("")
-        self.startInitialData()
-        self.Fig = self.startInitialFigure(index = index)
+        self.initiate_trending_data()
+        self.Fig = self.initiate_trending_figure(index = index)
+        
         def _initiate_trend_timer(index= None, period = 1000):
             self.trend_timer = QtCore.QTimer()
             self.trend_timer.start(period)
@@ -1208,13 +1213,14 @@ class MainWindow(QMainWindow):
                 data = float(self.ChannelBox[int(str(index))].text())
                 self.trend_timer.timeout.connect(lambda: self.update_figure(data = data, i = index, index = index))
             except Exception:
-                pass                
+                pass      
+                      
         def _stop_trend_timer():
             try:
                 self.trend_timer.stop() 
             except Exception:
                 pass
-        _initiate_trend_timer(index=int(str(index)))
+        #_initiate_trend_timer(index=int(str(index)))
         self.Fig.setStyleSheet("background-color: black;"
                                         "color: black;"
                                         "border-width: 1.5px;"
@@ -1223,18 +1229,24 @@ class MainWindow(QMainWindow):
                                         # "border: 1px "
                                         "solid black;")
 
+        indexLabel = QLabel("Index", self)
+        indexLabel.setText("ADC channels")
+        self.IndexListBox = QListWidget(self)
+        indexItems = self.__index_items
+        
         #self.distribution = dataMonitoring.LiveMonitoringDistribution(data = data)
         #trendLayout.addWidget(self.distribution)
+        trendLayout.addWidget(indexLabel)
         trendLayout.addWidget(self.Fig)
         
         self.WindowGroupBox.setLayout(trendLayout)
         logframe.setLayout(trendLayout) 
         
-    def startInitialData(self):
+    def initiate_trending_data(self):
         self.x = list(range(2))  # 100 time points
         self.y = list(range(2)) #[0 for _ in range(2)]  # 100 data points
            
-    def startInitialFigure(self, index = None):
+    def initiate_trending_figure(self, index = None):
         self.graphWidget = pg.PlotWidget(background="w")
         #n_channels = np.arange(3, 35)
         #self.data_line = [0 for i in np.arange(len(n_channels))]
@@ -1242,9 +1254,9 @@ class MainWindow(QMainWindow):
 #             if self.trendingBox[i].isChecked():
 #                 self.data_line[i] = self.graphWidget.plot(name="Ch%i" % i)
         # Add legend
-        #self.graphWidget.addLegend()#offset=(10,10* 20))        
+        self.graphWidget.addLegend()#offset=(10,10* 20))        
         # Add Title
-        #self.graphWidget.setTitle("Online data monitoring for ADC channel %s"%str(index+3))
+        self.graphWidget.setTitle("Online data monitoring for ADC channel %s"%str(index+3))
         # Add Axis Labels
         self.graphWidget.setLabel('left', "<span style=\"color:black; font-size:15px\">CAN Data</span>")
         self.graphWidget.setLabel('bottom', "<span style=\"color:black; font-size:15px\">Time [s]</span>")
@@ -1256,17 +1268,15 @@ class MainWindow(QMainWindow):
         self.graphWidget.setXRange(-2, 100, padding=0)
         # self.graphWidget.setYRange(00, 55, padding=0)
         return self.graphWidget
-
- 
+    
     def update_figure(self, data=None, i=None, index = None):
-        self.data_line = self.graphWidget.plot(self.x, self.y, pen=pg.mkPen(color=self.col_row[i], width=3), name="Ch%i" % index)
+        self.data_line = self.graphWidget.plot(self.x, self.y, pen=pg.mkPen(color=self.get_color(i), width=3), name="Ch%i" % index)
         self.x= self.x[1:]  # Remove the first x element.
         self.x= np.append(self.x, self.x[-1] + 1)  # Add a new value 1 higher than the last
         self.y = self.y[2:]  # Remove the first   y element.
         self.y.append(data)  # Add a new value.
         self.y.append(data)  # Add a new value.
         self.data_line.setData(self.x, self.y)  # Update the data.
-
 
     def initiateTimer(self, period=50000):
         # preparing the data table:
@@ -1278,19 +1288,22 @@ class MainWindow(QMainWindow):
 #         row = table.row
         self.timer = QtCore.QTimer(self)
         self.control_logger.disabled = True
-        self.timer.timeout.connect(self.readADCChannels)
-        self.timer.timeout.connect(self.readMonitoringValues)
-        self.timer.timeout.connect(self.readConfigurationValues)
+        self.logger.notice("Processing data...")
+        self.timer.timeout.connect(self.read_adc_channels)
+        self.timer.timeout.connect(self.read_monitoring_values)
+        self.timer.timeout.connect(self.read_configuration_values)
         self.timer.start(period)
 
     def stopTimer(self):
+        
         try:
+            self.logger.notice("Stop data processing...")
             self.control_logger.disabled = False
-            self.timer.stop() 
+            self.timer.stop()
         except Exception:
             pass
 
-    def readADCChannels(self):
+    def read_adc_channels(self):
         _adc_index = self.__adc_index
         _adc_channels_reg = self.get_adc_channels_reg()
         _dictionary = self.__dictionary_items
@@ -1300,7 +1313,7 @@ class MainWindow(QMainWindow):
             _subIndexItems = list(analysis_utils.get_subindex_yaml(dictionary=_dictionary, index=_adc_indices[i], subindex ="subindex_items"))
             self.set_index(_adc_indices[i])# set index for later usage
             self.adc_converted = []
-            pbar = tqdm(total=len(_subIndexItems)*10,desc="ADC channels",iterable=True)
+            #pbar = tqdm(total=len(_subIndexItems)*10,desc="ADC channels",iterable=True)
             _start_a = 1 # to ignore the first subindex it is not ADC
             for s in np.arange(_start_a, len(_subIndexItems)):
                 self.set_subIndex(_subIndexItems[s])
@@ -1314,18 +1327,18 @@ class MainWindow(QMainWindow):
                 else:
                     self.ChannelBox[a].setText(str(self.adc_converted[correction]))
                 a =a+1
-                pbar.update(10)
-            pbar.close()
+             #   pbar.update(10)
+            #pbar.close()
         return self.adc_converted
 
 
-    def readMonitoringValues(self):
+    def read_monitoring_values(self):
         _mon_index = self.__mon_index
         _adc_channels_reg = self.get_adc_channels_reg()
         _dictionary = self.__dictionary_items
         _mon_indices =  list(self.__mon_index)
         a = 0
-        pbar = tqdm(total=len(_mon_indices)*20,desc="Monitoring Values",iterable=True)
+        #pbar = tqdm(total=len(_mon_indices)*20,desc="Monitoring Values",iterable=True)
         for i in np.arange(len(_mon_indices)):
             _subIndexItems = list(analysis_utils.get_subindex_yaml(dictionary=_dictionary, index=_mon_indices[i], subindex ="subindex_items"))
             self.set_index(_mon_indices[i])# set index for later usage
@@ -1334,16 +1347,16 @@ class MainWindow(QMainWindow):
                 data_point = self.send_sdo_can(print_sdo=False)
                 self.monValueBox[a].setText(str(analysis.Analysis().convertion(data_point)))
                 a =a+1
-                pbar.update(1)
-            pbar.close()
+              #  pbar.update(1)
+           # pbar.close()
             
-    def readConfigurationValues(self):
+    def read_configuration_values(self):
         _conf_index = self.__conf_index
         _adc_channels_reg = self.get_adc_channels_reg()
         _dictionary = self.__dictionary_items
         _conf_indices =  list(self.__conf_index)
         a = 0 
-        pbar = tqdm(total=len(_conf_indices)*2,desc="Configuration Values",iterable=True)
+       # pbar = tqdm(total=len(_conf_indices)*2,desc="Configuration Values",iterable=True)
         for i in np.arange(len(_conf_indices)):
             _subIndexItems = list(analysis_utils.get_subindex_yaml(dictionary=_dictionary, index=_conf_indices[i], subindex ="subindex_items"))
             self.set_index(_conf_indices[i])# set index for later usage
@@ -1352,8 +1365,8 @@ class MainWindow(QMainWindow):
                 data_point = self.send_sdo_can(print_sdo=False)
                 self.confValueBox[a].setText(str(analysis.Analysis().convertion(data_point)))
                 a =a+1
-                pbar.update(2)
-            pbar.close()
+              #  pbar.update(2)
+          #  pbar.close()
                 
     def stateBox(self, checked):
         # if state == QtCore.Qt.Checked:
@@ -1412,7 +1425,7 @@ class MainWindow(QMainWindow):
         RandomDumpMessage_action = QAction(QIcon('graphics_utils/icons/icon_random.png'), '&CAN Random', mainwindow)
         RandomDumpMessage_action.setShortcut('Ctrl+G')
         RandomDumpMessage_action.setStatusTip('Send Random Messages to the bus')
-        RandomDumpMessage_action.triggered.connect(self.random_can)
+        RandomDumpMessage_action.triggered.connect(self.send_random_can)
                 
         toolbar.addAction(canMessage_action)
         toolbar.addAction(settings_action)
@@ -1443,7 +1456,7 @@ class MainWindow(QMainWindow):
     def show_trendWindow(self):
         trend = QMainWindow(self)
         sending_button = self.sender()
-        self.trendChildWindow(childWindow=trend, index=sending_button.objectName())
+        self.trend_child_window(childWindow=trend, index=1)
         trend.show()
             
     def show_deviceWindow(self):
@@ -1468,19 +1481,17 @@ class MainWindow(QMainWindow):
         self.textBox.setTextColor(color)
         self.textBox.append(mode + msg)
         
-    def set_table_content(self, msg=None,comunication_object=None):
-        b1, b2, b3, b4, b5, b6, b7, b8 = msg.to_bytes(8, 'little')
-        bytes = [b1, b2, b3, b4, b5, b6, b7, b8] 
-        
+    def set_table_content(self, bytes = None,comunication_object=None):
         self.update_progressBar(comunication_object=comunication_object)
         self.table.clearContents() # clear cells
         n_bytes = 8-1
-        for byte in bytes:
-            bits = bin(byte)[2:]
+        #for byte in bytes:
+        for byte in np.arange(len(bytes)):
+            bits = bin(bytes[byte])[2:]
             slicedBits=bits[::-1]# slicing 
             for b in np.arange(len(slicedBits)):
-                self.table.setItem(bytes.index(byte), n_bytes- b, QTableWidgetItem(slicedBits[b]))
-                self.table.item(bytes.index(byte),n_bytes- b).setBackground(QColor(self.get_color(int(slicedBits[b]))))
+                self.table.setItem(byte, n_bytes- b, QTableWidgetItem(slicedBits[b]))
+                self.table.item(byte,n_bytes- b).setBackground(QColor(self.get_color(int(slicedBits[b]))))
   
     def set_index_value(self):
         index = self.IndexListBox.currentItem().text()
