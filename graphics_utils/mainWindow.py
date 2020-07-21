@@ -22,7 +22,7 @@ import numpy as np
 from random import randint
 from matplotlib.figure import Figure
 from graphics_utils import dataMonitoring , logWindow, childWindow, menuWindow
-from analysis import analysis, analysis_utils , canWrapper
+from controlServer import analysis, analysis_utils , canWrapper
 import binascii
 from tqdm import tqdm
 import tables as tb
@@ -31,6 +31,7 @@ import yaml
 # Third party modules
 import coloredlogs as cl
 import verboselogs
+from Cython.Compiler.Naming import self_cname
 rootdir = os.path.dirname(os.path.abspath(__file__)) 
 
 class TimeoutException(Exception):
@@ -329,7 +330,6 @@ class MainWindow(QMainWindow):
         subIndexLabel.setText("SubIndex")
         self.mainSubIndextextbox = QLineEdit(self.__subIndex, self)
 
-        
         def __apply_CANMessageSettings():
             self.set_index(self.mainIndexTextBox.text())
             self.set_subIndex(self.mainSubIndextextbox.text())
@@ -470,27 +470,21 @@ class MainWindow(QMainWindow):
     Define can communication messages
     '''
                
-    def send_sdo_can(self, trending=False, print_sdo=True):
+    def send_sdo_can(self, trending=False, print_sdo=True,save_sdo =  False):
         try:
             _index = int(self.get_index(), 16)
             _subIndex = int(self.get_subIndex(), 16)
             _nodeId = self.get_nodeId()
-            _nodeId = int(_nodeId[0])
-            if self.wrapper == None: 
-                _interface = self.get_interface()
-                self.wrapper = canWrapper.CanWrapper(interface=_interface, set_channel=True)           
-            self.__response = self.wrapper.sdoRead(_nodeId, _index, _subIndex, 3000)
+            _nodeId = int(_nodeId[0])      
+            self.__response = self.wrapper.send_sdo_can(_nodeId, _index, _subIndex, 3000)
             if print_sdo == True:
                 self.print_sdo_can(nodeId=_nodeId, index=_index, subIndex=_subIndex, response_from_node=self.__response)
             return self.__response
         except Exception:
             pass
 
-    def error_message(self, text=False, checknode=False):
-        if checknode:
-            self.wrapper.confirmNodes()
-        if text: 
-            QMessageBox.about(self, "Error Message", text)
+    def error_message(self, text=False):
+        QMessageBox.about(self, "Error Message", text)
      
     def print_sdo_can(self, nodeId=None , index=None, subIndex=None, response_from_node=None):
         # printing the read message with cobid = SDO_RX + nodeId
@@ -519,26 +513,24 @@ class MainWindow(QMainWindow):
         try:
             # Send the can Message
             self.set_textBox_message(comunication_object="SDO_RX", msg=str(bytes))
-            self.wrapper.write_can_message(cobid, bytes, flag=0, timeout=200)
+            self.wrapper.writeCanMessage(cobid, bytes, flag=0, timeout=200)
             self.set_table_content(bytes=bytes, comunication_object="SDO_RX")
             # receive the message
-            self.read_can()
+            self.read_can_message()
         except Exception:
             self.error_message(text="Make sure that the CAN interface is connected")
             
-    def read_can(self,print_sdo = True):
-        cobid, data, dlc, flag, t = self.wrapper.readCanMessages()
+    def read_can_message(self,print_sdo = True):
+        cobid, data, dlc, flag, t = self.wrapper.read_can_message()
         outtdata = int.from_bytes(data, byteorder=sys.byteorder)
         b1, b2, b3, b4, b5, b6, b7, b8 = outtdata.to_bytes(8, 'little') 
         self.logger.info(f'Got data: [{b1:02x}  {b2:02x}  {b3:02x}  {b4:02x}  {b5:02x}  {b6:02x}  {b7:02x} {b8:02x}]')
         if print_sdo == True:
             self.set_table_content(bytes=data, comunication_object="SDO_TX")
             self.set_textBox_message(comunication_object="SDO_TX", msg=str(data.hex()))
-
-    '''
-    Define all child windows
-    '''        
-    def dump_can(self, TIMEOUT=2):
+        return cobid, data, dlc, flag, t
+    
+    def dump_can_message(self, TIMEOUT=2):
         def timeout_handler(signum, frame):
             try:
                 raise TimeoutException
@@ -548,11 +540,15 @@ class MainWindow(QMainWindow):
         signal.signal(signal.SIGALRM, timeout_handler)
         signal.alarm(TIMEOUT)    
         try:
-            self.read_can(print_sdo = False)
+            self.read_can_message(print_sdo = False)
             signal.alarm(0)
         except Exception:
             pass
-        
+
+    '''
+    Define all child windows
+    '''        
+               
     def canMessageChildWindow(self, ChildWindow):
         ChildWindow.setObjectName("CANMessage")
         ChildWindow.setWindowTitle("CAN Message")
@@ -640,7 +636,7 @@ class MainWindow(QMainWindow):
         FirstGroupBox = QGroupBox("")
         # comboBox and label for channel
         FirstGridLayout = QGridLayout() 
-        run_label = QLabel("StartRun", ChildWindow)
+        run_label = QLabel("", ChildWindow)
         run_label.setText(" Start Run")
         run_button = QPushButton()
         run_button.setIcon(QIcon('graphics_utils/icons/icon_right.jpg'))
@@ -690,7 +686,7 @@ class MainWindow(QMainWindow):
  
         run_button.clicked.connect(self.start_dumptimer)
         stop_button.clicked.connect(self.stop_dumptimer)    
-        random_button.clicked.connect(self.dump_can) 
+        random_button.clicked.connect(self.dump_can_message) 
         
         HBox = QHBoxLayout()
         close_button = QPushButton("close")
@@ -706,40 +702,6 @@ class MainWindow(QMainWindow):
         self.MenuBar.create_statusBar(ChildWindow)
         QtCore.QMetaObject.connectSlotsByName(ChildWindow)
     
-    def updateCanDump(self, TIMEOUT=2):
-        ByteList = [" Chn", "Id", "Flg", "DLC", "D0--D1--D2--D3--D4--D5--D6--D7", "Time"]
-
-        def timeout_handler(signum, frame):
-            try:
-                raise TimeoutException
-            except Exception:
-                pass
-
-        signal.signal(signal.SIGALRM, timeout_handler)
-        signal.alarm(TIMEOUT)    
-        try:
-            cobid, data, dlc, flag, t = self.wrapper.readCanMessages()
-            channel = self.wrapper.get_channel()
-            data = int.from_bytes(data, byteorder=sys.byteorder)
-            b1, b2, b3, b4, b5, b6, b7, b8 = data.to_bytes(8, 'little') 
-            for i in np.arange(len(ByteList)):
-                result = [channel, cobid, str(flag), dlc, f'{b1:02x}   {b2:02x}   {b3:02x}   {b4:02x}   {b5:02x}  {b6:02x}   {b7:02x}   {b8:02x}', t]
-                self.textOutputBox[i].append(str(result[i]))
-                self.textOutputBox[i].append("  ")    
-        except Exception:
-            pass
-    
-    def start_dumptimer(self, period=1000):
-        self.outtimer = QtCore.QTimer(self)
-        self.outtimer.start(period)
-        self.outtimer.timeout.connect(self.updateCanDump)     
-    
-    def stop_dumptimer(self):
-        try:
-            self.outtimer.stop()
-        except Exception:
-            pass
- 
     def send_random_can(self): 
         _index = np.random.randint(1000, 2500)
         _subIndex = np.random.randint(0, 8)
@@ -751,7 +713,7 @@ class MainWindow(QMainWindow):
         try:
             _nodeId = int(self.nodeComboBox.currentText())
             self.set_table_content(bytes=msg, comunication_object="SDO_RX")
-            self.__response = self.wrapper.sdoRead(_nodeId, _index, _subIndex, 3000)
+            self.__response = self.wrapper.send_sdo_can(_nodeId, _index, _subIndex, 3000)
             self.print_sdo_can(nodeId=_nodeId, index=_index, subIndex=_subIndex, response_from_node=self.__response)       
         except:
             self.error_message(text="Make sure that the controller is connected")
@@ -935,6 +897,21 @@ class MainWindow(QMainWindow):
         self.SubSecondGroupBox.setLayout(SubSecondGridLayout)
             
     def deviceChildWindow(self, ChildWindow):
+        
+        def __status_device():
+        #  check if the MOPS is alive or not. MOPS should repond with a CAN message
+            cobid = 0x701
+            bytes = [0, 0, 0, 0, 0, 0, 0, 0]
+            self.wrapper.writeCanMessage(cobid, bytes, flag=0, timeout=200)
+            # receive the message
+            _, data, _,_,_ = self.read_can_message(print_sdo = False)
+            if data is not None: 
+               self.logger.info("%s device is in an active state"%(self.__deviceName))
+            else: 
+                self.logger.error("%s device is in not active"%(self.__deviceName))
+        __status_device()
+        
+        #  Open the window
         ChildWindow.setObjectName("DeviceWindow")
         ChildWindow.setWindowTitle("Device Window [ " + self.__deviceName + "]")
         ChildWindow.setWindowIcon(QtGui.QIcon(self.__appIconDir))
@@ -951,19 +928,18 @@ class MainWindow(QMainWindow):
         self.tab1 = QWidget()
         self.tab2 = QWidget() 
         
-        self.GridLayout = QGridLayout()
         nodeLabel = QLabel("", self)
         nodeLabel.setText("Connected nodes :")
         
-
-        self.deviceNodeComboBox = QComboBox(self)
+        deviceNodeComboBox = QComboBox(self)
         nodeItems = self.__nodeIds
         self.set_nodeList(nodeItems)
-        for item in list(map(str, nodeItems)): self.deviceNodeComboBox.addItem(item)
+        for item in list(map(str, nodeItems)): deviceNodeComboBox.addItem(item)
 
         def __set_bus():
-            self.set_nodeId(self.deviceNodeComboBox.currentText())
-            
+            self.set_nodeId(deviceNodeComboBox.currentText())
+        
+        self.GridLayout = QGridLayout()    
         icon = QLabel(self)
         pixmap = QPixmap(self.get_icon_dir())
         icon.setPixmap(pixmap.scaled(100, 100))
@@ -977,13 +953,23 @@ class MainWindow(QMainWindow):
         startButton.setIcon(QIcon('graphics_utils/icons/icon_start.png'))
         startButton.clicked.connect(__set_bus)
         startButton.clicked.connect(self.send_sdo_can)
-        
+
+        def __reset_device():
+            self.set_cobid(0x0)
+            self.set_bytes([0, 0, 0, 0, 0, 0, 0, 0]) 
+            self.write_can_message()
+            
+        restartButton = QPushButton("")
+        restartButton.setIcon(QIcon('graphics_utils/icons/icon_reset.png'))
+        restartButton.clicked.connect(__reset_device)
+
         trendingButton = QPushButton("")
         trendingButton.setIcon(QIcon('graphics_utils/icons/icon_trend.jpg'))
         trendingButton.setStatusTip('Data Trending')  # show when move mouse to the icon
         trendingButton.clicked.connect(self.show_trendWindow)
         
         BottonHLayout.addWidget(startButton)
+        #BottonHLayout.addWidget(restartButton)
         #BottonHLayout.addWidget(trendingButton)
         
         firstVLayout = QVBoxLayout()              
@@ -1045,7 +1031,7 @@ class MainWindow(QMainWindow):
         channelHLayout= QHBoxLayout()
         nodeHLayout= QHBoxLayout()
         nodeHLayout.addWidget(nodeLabel)
-        nodeHLayout.addWidget(self.deviceNodeComboBox)
+        nodeHLayout.addWidget(deviceNodeComboBox)
         nodeHLayout.addSpacing(300)
         
         self.tabLayout.addLayout(channelHLayout,0,0)
@@ -1057,20 +1043,20 @@ class MainWindow(QMainWindow):
         self.devicetTabs.addTab(self.tab2,"Device Channels") 
         
         def __set_bus():
-            self.set_nodeId(self.deviceNodeComboBox.currentText())
+            self.set_nodeId(deviceNodeComboBox.currentText())
             
         mainLayout = QGridLayout()     
         HBox = QHBoxLayout()
-        send_button = QPushButton("run")
+        send_button = QPushButton("run ")
         send_button.setIcon(QIcon('graphics_utils/icons/icon_start.png'))
         send_button.clicked.connect(__set_bus)
         send_button.clicked.connect(self.initiateTimer)
         
-        trend_button = QPushButton("Trend")
+        trend_button = QPushButton("Trend ")
         trend_button.setIcon(QIcon('graphics_utils/icons/icon_trend.jpg'))
         trend_button.clicked.connect(self.show_trendWindow)
         
-        stop_button = QPushButton("stop")
+        stop_button = QPushButton("stop ")
         stop_button.setIcon(QIcon('graphics_utils/icons/icon_stop.png'))
         stop_button.clicked.connect(self.stopTimer)
                 
@@ -1093,14 +1079,13 @@ class MainWindow(QMainWindow):
         _adc_channels_reg = self.get_adc_channels_reg()
         _dictionary = self.__dictionary_items
         _adc_indices =  list(self.__adc_index)
+        
         for i in np.arange(len(_adc_indices)):
             _subIndexItems = list(analysis_utils.get_subindex_yaml(dictionary=_dictionary, index=_adc_indices[i], subindex ="subindex_items"))
-            labelChannel = [_subIndexItems[i] for i in np.arange(len(_subIndexItems)*len(_adc_indices))]
-            self.ChannelBox = [_subIndexItems[i] for i in np.arange(len(_subIndexItems)*len(_adc_indices))]
-            self.trendingBox = [_subIndexItems[i] for i in np.arange(len(_subIndexItems)*len(_adc_indices))]
-            self.trendingBotton = [_subIndexItems[i] for i in np.arange(len(_subIndexItems)*len(_adc_indices))]
-            #self.x = [0 for i in np.arange(len(_subIndexItems))]
-            #self.y = [0 for i in np.arange(len(_subIndexItems))]
+            labelChannel = [_subIndexItems[k] for k in np.arange(len(_subIndexItems)*len(_adc_indices))]
+            self.ChannelBox = [_subIndexItems[k] for k in np.arange(len(_subIndexItems)*len(_adc_indices))]
+            self.trendingBox = [_subIndexItems[k] for k in np.arange(len(_subIndexItems)*len(_adc_indices))]
+            self.trendingBotton = [_subIndexItems[k] for k in np.arange(len(_subIndexItems)*len(_adc_indices))]
             _start_a = 1 # to ignore the first subindex
             a =0
             for s in np.arange(_start_a,len(_subIndexItems)): 
@@ -1125,7 +1110,6 @@ class MainWindow(QMainWindow):
                 self.trendingBotton[a].setIcon(QIcon('graphics_utils/icons/icon_trend.jpg'))
                 self.trendingBotton[a].setStatusTip('Data Trending')
                 self.trendingBotton[a].clicked.connect(self.show_trendWindow)
-                
                 self.trendingBox[a] = QCheckBox(str(s))
                 self.trendingBox[a].setStatusTip('Data Trending')
                 self.trendingBox[a].setChecked(False)
@@ -1140,7 +1124,7 @@ class MainWindow(QMainWindow):
                     FirstGridLayout.addWidget(self.ChannelBox[a], grid_location, 4)
                 else:
                     FirstGridLayout.addWidget(icon, grid_location - col_len, 5)
-                    # FirstGridLayout.addWidget(self.trendingBox[s], i-16, 6)
+                    #FirstGridLayout.addWidget(self.trendingBox[s], i-16, 6)
                     #FirstGridLayout.addWidget(self.trendingBotton[a], grid_location - col_len, 7)
                     FirstGridLayout.addWidget(labelChannel[a], grid_location - col_len, 8)
                     FirstGridLayout.addWidget(self.ChannelBox[a], grid_location - col_len , 9)
@@ -1279,27 +1263,43 @@ class MainWindow(QMainWindow):
         self.data_line.setData(self.x, self.y)  # Update the data.
 
     def initiateTimer(self, period=50000):
-        # preparing the data table:
-#         output_data ="/output_data"
-#         File = tb.open_file(rootdir[:-14]+output_data + "Adc_data"+ ".h5", 'w')
-#         description = np.zeros((1,), dtype=np.dtype([("TimeStamp", "f8"), ("Channel", "f8"), ("Id", "f8"), ("Flg", "f8"), ("DLC", "f8"), ("ADCChannel", "f8"), ("ADCData", "f8"),("ADCDataConverted", "f8")])).dtype
-#         table = File.create_table(File.root, name='ADC_results', description=description)
-#         table.flush()
-#         row = table.row
         self.timer = QtCore.QTimer(self)
         self.control_logger.disabled = True
         self.logger.notice("Processing data...")
+
+        def __open_csv(outname=None, directory=None):
+            if not os.path.exists(directory):
+                os.mkdir(directory)
+            filename = os.path.join(directory, outname) 
+            self.logger.notice("Preparing an output file [%s.csv]..."%(filename))
+            out_file_csv = open(filename+'.csv', 'w+')
+            # Write header to the data
+            out_file_csv.write("TimeStamp, Channel, Id, Flg, DLC, ADCChannel, ADCData , ADCDataConverted \n")
+            return out_file_csv
+
+        def __read_csv(outname=None, directory=None):
+            filename = os.path.join(directory, outname) 
+            in_file_csv = open(filename+'.csv', 'r')  
+            if in_file_csv.mode == 'r':  
+                contents = in_file_csv.read()
+                print(contents)
+                      
+        self.out_file_csv = __open_csv(outname="adc_data", directory=rootdir[:-14]+"output_data")         
+       # __read_csv(outname="adc_data", directory=rootdir[:-14]+"/output_data")
+        
+        # Save data to a file
         self.timer.timeout.connect(self.read_adc_channels)
         self.timer.timeout.connect(self.read_monitoring_values)
         self.timer.timeout.connect(self.read_configuration_values)
         self.timer.start(period)
 
     def stopTimer(self):
-        
         try:
             self.logger.notice("Stop data processing...")
             self.control_logger.disabled = False
             self.timer.stop()
+            self.logger.notice("Closing the output file...")
+            self.out_file_csv.close()
         except Exception:
             pass
 
@@ -1318,6 +1318,7 @@ class MainWindow(QMainWindow):
             for s in np.arange(_start_a, len(_subIndexItems)):
                 self.set_subIndex(_subIndexItems[s])
                 data_point = self.send_sdo_can(print_sdo=False)
+                #self.out_file_csv.write("%i, %i, %i, %i,%i, %i, %i, %i\n"%(i,2,3,4,5,6,7,8))
                 correction = s-1 # to relocate the boxes
                 self.adc_converted = np.append(self.adc_converted, analysis.Analysis().adc_conversion(_adc_channels_reg[str(s+2)], data_point))
                 if self.adc_converted[correction] is not None:
@@ -1410,7 +1411,7 @@ class MainWindow(QMainWindow):
         canDumpMessage_action = QAction(QIcon('graphics_utils/icons/icon_dump.png'), '&CAN Dump', mainwindow)
         canDumpMessage_action.setShortcut('Ctrl+D')
         canDumpMessage_action.setStatusTip('Dump CAN messages from the bus')
-        canDumpMessage_action.triggered.connect(self.dump_can)
+        canDumpMessage_action.triggered.connect(self.dump_can_message)
 
         runDumpMessage_action = QAction(QIcon('graphics_utils/icons/icon_right.jpg'), '&CAN Run', mainwindow)
         runDumpMessage_action.setShortcut('Ctrl+R')
@@ -1420,7 +1421,7 @@ class MainWindow(QMainWindow):
         stopDumpMessage_action = QAction(QIcon('graphics_utils/icons/icon_stop.png'), '&CAN Stop', mainwindow)
         stopDumpMessage_action.setShortcut('Ctrl+C')
         stopDumpMessage_action.setStatusTip('Stop reading CAN messages')
-        stopDumpMessage_action.triggered.connect(self.stop_dumptimer)
+        #stopDumpMessage_action.triggered.connect(self.stop_dumptimer)
 
         RandomDumpMessage_action = QAction(QIcon('graphics_utils/icons/icon_random.png'), '&CAN Random', mainwindow)
         RandomDumpMessage_action.setShortcut('Ctrl+G')
@@ -1658,8 +1659,7 @@ class MainWindow(QMainWindow):
             self.subindex_description_items = analysis_utils.get_subindex_description_yaml(dictionary=dictionary, index=index, subindex=subindex)
             description_text = self.index_description_items + "<br>" + self.subindex_description_items
             self.indexTextBox.setText(description_text)    
-        
-    
+
 if __name__ == "__main__":
     pass
 

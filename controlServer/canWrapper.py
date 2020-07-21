@@ -13,7 +13,7 @@ from pathlib import Path
 from threading import Thread, Event, Lock
 import matplotlib as mpl
 import numpy as np
-from analysis import analysis, analysis_utils
+from controlServer import analysis, analysis_utils
 # Third party modules
 from collections import deque, Counter
 from tqdm import tqdm
@@ -24,8 +24,8 @@ from logging.handlers import RotatingFileHandler
 import verboselogs
 import coloredlogs as cl
 # Other files
-from analysis import __version__
-from analysis import objectDictionary
+from controlServer import __version__
+from controlServer import objectDictionary
     
 try:
     import can
@@ -74,7 +74,7 @@ class CanWrapper(object):
         cl.install(fmt=logformat, level=console_loglevel, isatty=True, milliseconds=True)
         # Read configurations from a file
         if config is None:
-            self.__conf = analysis_utils.open_yaml_file(file=config_dir + "main_cfg.yml", directory=scrdir[:-8])
+            self.__conf = analysis_utils.open_yaml_file(file=config_dir + "main_cfg.yml", directory=scrdir[:-14])
         self._index_items = self.__conf["default_values"]["index_items"]
         self.__devices = self.__conf["Devices"]      
         self.__adctrim = self.__conf["default_values"]["adctrim"]
@@ -167,7 +167,7 @@ class CanWrapper(object):
             self.set_nodeList(_nodeIds)
             self.logger.info(f'Connection to channel {channel} has been ' f'verified.')
             for nodeId in _nodeIds:
-                dev_t = self.sdoRead(nodeId, 0x1000, 0, timeout)
+                dev_t = self.send_sdo_can(nodeId, 0x1000, 0, timeout)
                 if dev_t is None:
                     self.logger.error(f'Node {nodeId} in channel {channel} did not answer!')
                     # self.__nodeList.remove(nodeId)
@@ -211,14 +211,14 @@ class CanWrapper(object):
             # self.__ch.setCallback(self.__cbFunc)
         else:
             pass
-        self.__canMsgThread = Thread(target=self.readCanMessages)
+        self.__canMsgThread = Thread(target=self.read_can_message)
         self.__canMsgThread.start()
     
     def read_adc_channels(self):
         """Start actual CANopen communication
         This function contains an endless loop in which it is looped over all
         ADC channels. Each value is read using
-        :meth:`sdoRead` and written to its corresponding
+        :meth:`send_sdo_can` and written to its corresponding
         """
         
         count = 0
@@ -238,7 +238,7 @@ class CanWrapper(object):
                     for i in np.arange(len(_subIndexItems)):
                         _index = int(_adc_index, 16)
                         _subIndex = int(_subIndexItems[i], 16)
-                        adcVals = self.sdoRead(nodeId, _index,_subIndex, 3000)
+                        adcVals = self.send_sdo_can(nodeId, _index,_subIndex, 3000)
                         #self.__mypyDCs[nodeId].write('ADCTRIM')
                         if adcVals is not None:
                             vals = analysis.Analysis().adc_conversion(_adc_channels_reg[str(i)],adcVals)
@@ -404,7 +404,7 @@ class CanWrapper(object):
     @property
     def pill2kill(self):
         """:class:`threading.Event` : Stop event for the message collecting
-        method :meth:`readCanMessages`"""
+        method :meth:`read_can_message`"""
         return self.__pill2kill
     
     # @property
@@ -447,7 +447,7 @@ class CanWrapper(object):
         """:obj:`list` : List of created UA objects"""
         return self.__myDCs
         
-    def sdoRead(self, nodeId, index, subindex, timeout=100, MAX_DATABYTES=8):
+    def send_sdo_can(self, nodeId, index, subindex, timeout=100, MAX_DATABYTES=8):
         """Read an object via |SDO|
     
         Currently expedited and segmented transfer is supported by this method.
@@ -530,8 +530,7 @@ class CanWrapper(object):
         # 4 - ((ret[0] >> 2) & 0b11) for expedited transfer the object dictionary does not get larger than 4 bytes.
         nDatabytes = 4 - ((ret[0] >> 2) & 0b11) if ret[0] != 0x42 else 4
         data = []
-        for i in range(nDatabytes):
-            
+        for i in range(nDatabytes):  
             data.append(ret[4 + i])
         self.logger.info(f'Got data: {data}')
         return int.from_bytes(data, 'little')
@@ -660,7 +659,7 @@ class CanWrapper(object):
         self.logger.info('CAN hardware OS drivers and config for %s'%channel)
         os.system(". " + scrdir + "/socketcan_install.sh")
             
-    def readCanMessages(self):
+    def read_can_message(self):
         """Read incoming |CAN| messages and store them in the queue
         :attr:`canMsgQueue`.
 

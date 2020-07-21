@@ -17,7 +17,7 @@ import pyqtgraph as pg
 from pyqtgraph import *
 import time
 import matplotlib as mpl
-from analysis import analysis_utils
+from controlServer import analysis_utils
 from graphics_utils import mainWindow
 
 class ADCMonitoringData(QMainWindow):

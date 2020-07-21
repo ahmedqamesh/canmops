@@ -1,6 +1,6 @@
 eclipse.preferences.version=1
-encoding//analysis/CANopenConstants.py=utf-8
-encoding//analysis/__version__.py=utf-8
-encoding//analysis/objectDictionary.py=utf-8
+encoding//controlServer/CANopenConstants.py=utf-8
+encoding//controlServer/__version__.py=utf-8
+encoding//controlServer/objectDictionary.py=utf-8
 encoding/CANMOPS_GUI.py=utf-8
 encoding/CANMOPS_test.py=utf-8

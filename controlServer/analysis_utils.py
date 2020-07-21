@@ -24,13 +24,14 @@ import pandas as pd
 import time
 import random
 from numba import njit
+import csv
 from pathlib import Path
 from logging.handlers import RotatingFileHandler
 import coloredlogs as cl
 import verboselogs
         
 def define_configured_array(size_x=1, z=20, x=20, size_z=1):
-    #log.info('Creating a confiiguration array for the snake pattern')
+    #log.info('Creating a configuration array for the snake pattern')
     config_beamspot = np.zeros(shape=(z, 5), dtype=np.float64)
     for step_z in np.arange(0, z):
         if step_z % 2 == 0:
@@ -60,8 +61,7 @@ def save_to_csv(data=None, outname=None, directory=None):
             os.mkdir(directory)
     filename = os.path.join(directory, outname)    
     df.to_csv(filename, index=True)
-
-
+      
 def open_h5_file(outname=None, directory=None):
     filename = os.path.join(directory, outname)
     with tb.open_file(filename, 'r') as in_file:
@@ -88,21 +88,51 @@ def get_subindex_yaml(dictionary = None, index =None, subindex = "subindex_items
 def get_project_root() -> Path:
     """Returns project root folder."""
     return Path(__file__).parent.parent
-def save_adc_date(directory = None,channel = None):
-    File = tb.open_file(directory + "ch_"+channel+ ".h5", 'w')
+
+def save_to_DictWriter(outname=None, directory=None, TimeStamp =None,
+                       Channel = None,
+                       Id = None,
+                       Flg = None,
+                       DLC = None,
+                       ADCChannel = None,
+                       ADCData = None,
+                       ADCDataConverted = None):
+    if not os.path.exists(directory):
+        os.mkdir(directory)
+    filename = os.path.join(directory, outname) 
+      
+    with open(filename+'.csv', 'w', newline='') as out_file_csv:
+        fieldnames = ['TimeStamp', 'Channel',"Id","Flg","DLC","ADCChannel","ADCData","ADCDataConverted"]
+        writer = csv.DictWriter(out_file_csv, fieldnames=fieldnames)
+        writer.writeheader()
+    return writer
+
+
+
+#         writer.writerow({'TimeStamp': TimeStamp, 
+#                          'Channel': Channel,
+#                          "Id": Id,
+#                          "Flg": Flg,
+#                          "DLC": DLC,
+#                          "ADCChannel": ADCChannel,
+#                          "ADCData": ADCData,
+#                          "ADCDataConverted": ADCDataConverted})
+    
+def save_adc_data(directory = None,channel = None):
+    File = tb.open_file(directory + "ch_"+str(channel)+ ".h5", 'w')
     description = np.zeros((1,), dtype=np.dtype([("TimeStamp", "f8"), ("Channel", "f8"), ("Id", "f8"), ("Flg", "f8"), ("DLC", "f8"), ("ADCChannel", "f8"), ("ADCData", "f8"),("ADCDataConverted", "f8")])).dtype
     table = File.create_table(File.root, name='ADC_results', description=description)
     table.flush()
     row = table.row
-    for i in np.arange(length_v):
-        row["TimeStamp"] = voltage_array[i]
-        row["Channel"] = mean
-        row["Id"] = std
-        row["DLC"] = voltage_array[i]
-        row["ADCChannel"] = mean
-        row["ADCData"] = std
-        row["ADCDataConverted"] = std
-        row.append()
-    File.create_array(File.root, 'current_array', current_array, "current_array")
+#     for i in np.arange(length_v):
+#         row["TimeStamp"] = voltage_array[i]
+#         row["Channel"] = mean
+#         row["Id"] = std
+#         row["DLC"] = voltage_array[i]
+#         row["ADCChannel"] = mean
+#         row["ADCData"] = std
+#         row["ADCDataConverted"] = std
+#         row.append()
+    File.create_array(File.root, 'ADC results', ADC_results, "ADC results")
     File.close()
     logging.info("Start creating table")     

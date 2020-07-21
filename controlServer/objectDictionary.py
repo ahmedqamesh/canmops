@@ -36,7 +36,7 @@ import coloredlogs as cl
 import verboselogs
 
 # Other files
-from analysis.CANopenConstants import ATTR, VARTYPE, ENTRYTYPE, LIMITS
+from controlServer.CANopenConstants import ATTR, VARTYPE, ENTRYTYPE, LIMITS
 #from extend_logging import extend_logging
 
 

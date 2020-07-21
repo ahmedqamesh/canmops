@@ -3,10 +3,8 @@ Application:
     device_version          :   "v1.0"
     icon_dir                :   "graphics_utils/icons/icon_mops.png"
     nodeIds                 :   {"1", "8"}
-    index_items             :   {
-                                "------" :  {"description_items" :"<html><b>-----</b></html>",
-                                             "subindex_items"    :{     "-----":"<html><b>-----</b></html>"}} 
-                               ,"0x1000" :  {"description_items" :"<html><b> Device type</b> [Default 191(hex)]</b></html>",
+    index_items             :   {  
+                                "0x1000" :  {"description_items" :"<html><b> Device type</b> [Default 191(hex)]</b></html>",
                                              "subindex_items"    :{     "0":"<html><b>Device type</b></html>"}}      
                                ,"0x1001" :  {"description_items" :"<html><b> Error register</b> [Default 0]</b></html>",
                                              "subindex_items"    :{     "0":"<html><b>Error register</b></html>"}}
@@ -85,7 +83,11 @@ Application:
                                                                         "1D":"<html><u>subindex 1D</u>:Ch31</html>",                                                     
                                                                         "1E":"<html><u>subindex 1E</u>:Ch32</html>",
                                                                         "1F":"<html><u>subindex 1F</u>:Ch33</html>",
-                                                                        "20":"<html><u>subindex 20</u>:Ch34</html>"}}}
+                                                                        "20":"<html><u>subindex 20</u>:Ch34</html>"}}
+                               ,"0x701":  {"description_items" :"<html><b>Check MOPS status: MOPS should respond with a CAN message back</b></b></html>",
+                                             "subindex_items"    :{     "-----":"<html><b>-----</b></html>"}}                                 
+                               ,"0x0"  :  {"description_items" :"<html><b> Reset device</b></b></html>",
+                                             "subindex_items"    :{     "-----":"<html><b>-----</b></html>"}}}
 adc_channels_reg:
     mon_index               : {"0x2310"}
     conf_index              : {"0x1000","0x1001","0x1005","0x1014","0x1018","0x1018","0x2001"}
