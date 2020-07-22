@@ -165,6 +165,11 @@ class MainWindow(QMainWindow):
         plotframe = QFrame(self)
         plotframe.setStyleSheet("QWidget { background-color: #eeeeec; }")
         plotframe.setLineWidth(0.6)
+        line = QFrame()
+        line.setGeometry(QRect(320, 150, 118, 3))
+        line.setFrameShape(QFrame.VLine)
+        line.setFrameShadow(QFrame.Sunken)
+        
         byteLabel = QLabel()
         byteLabel.setText("Bytes")
         byteLabel.setAlignment(QtCore.Qt.AlignLeft | QtCore.Qt.AlignVCenter)
@@ -185,7 +190,35 @@ class MainWindow(QMainWindow):
         bitLabel.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
         bitLabel.setAlignment(Qt.AlignCenter)
         
+
+        # Set the table headers
         n_bytes = 8
+        col = [str(i) for i in np.arange(n_bytes)]
+        row = [str(i) for i in np.arange(n_bytes-1,-1,-1)]
+               
+        self.hextable = QTableWidget(self)  # Create a table
+        self.hextable.setColumnCount(1)     #Set n columns
+        self.hextable.setRowCount(n_bytes)  # and n rows
+        self.hextable.resizeColumnsToContents() # Do the resize of the columns by content
+        self.hextable.setSizeAdjustPolicy(QtWidgets.QAbstractScrollArea.AdjustToContents)
+        self.hextable.setHorizontalHeaderLabels(["Hex"])
+        self.hextable.verticalHeader().hide()
+        self.hextable.horizontalHeader().setSectionResizeMode(QtWidgets.QHeaderView.Stretch)
+        self.hextable.resizeColumnsToContents()
+        self.hextable.clearContents() # clear cells
+
+        self.dectable = QTableWidget(self)  # Create a table
+        self.dectable.setColumnCount(1)     #Set n columns
+        self.dectable.setRowCount(n_bytes)  # and n rows
+        self.dectable.resizeColumnsToContents() # Do the resize of the columns by content
+        self.dectable.setSizeAdjustPolicy(QtWidgets.QAbstractScrollArea.AdjustToContents)
+        self.dectable.setHorizontalHeaderLabels(["Decimal"])
+        self.dectable.verticalHeader().hide()
+        self.dectable.horizontalHeader().setSectionResizeMode(QtWidgets.QHeaderView.Stretch)
+        self.dectable.resizeColumnsToContents()
+        self.dectable.clearContents() # clear cells
+        
+                
         self.table = QTableWidget(self)  # Create a table
         self.table.setColumnCount(n_bytes)     #Set n columns
         self.table.setRowCount(n_bytes)        # and n rows
@@ -193,9 +226,6 @@ class MainWindow(QMainWindow):
         self.table.resizeColumnsToContents()
         self.table.setVerticalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
         self.table.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
-        # Set the table headers
-        col = [str(i) for i in np.arange(n_bytes)]
-        row = [str(i) for i in np.arange(n_bytes-1,-1,-1)]
         self.table.setHorizontalHeaderLabels(row)
         self.table.setVerticalHeaderLabels(col)
         self.table.setEditTriggers( QAbstractItemView.NoEditTriggers)
@@ -255,9 +285,12 @@ class MainWindow(QMainWindow):
                 
         gridLayout = QGridLayout()
         
+        gridLayout.addWidget(line,1,0, 1,0)
         gridLayout.addWidget(bitLabel,0,1)
         gridLayout.addWidget(graphicsview,1,0)
         gridLayout.addWidget(self.table,1, 1)
+        gridLayout.addWidget(self.hextable,1, 2)
+        gridLayout.addWidget(self.dectable,1, 3)
         gridLayout.addLayout(progressLayout,2,1)
         self.setCentralWidget(plotframe)
         plotframe.setLayout(gridLayout)
@@ -285,8 +318,8 @@ class MainWindow(QMainWindow):
         self.connectButton.setStatusTip('Connect the interface and set the channel')
         self.connectButton.setCheckable(True)
         
-        channelLabel = QLabel("Channels")
-        channelLabel.setText(" Channels")
+        channelLabel = QLabel("")
+        channelLabel.setText(" CAN Bus")
         self.channelComboBox = QComboBox()
         self.channelComboBox.setStatusTip('Possible ports as defined in the main_cfg.yml file')
         for item in list(__channelList): self.channelComboBox.addItem(item)  
@@ -528,7 +561,8 @@ class MainWindow(QMainWindow):
         self.logger.info(f'Got data: [{b1:02x}  {b2:02x}  {b3:02x}  {b4:02x}  {b5:02x}  {b6:02x}  {b7:02x} {b8:02x}]')
         if print_sdo == True:
             self.set_table_content(bytes=data, comunication_object="SDO_TX")
-            self.set_textBox_message(comunication_object="SDO_TX", msg=str(data.hex()))
+            response  = f'{data.hex()}\n------------------------------------------------------------------------'
+            self.set_textBox_message(comunication_object="SDO_TX", msg= response)
         return cobid, data, dlc, flag, t
     
     def dump_can_message(self, TIMEOUT=2):
@@ -1484,9 +1518,12 @@ class MainWindow(QMainWindow):
     def set_table_content(self, bytes = None,comunication_object=None):
         self.update_progressBar(comunication_object=comunication_object)
         self.table.clearContents() # clear cells
+        self.hextable.clearContents() # clear cells
         n_bytes = 8-1
         #for byte in bytes:
         for byte in np.arange(len(bytes)):
+            self.hextable.setItem(0, byte, QTableWidgetItem(str(hex(bytes[byte]))))
+            self.dectable.setItem(0, byte, QTableWidgetItem(str(bytes[byte])))
             bits = bin(bytes[byte])[2:]
             slicedBits=bits[::-1]# slicing 
             for b in np.arange(len(slicedBits)):
