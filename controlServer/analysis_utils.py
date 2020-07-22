@@ -67,8 +67,7 @@ def open_h5_file(outname=None, directory=None):
     with tb.open_file(filename, 'r') as in_file:
         data = in_file.root.data[:]
     return data
-
-
+                
 def get_subindex_description_yaml(dictionary = None, index =None, subindex = None):
     index_item = [dictionary[i] for i in [index] if i in dictionary]
     subindex_items = index_item[0]["subindex_items"]
@@ -89,35 +88,13 @@ def get_project_root() -> Path:
     """Returns project root folder."""
     return Path(__file__).parent.parent
 
-def save_to_DictWriter(outname=None, directory=None, TimeStamp =None,
-                       Channel = None,
-                       Id = None,
-                       Flg = None,
-                       DLC = None,
-                       ADCChannel = None,
-                       ADCData = None,
-                       ADCDataConverted = None):
+def open_csv_file(outname=None, directory=None, fieldnames = ['TimeStamp', 'Channel', "Id", "DLC", "ADCChannel", "ADCData" , "ADCDataConverted"]):
     if not os.path.exists(directory):
         os.mkdir(directory)
     filename = os.path.join(directory, outname) 
-      
-    with open(filename+'.csv', 'w', newline='') as out_file_csv:
-        fieldnames = ['TimeStamp', 'Channel',"Id","Flg","DLC","ADCChannel","ADCData","ADCDataConverted"]
-        writer = csv.DictWriter(out_file_csv, fieldnames=fieldnames)
-        writer.writeheader()
-    return writer
+    out_file_csv = open(filename + '.csv', 'w+')
+    return out_file_csv
 
-
-
-#         writer.writerow({'TimeStamp': TimeStamp, 
-#                          'Channel': Channel,
-#                          "Id": Id,
-#                          "Flg": Flg,
-#                          "DLC": DLC,
-#                          "ADCChannel": ADCChannel,
-#                          "ADCData": ADCData,
-#                          "ADCDataConverted": ADCDataConverted})
-    
 def save_adc_data(directory = None,channel = None):
     File = tb.open_file(directory + "ch_"+str(channel)+ ".h5", 'w')
     description = np.zeros((1,), dtype=np.dtype([("TimeStamp", "f8"), ("Channel", "f8"), ("Id", "f8"), ("Flg", "f8"), ("DLC", "f8"), ("ADCChannel", "f8"), ("ADCData", "f8"),("ADCDataConverted", "f8")])).dtype

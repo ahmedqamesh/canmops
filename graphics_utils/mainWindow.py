@@ -27,6 +27,7 @@ import binascii
 from tqdm import tqdm
 import tables as tb
 import csv
+from csv import writer
 import yaml
 # Third party modules
 import coloredlogs as cl
@@ -1266,26 +1267,14 @@ class MainWindow(QMainWindow):
         self.timer = QtCore.QTimer(self)
         self.control_logger.disabled = True
         self.logger.notice("Processing data...")
-
-        def __open_csv(outname=None, directory=None):
-            if not os.path.exists(directory):
-                os.mkdir(directory)
-            filename = os.path.join(directory, outname) 
-            self.logger.notice("Preparing an output file [%s.csv]..."%(filename))
-            out_file_csv = open(filename+'.csv', 'w+')
-            # Write header to the data
-            out_file_csv.write("TimeStamp, Channel, Id, Flg, DLC, ADCChannel, ADCData , ADCDataConverted \n")
-            return out_file_csv
-
-        def __read_csv(outname=None, directory=None):
-            filename = os.path.join(directory, outname) 
-            in_file_csv = open(filename+'.csv', 'r')  
-            if in_file_csv.mode == 'r':  
-                contents = in_file_csv.read()
-                print(contents)
-                      
-        self.out_file_csv = __open_csv(outname="adc_data", directory=rootdir[:-14]+"output_data")         
-       # __read_csv(outname="adc_data", directory=rootdir[:-14]+"/output_data")
+        
+        
+        self.logger.notice("Preparing an output file [%s.csv]..."%(rootdir[:-14]+"output_data/adc_data.csv"))
+        self.out_file_csv = analysis_utils.open_csv_file(outname="adc_data", directory=rootdir[:-14]+"output_data" ) 
+        # Write header to the data
+        fieldnames = ['TimeStamp', 'Channel', "nodeId", "DLC", "ADCChannel", "ADCData" , "ADCDataConverted"]
+        writer = csv.DictWriter(self.out_file_csv, fieldnames=fieldnames)
+        writer.writeheader()
         
         # Save data to a file
         self.timer.timeout.connect(self.read_adc_channels)
@@ -1308,7 +1297,10 @@ class MainWindow(QMainWindow):
         _adc_channels_reg = self.get_adc_channels_reg()
         _dictionary = self.__dictionary_items
         _adc_indices =  list(self.__adc_index)
+        ts= time.time()
         a =0
+        csv_writer = writer(self.out_file_csv)
+        # Add contents of list as last row in the csv file
         for i in np.arange(len(_adc_indices)):
             _subIndexItems = list(analysis_utils.get_subindex_yaml(dictionary=_dictionary, index=_adc_indices[i], subindex ="subindex_items"))
             self.set_index(_adc_indices[i])# set index for later usage
@@ -1323,6 +1315,13 @@ class MainWindow(QMainWindow):
                 self.adc_converted = np.append(self.adc_converted, analysis.Analysis().adc_conversion(_adc_channels_reg[str(s+2)], data_point))
                 if self.adc_converted[correction] is not None:
                     self.ChannelBox[a].setText(str(round(self.adc_converted[correction], 3)))
+                    csv_writer.writerow((str(ts),
+                                         str(self.get_channel()),
+                                         str(self.get_nodeId()),
+                                         8,
+                                         str(a),
+                                         str(data_point),
+                                         str(round(self.adc_converted[correction], 3))))
                     #if self.trendingBox[s].isChecked():
                     #    self.update_figure(data=self.adc_converted[correction], i=s)
                 else:
