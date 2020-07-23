@@ -212,7 +212,7 @@ class MainWindow(QMainWindow):
         self.hexRXTable.clearContents() # clear cells
         self.hexRXTable.setVerticalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
         self.hexRXTable.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
-
+        self.hexRXTable.setEditTriggers( QAbstractItemView.NoEditTriggers)
         self.decRXTable = QTableWidget(self)  # Create a table
         self.decRXTable.setColumnCount(1)     #Set n columns
         self.decRXTable.setRowCount(n_bytes)  # and n rows
@@ -223,7 +223,7 @@ class MainWindow(QMainWindow):
         self.decRXTable.horizontalHeader().setSectionResizeMode(QtWidgets.QHeaderView.Stretch)
         self.decRXTable.setVerticalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
         self.decRXTable.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
-        
+        self.decRXTable.setEditTriggers( QAbstractItemView.NoEditTriggers)
         self.decRXTable.resizeColumnsToContents()
         self.decRXTable.clearContents() # clear cells
           
@@ -256,9 +256,8 @@ class MainWindow(QMainWindow):
         self.hexTXTable.resizeColumnsToContents()
         self.hexTXTable.setVerticalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
         self.hexTXTable.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
-        
         self.hexTXTable.clearContents() # clear cells
-
+        self.hexTXTable.setEditTriggers( QAbstractItemView.NoEditTriggers)
         self.decTXTable = QTableWidget(self)  # Create a table
         self.decTXTable.setColumnCount(1)     #Set n columns
         self.decTXTable.setRowCount(n_bytes)  # and n rows
@@ -271,7 +270,7 @@ class MainWindow(QMainWindow):
         self.decTXTable.horizontalHeader().setSectionResizeMode(QtWidgets.QHeaderView.Stretch)
         self.decTXTable.resizeColumnsToContents()
         self.decTXTable.clearContents() # clear cells
-          
+        self.decTXTable.setEditTriggers( QAbstractItemView.NoEditTriggers)  
         self.TXTable = QTableWidget(self)  # Create a table
         self.TXTable.setColumnCount(n_bytes)     #Set n columns
         self.TXTable.setRowCount(n_bytes)        # and n rows
