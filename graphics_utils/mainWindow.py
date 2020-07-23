@@ -43,7 +43,7 @@ class MainWindow(QMainWindow):
                  console_loglevel=logging.INFO,
                  file_loglevel=logging.INFO,
                  logformat='%(asctime)s - %(levelname)s - %(message)s',
-                 device_config=["PSPP_cfg.yml"],
+                 device_config=["MOPS_cfg.yml"],
                  main_config=["main_cfg.yml"]):
         super(MainWindow, self).__init__(parent)
         self.__device_config = device_config            
@@ -82,7 +82,7 @@ class MainWindow(QMainWindow):
         self.__response = None
         self.wrapper = None
         # Show a textBox
-        self.textBoxWindow()
+        self.textOutputWindow()
 
 
     def configure_devices(self, dev):
@@ -124,28 +124,23 @@ class MainWindow(QMainWindow):
         mainFrame = QFrame(self)
         mainFrame.setLineWidth(0.6)
         self.setCentralWidget(mainFrame)
-        
-        line = QFrame()
-        line.setGeometry(QRect(320, 150, 118, 3))
-        line.setFrameShape(QFrame.HLine)
-        line.setFrameShadow(QFrame.Sunken)
             
         # SetLayout
-        self.mainLayout = QGridLayout()
+        mainLayout = QGridLayout()
+        mainLayout.addWidget(self.defaultSettingsGroupBox,0,0)
+        mainLayout.addWidget(self.defaultMessageGroupBox, 1, 0)
         
-        self.mainLayout.addLayout(self.defaultSettingsWindowLayout,0,0)
-        self.mainLayout.addWidget(line, 1, 0)
-        self.mainLayout.addLayout(self.defaultMessageWindowLayout, 2, 0)
-        self.mainLayout.addWidget(self.textGroupBox, 3, 0)
-        self.mainLayout.addWidget(self.monitorGroupBox, 3, 1)
-        self.mainLayout.addWidget(line, 4, 0)
-        self.mainLayout.addLayout(self.HLayout, 5, 0)
-        mainFrame.setLayout(self.mainLayout)
+        mainLayout.addWidget(self.textGroupBox, 0, 1,2,1)
+        
+        mainLayout.addWidget(self.monitorGroupBox, 3, 0,2,2)
+        #mainLayout.addWidget(line, 4, 0)
+        mainLayout.addWidget(self.configureDeviceBoxGroupBox, 5, 0)
+        mainFrame.setLayout(mainLayout)
         # 3. Show
         self.show()
         return
             
-    def textBoxWindow(self):
+    def textOutputWindow(self):
         self.textGroupBox = QGroupBox("Output Window")
         plotframe = QFrame(self)
         plotframe.setStyleSheet("QWidget { background-color: #eeeeec; }")
@@ -153,12 +148,12 @@ class MainWindow(QMainWindow):
         self.textBox = QTextEdit()
         #self.textBox.setTabStopWidth(12) 
         self.textBox.setReadOnly(True)
-        self.textBox.resize(100,20)
-        gridLayout = QGridLayout()
-        gridLayout.addWidget(self.textBox,1, 0)
+        self.textBox.resize(20,20)
+        textOutputWindowLayout = QGridLayout()
+        textOutputWindowLayout.addWidget(self.textBox,1, 0)
         self.setCentralWidget(plotframe)
-        plotframe.setLayout(gridLayout)
-        self.textGroupBox.setLayout(gridLayout)
+        plotframe.setLayout(textOutputWindowLayout)
+        self.textGroupBox.setLayout(textOutputWindowLayout)
         
     def tableOutputWindow(self):
         self.monitorGroupBox = QGroupBox("Bytes Monitoring")
@@ -170,99 +165,147 @@ class MainWindow(QMainWindow):
         line.setFrameShape(QFrame.VLine)
         line.setFrameShadow(QFrame.Sunken)
         
-        byteLabel = QLabel()
-        byteLabel.setText("Bytes")
-        byteLabel.setAlignment(QtCore.Qt.AlignLeft | QtCore.Qt.AlignVCenter)
-        graphicsview = QtWidgets.QGraphicsView()
-        graphicsview.setStyleSheet("QWidget { background-color: rgba(255, 255, 255, 10);  margin:0.0px; }")
-        graphicsview.setFixedSize(20, 100)
-        proxy = QtWidgets.QGraphicsProxyWidget()
-        proxy.setWidget(byteLabel)
-        proxy.setTransformOriginPoint(proxy.boundingRect().center())
-        proxy.setRotation(-90)
+        def __graphic_view(txt = "Bytes"):
+            byteLabel = QLabel()
+            byteLabel.setText(txt)
+            byteLabel.setAlignment(QtCore.Qt.AlignLeft | QtCore.Qt.AlignVCenter)
+            graphicsview = QtWidgets.QGraphicsView()
+            graphicsview.setStyleSheet("QWidget { background-color: rgba(255, 255, 255, 10);  margin:0.0px; }")
+            graphicsview.setFixedSize(20, 100)
+            proxy = QtWidgets.QGraphicsProxyWidget()
+            proxy.setWidget(byteLabel)
+            proxy.setTransformOriginPoint(proxy.boundingRect().center())
+            proxy.setRotation(-90)
+            scene = QtWidgets.QGraphicsScene(graphicsview)
+            scene.addItem(proxy)
+            graphicsview.setScene(scene)
+            
+            return graphicsview
         
-        scene = QtWidgets.QGraphicsScene(graphicsview)
-        scene.addItem(proxy)
-        graphicsview.setScene(scene)
+        def __bitLabel(txt ="Bits"):
+            bitLabel = QLabel()
+            bitLabel.setText("Bits")
+            bitLabel.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
+            bitLabel.setAlignment(Qt.AlignCenter)   
+            return bitLabel         
         
-        bitLabel = QLabel()
-        bitLabel.setText("Bits")
-        bitLabel.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
-        bitLabel.setAlignment(Qt.AlignCenter)
+        RXgraphicsview = __graphic_view(txt = "Bytes")
+        TXgraphicsview = __graphic_view(txt = "Bytes")
+        RXbitLabel = __bitLabel(txt ="Bits")
+        TXbitLabel = __bitLabel(txt ="Bits")
         
-
         # Set the table headers
         n_bytes = 8
         col = [str(i) for i in np.arange(n_bytes)]
         row = [str(i) for i in np.arange(n_bytes-1,-1,-1)]
-               
-        self.hextable = QTableWidget(self)  # Create a table
-        self.hextable.setColumnCount(1)     #Set n columns
-        self.hextable.setRowCount(n_bytes)  # and n rows
-        self.hextable.resizeColumnsToContents() # Do the resize of the columns by content
-        self.hextable.setSizeAdjustPolicy(QtWidgets.QAbstractScrollArea.AdjustToContents)
-        self.hextable.setHorizontalHeaderLabels(["Hex"])
-        self.hextable.verticalHeader().hide()
-        self.hextable.horizontalHeader().setSectionResizeMode(QtWidgets.QHeaderView.Stretch)
-        self.hextable.resizeColumnsToContents()
-        self.hextable.clearContents() # clear cells
+        # RXTables       
+        self.hexRXTable = QTableWidget(self)  # Create a table
+        self.hexRXTable.setColumnCount(1)     #Set n columns
+        self.hexRXTable.setRowCount(n_bytes)  # and n rows
+        self.hexRXTable.resizeColumnsToContents() # Do the resize of the columns by content
+        self.hexRXTable.setSizeAdjustPolicy(QtWidgets.QAbstractScrollArea.AdjustToContents)
+        self.hexRXTable.setHorizontalHeaderLabels(["Hex"])
+        self.hexRXTable.verticalHeader().hide()
+        self.hexRXTable.horizontalHeader().setSectionResizeMode(QtWidgets.QHeaderView.Stretch)
+        self.hexRXTable.resizeColumnsToContents()
+        self.hexRXTable.clearContents() # clear cells
 
-        self.dectable = QTableWidget(self)  # Create a table
-        self.dectable.setColumnCount(1)     #Set n columns
-        self.dectable.setRowCount(n_bytes)  # and n rows
-        self.dectable.resizeColumnsToContents() # Do the resize of the columns by content
-        self.dectable.setSizeAdjustPolicy(QtWidgets.QAbstractScrollArea.AdjustToContents)
-        self.dectable.setHorizontalHeaderLabels(["Decimal"])
-        self.dectable.verticalHeader().hide()
-        self.dectable.horizontalHeader().setSectionResizeMode(QtWidgets.QHeaderView.Stretch)
-        self.dectable.resizeColumnsToContents()
-        self.dectable.clearContents() # clear cells
-        
-                
-        self.table = QTableWidget(self)  # Create a table
-        self.table.setColumnCount(n_bytes)     #Set n columns
-        self.table.setRowCount(n_bytes)        # and n rows
+        self.decRXTable = QTableWidget(self)  # Create a table
+        self.decRXTable.setColumnCount(1)     #Set n columns
+        self.decRXTable.setRowCount(n_bytes)  # and n rows
+        self.decRXTable.resizeColumnsToContents() # Do the resize of the columns by content
+        self.decRXTable.setSizeAdjustPolicy(QtWidgets.QAbstractScrollArea.AdjustToContents)
+        self.decRXTable.setHorizontalHeaderLabels(["Decimal"])
+        self.decRXTable.verticalHeader().hide()
+        self.decRXTable.horizontalHeader().setSectionResizeMode(QtWidgets.QHeaderView.Stretch)
+        self.decRXTable.resizeColumnsToContents()
+        self.decRXTable.clearContents() # clear cells
+          
+        self.RXTable = QTableWidget(self)  # Create a table
+        self.RXTable.setColumnCount(n_bytes)     #Set n columns
+        self.RXTable.setRowCount(n_bytes)        # and n rows
         # Do the resize of the columns by content
-        self.table.resizeColumnsToContents()
-        self.table.setVerticalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
-        self.table.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
-        self.table.setHorizontalHeaderLabels(row)
-        self.table.setVerticalHeaderLabels(col)
-        self.table.setEditTriggers( QAbstractItemView.NoEditTriggers)
-        self.table.setSizeAdjustPolicy(QtWidgets.QAbstractScrollArea.AdjustToContents)
-        self.table.setVisible(False)
-        self.table.verticalScrollBar().setValue(0)
-        self.table.resizeColumnsToContents()
-        self.table.setVisible(True)
+        self.RXTable.resizeColumnsToContents()
+        self.RXTable.setVerticalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
+        self.RXTable.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
+        self.RXTable.setHorizontalHeaderLabels(row)
+        self.RXTable.setVerticalHeaderLabels(col)
+        self.RXTable.setEditTriggers( QAbstractItemView.NoEditTriggers)
+        self.RXTable.setSizeAdjustPolicy(QtWidgets.QAbstractScrollArea.AdjustToContents)
+        self.RXTable.setVisible(False)
+        self.RXTable.verticalScrollBar().setValue(0)
+        self.RXTable.resizeColumnsToContents()
+        self.RXTable.setVisible(True)
         
+        
+        # TXTables
+        self.hexTXTable = QTableWidget(self)  # Create a table
+        self.hexTXTable.setColumnCount(1)     #Set n columns
+        self.hexTXTable.setRowCount(n_bytes)  # and n rows
+        self.hexTXTable.resizeColumnsToContents() # Do the resize of the columns by content
+        self.hexTXTable.setSizeAdjustPolicy(QtWidgets.QAbstractScrollArea.AdjustToContents)
+        self.hexTXTable.setHorizontalHeaderLabels(["Hex"])
+        self.hexTXTable.verticalHeader().hide()
+        self.hexTXTable.horizontalHeader().setSectionResizeMode(QtWidgets.QHeaderView.Stretch)
+        self.hexTXTable.resizeColumnsToContents()
+        self.hexTXTable.clearContents() # clear cells
+
+        self.decTXTable = QTableWidget(self)  # Create a table
+        self.decTXTable.setColumnCount(1)     #Set n columns
+        self.decTXTable.setRowCount(n_bytes)  # and n rows
+        self.decTXTable.resizeColumnsToContents() # Do the resize of the columns by content
+        self.decTXTable.setSizeAdjustPolicy(QtWidgets.QAbstractScrollArea.AdjustToContents)
+        self.decTXTable.setHorizontalHeaderLabels(["Decimal"])
+        self.decTXTable.verticalHeader().hide()
+        self.decTXTable.horizontalHeader().setSectionResizeMode(QtWidgets.QHeaderView.Stretch)
+        self.decTXTable.resizeColumnsToContents()
+        self.decTXTable.clearContents() # clear cells
+          
+        self.TXTable = QTableWidget(self)  # Create a table
+        self.TXTable.setColumnCount(n_bytes)     #Set n columns
+        self.TXTable.setRowCount(n_bytes)        # and n rows
+        # Do the resize of the columns by content
+        self.TXTable.resizeColumnsToContents()
+        self.TXTable.setVerticalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
+        self.TXTable.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
+        self.TXTable.setHorizontalHeaderLabels(row)
+        self.TXTable.setVerticalHeaderLabels(col)
+        self.TXTable.setEditTriggers( QAbstractItemView.NoEditTriggers)
+        self.TXTable.setSizeAdjustPolicy(QtWidgets.QAbstractScrollArea.AdjustToContents)
+        self.TXTable.setVisible(False)
+        self.TXTable.verticalScrollBar().setValue(0)
+        self.TXTable.resizeColumnsToContents()
+        self.TXTable.setVisible(True)
+               
         # create progressBar 
         #self.progressBar = QProgressBar()
         #self.progressBar.setRange(0, 8)
         #self.progressBar.setValue(0)
-        TXLayout = QVBoxLayout()
-        TXLabel = QLabel()
-        TXLabel.setText("            TX")
         self.TXProgressBar= QProgressBar()
         self.TXProgressBar.setRange(0, 1)
         self.TXProgressBar.setValue(0)
         self.TXProgressBar.setTextVisible(False)
-        TXLayout.addWidget(self.TXProgressBar)
-        TXLayout.addWidget(TXLabel)
         
-             
-        RXLayout = QVBoxLayout()
-        RXLabel = QLabel()
-        RXLabel.setText("            RX")
+        TXLayout = QHBoxLayout()
+        TXLabel = QLabel()
+        TXLabel.setText("TX:")
+        TXLayout.addWidget(TXLabel)
+        TXLayout.addWidget(self.TXProgressBar)
+        
+              
         self.RXProgressBar= QProgressBar()
         self.RXProgressBar.setRange(0, 1)
         self.RXProgressBar.setValue(0)
         self.RXProgressBar.setTextVisible(False)
-        RXLayout.addWidget(self.RXProgressBar)
+        
+        RXLayout = QHBoxLayout()
+        RXLabel = QLabel()
+        RXLabel.setText("RX:")
         RXLayout.addWidget(RXLabel)
+        RXLayout.addWidget(self.RXProgressBar)
+        
 
         progressLayout = QHBoxLayout()
-        progressLayout.addLayout(TXLayout)
-        progressLayout.addLayout(RXLayout)
         #self.progressBar.setGeometry(100, 150, 40, 100)
         #self.progressBar.setOrientation()
         #self.progressBar.setOrientation(QtCore.Qt.Vertical)
@@ -271,33 +314,48 @@ class MainWindow(QMainWindow):
         #timer.timeout.connect()
         #timer.start(10)
         def setTableWidth():
-            width = self.table.verticalHeader().width()
-            width += self.table.horizontalHeader().length()
-            self.table.setMinimumWidth(width)
+            width = self.RXTable.verticalHeader().width()
+            width += self.RXTable.horizontalHeader().length()
+            self.RXTable.setMinimumWidth(width)
         
         def setTableLength():
-            length = self.table.verticalHeader().length()
-            length += self.table.horizontalHeader().width()
-            self.table.setMaximumHeight(length);
+            length = self.RXTable.verticalHeader().length()
+            length += self.RXTable.horizontalHeader().width()
+            self.RXTable.setMaximumHeight(length);
             
         setTableWidth()
         setTableLength()
                 
         gridLayout = QGridLayout()
         
-        gridLayout.addWidget(line,1,0, 1,0)
-        gridLayout.addWidget(bitLabel,0,1)
-        gridLayout.addWidget(graphicsview,1,0)
-        gridLayout.addWidget(self.table,1, 1)
-        gridLayout.addWidget(self.hextable,1, 2)
-        gridLayout.addWidget(self.dectable,1, 3)
-        gridLayout.addLayout(progressLayout,2,1)
+        gridLayout.addLayout(RXLayout,0 ,1)        
+        gridLayout.addWidget(RXbitLabel,1,1)
+        gridLayout.addWidget(RXgraphicsview,2,0)
+        gridLayout.addWidget(self.RXTable,2, 1)
+        gridLayout.addWidget(self.hexRXTable,2, 2)
+        gridLayout.addWidget(self.decRXTable,2, 3)
+        
+        gridLayout.addWidget(line,2,4, 2,4)
+        
+        gridLayout.addLayout(TXLayout,0 ,6)
+        gridLayout.addWidget(TXbitLabel,1,6)
+        gridLayout.addWidget(TXgraphicsview,2,5)
+        gridLayout.addWidget(self.TXTable,2, 6)
+        gridLayout.addWidget(self.hexTXTable,2, 7)
+        gridLayout.addWidget(self.decTXTable,2, 8)
+        
+        #gridLayout.addLayout(progressLayout,2,1)
         self.setCentralWidget(plotframe)
         plotframe.setLayout(gridLayout)
         self.monitorGroupBox.setLayout(gridLayout)
                 
     def defaultSettingsWindow(self):
-        self.defaultSettingsWindowLayout = QGridLayout()
+        self.defaultSettingsGroupBox = QGroupBox("Bus Settings")
+        plotframe = QFrame(self)
+        plotframe.setStyleSheet("QWidget { background-color: #eeeeec; }")
+        plotframe.setLineWidth(0.6)
+        
+        defaultSettingsWindowLayout = QGridLayout()
         __interfaceItems = self.__interfaceItems
         __channelList = self.__channelPorts
         interfaceLabel = QLabel("interface")
@@ -343,14 +401,23 @@ class MainWindow(QMainWindow):
         self.connectButton.clicked.connect(on_channelComboBox_currentIndexChanged)
         self.connectButton.clicked.connect(self.set_connect)
                 
-        self.defaultSettingsWindowLayout.addWidget(channelLabel, 0, 0)
-        self.defaultSettingsWindowLayout.addWidget(self.channelComboBox, 1, 0)
-        self.defaultSettingsWindowLayout.addWidget(interfaceLabel, 0, 1)
-        self.defaultSettingsWindowLayout.addWidget(self.interfaceComboBox, 1, 1)
-        self.defaultSettingsWindowLayout.addWidget(self.connectButton, 1, 3)
-               
+        defaultSettingsWindowLayout.addWidget(channelLabel, 0, 0)
+        defaultSettingsWindowLayout.addWidget(self.channelComboBox, 1, 0)
+        defaultSettingsWindowLayout.addWidget(interfaceLabel, 0, 1)
+        defaultSettingsWindowLayout.addWidget(self.interfaceComboBox, 1, 1)
+        defaultSettingsWindowLayout.addWidget(self.connectButton, 1, 3)
+
+        self.setCentralWidget(plotframe)
+        plotframe.setLayout(defaultSettingsWindowLayout)
+        self.defaultSettingsGroupBox.setLayout(defaultSettingsWindowLayout)
+                       
     def defaultMessageWindow(self):
-        self.defaultMessageWindowLayout = QGridLayout()                        
+        self.defaultMessageGroupBox = QGroupBox("Message Settings")
+        plotframe = QFrame(self)
+        plotframe.setStyleSheet("QWidget { background-color: #eeeeec; }")
+        plotframe.setLineWidth(0.6)
+        
+        defaultMessageWindowLayout = QGridLayout()                        
         nodeLabel = QLabel("NodeId", self)
         nodeLabel.setText("NodeId ")
         self.nodeComboBox = QComboBox()
@@ -365,26 +432,36 @@ class MainWindow(QMainWindow):
         self.mainSubIndextextbox = QLineEdit(self.__subIndex, self)
 
         def __apply_CANMessageSettings():
-            self.set_index(self.mainIndexTextBox.text())
-            self.set_subIndex(self.mainSubIndextextbox.text())
-            self.set_nodeId(self.nodeComboBox.currentText())
-                
+            try:
+                self.set_index(self.mainIndexTextBox.text())
+                self.set_subIndex(self.mainSubIndextextbox.text())
+                self.set_nodeId(self.nodeComboBox.currentText())
+            except Exception:
+                self.error_message(text="Make sure that the CAN interface is connected")
         self.startButton = QPushButton("")
         self.startButton.setIcon(QIcon('graphics_utils/icons/icon_start.png'))
         self.startButton.setStatusTip('Send CAN message')
         self.startButton.clicked.connect(__apply_CANMessageSettings)
         self.startButton.clicked.connect(self.send_sdo_can)                 
-            
-        self.defaultMessageWindowLayout.addWidget(nodeLabel, 0, 1)
-        self.defaultMessageWindowLayout.addWidget(self.nodeComboBox, 1, 1)   
-        self.defaultMessageWindowLayout.addWidget(indexLabel, 0, 2)
-        self.defaultMessageWindowLayout.addWidget(self.mainIndexTextBox, 1, 2)
-        self.defaultMessageWindowLayout.addWidget(subIndexLabel, 0, 3)
-        self.defaultMessageWindowLayout.addWidget(self.mainSubIndextextbox, 1, 3)       
-        self.defaultMessageWindowLayout.addWidget(self.startButton, 1, 4)
+        defaultMessageWindowLayout.addWidget(nodeLabel, 3, 0)
+        defaultMessageWindowLayout.addWidget(self.nodeComboBox, 4, 0)   
+        defaultMessageWindowLayout.addWidget(indexLabel, 3, 1)
+        defaultMessageWindowLayout.addWidget(self.mainIndexTextBox, 4, 1)
+        defaultMessageWindowLayout.addWidget(subIndexLabel, 3, 2)
+        defaultMessageWindowLayout.addWidget(self.mainSubIndextextbox, 4, 2)       
+        defaultMessageWindowLayout.addWidget(self.startButton, 4, 3)
 
+        self.setCentralWidget(plotframe)
+        plotframe.setLayout(defaultMessageWindowLayout)
+        self.defaultMessageGroupBox.setLayout(defaultMessageWindowLayout)
+        
     def configure_DeviceBox(self, conf):
-        self.HLayout = QHBoxLayout()
+        self.configureDeviceBoxGroupBox = QGroupBox("Message Settings")
+        plotframe = QFrame(self)
+        plotframe.setStyleSheet("QWidget { background-color: #eeeeec; }")
+        plotframe.setLineWidth(0.6)
+        
+        self.configureDeviceBoxLayout = QHBoxLayout()
         deviceLabel = QLabel("Configure Device", self)
         self.deviceButton = QPushButton("")
         self.deviceButton.setStatusTip('Choose the configuration yaml file')
@@ -395,9 +472,12 @@ class MainWindow(QMainWindow):
         else:
             deviceLabel.setText("Configured Device [" + self.__devices[0] + "]")
             self.update_deviceBox()
-        self.HLayout.addWidget(deviceLabel)
-        self.HLayout.addWidget(self.deviceButton)
-
+        self.configureDeviceBoxLayout.addWidget(deviceLabel)
+        self.configureDeviceBoxLayout.addWidget(self.deviceButton)
+        self.setCentralWidget(plotframe)
+        plotframe.setLayout(self.configureDeviceBoxLayout)
+        self.configureDeviceBoxGroupBox.setLayout(self.configureDeviceBoxLayout)
+        
     def update_deviceBox(self):
         if self.__devices[0] == "None":
             conf = self.child.open()
@@ -406,7 +486,7 @@ class MainWindow(QMainWindow):
         
         self.__devices.append(conf["Application"]["device_name"])
         self.deviceButton.deleteLater()
-        self.HLayout.removeWidget(self.deviceButton)
+        self.configureDeviceBoxLayout.removeWidget(self.deviceButton)
         self.deviceButton = QPushButton("")
         deviceName, version, icon_dir, nodeIds, dictionary_items, adc_channels_reg, adc_index = self.configure_devices(conf)
         
@@ -419,7 +499,8 @@ class MainWindow(QMainWindow):
         self.set_dictionary_items(dictionary_items)                
         self.deviceButton.setIcon(QIcon(self.get_icon_dir()))
         self.deviceButton.clicked.connect(self.show_deviceWindow)
-        self.HLayout.addWidget(self.deviceButton)
+        self.configureDeviceBoxLayout.addWidget(self.deviceButton)
+
 
     def set_connect(self):
         if self.connectButton.isChecked():
@@ -457,7 +538,7 @@ class MainWindow(QMainWindow):
                 self.connectButton.setChecked(False)
         else:
            self.wrapper.stop()
-           self.Randtimer.stop()
+           self.stopRandomTimer()
         self.control_logger =self.wrapper.logger
         
     def stop_server(self):
@@ -513,6 +594,7 @@ class MainWindow(QMainWindow):
             _nodeId = int(_nodeId[0])      
             self.__response = self.wrapper.send_sdo_can(_nodeId, _index, _subIndex, 3000)
             if print_sdo == True:
+                self.control_logger.disabled = False
                 self.print_sdo_can(nodeId=_nodeId, index=_index, subIndex=_subIndex, response_from_node=self.__response)
             return self.__response
         except Exception:
@@ -856,16 +938,20 @@ class MainWindow(QMainWindow):
     def deviceChildWindow(self, ChildWindow):
         
         def __status_device():
-        #  check if the MOPS is alive or not. MOPS should repond with a CAN message
-            cobid = 0x701
-            bytes = [0, 0, 0, 0, 0, 0, 0, 0]
-            self.wrapper.writeCanMessage(cobid, bytes, flag=0, timeout=200)
-            # receive the message
-            _, data, _,_,_ = self.read_can_message(print_sdo = False)
-            if data is not None: 
-               self.logger.info("%s device is in an active state"%(self.__deviceName))
-            else: 
-                self.logger.error("%s device is in not active"%(self.__deviceName))
+            #  check if the MOPS is alive or not. MOPS should repond with a CAN message
+            try:
+                cobid = 0x701
+                bytes = [0, 0, 0, 0, 0, 0, 0, 0]
+                self.wrapper.writeCanMessage(cobid, bytes, flag=0, timeout=200)
+                # receive the message
+                _, data, _,_,_ = self.read_can_message(print_sdo = False)
+                if data is not None: 
+                   self.logger.info("%s device is in an active state"%(self.__deviceName))
+                else: 
+                    self.logger.error("%s device is in not active"%(self.__deviceName))
+            except Exception:
+                self.error_message(text="Make sure that the CAN interface is connected")
+        
         __status_device()
         
         #  Open the window
@@ -1239,6 +1325,13 @@ class MainWindow(QMainWindow):
         self.timer.start(period)
 
 
+
+    def stopTimer(self):
+        try:
+            self.timer.stop()
+        except Exception:
+            pass
+        
     def stopRandomTimer(self):
         try:
             self.Randtimer.stop()
@@ -1340,13 +1433,14 @@ class MainWindow(QMainWindow):
     def update_progressBar(self, comunication_object=None):
         #curVal = self.progressBar.value() 
         #maxVal = self.progressBar.maximum()
+        #self.RXProgressBar.setValue(0)
+        #self.TXProgressBar.setValue(0)
         #self.progressBar.setValue(curVal + (maxVal - curVal) / 8)
         if comunication_object=="SDO_TX":
             self.TXProgressBar.setValue(1)
-            self.RXProgressBar.setValue(0)
         if comunication_object=="SDO_RX":
-            self.TXProgressBar.setValue(0)
             self.RXProgressBar.setValue(1)
+            
             
         
         
@@ -1436,19 +1530,34 @@ class MainWindow(QMainWindow):
         
     def set_table_content(self, bytes = None,comunication_object=None):
         self.update_progressBar(comunication_object=comunication_object)
-        self.table.clearContents() # clear cells
-        self.hextable.clearContents() # clear cells
         n_bytes = 8-1
-        #for byte in bytes:
-        for byte in np.arange(len(bytes)):
-            self.hextable.setItem(0, byte, QTableWidgetItem(str(hex(bytes[byte]))))
-            self.dectable.setItem(0, byte, QTableWidgetItem(str(bytes[byte])))
-            bits = bin(bytes[byte])[2:]
-            slicedBits=bits[::-1]# slicing 
-            for b in np.arange(len(slicedBits)):
-                self.table.setItem(byte, n_bytes- b, QTableWidgetItem(slicedBits[b]))
-                self.table.item(byte,n_bytes- b).setBackground(QColor(self.get_color(int(slicedBits[b]))))
-  
+        if comunication_object == "SDO_RX":
+            self.RXTable.clearContents() # clear cells
+            self.hexRXTable.clearContents() # clear cells
+            self.decRXTable.clearContents() # clear cells
+            #for byte in bytes:
+            for byte in np.arange(len(bytes)):
+                self.hexRXTable.setItem(0, byte, QTableWidgetItem(str(hex(bytes[byte]))))
+                self.decRXTable.setItem(0, byte, QTableWidgetItem(str(bytes[byte])))
+                bits = bin(bytes[byte])[2:]
+                slicedBits=bits[::-1]# slicing 
+                for b in np.arange(len(slicedBits)):
+                    self.RXTable.setItem(byte, n_bytes- b, QTableWidgetItem(slicedBits[b]))
+                    self.RXTable.item(byte,n_bytes- b).setBackground(QColor(self.get_color(int(slicedBits[b]))))
+        else:
+            self.TXTable.clearContents() # clear cells
+            self.hexTXTable.clearContents() # clear cells
+            self.decTXTable.clearContents() # clear cells
+            #for byte in bytes:
+            for byte in np.arange(len(bytes)):
+                self.hexTXTable.setItem(0, byte, QTableWidgetItem(str(hex(bytes[byte]))))
+                self.decTXTable.setItem(0, byte, QTableWidgetItem(str(bytes[byte])))
+                bits = bin(bytes[byte])[2:]
+                slicedBits=bits[::-1]# slicing 
+                for b in np.arange(len(slicedBits)):
+                    self.TXTable.setItem(byte, n_bytes- b, QTableWidgetItem(slicedBits[b]))
+                    self.TXTable.item(byte,n_bytes- b).setBackground(QColor(self.get_color(int(slicedBits[b]))))
+                    
     def set_index_value(self):
         index = self.IndexListBox.currentItem().text()
         self.set_index(index)
