@@ -115,6 +115,7 @@ class MainWindow(QMainWindow):
         self.setWindowTitle(self.__appName + "_" + self.__appVersion)
         self.setWindowIcon(QtGui.QIcon(self.__appIconDir))
         #self.adjustSize()
+        self.setGeometry(100,100,900,800)
         
         self.defaultSettingsWindow()
         self.defaultMessageWindow()
@@ -209,6 +210,8 @@ class MainWindow(QMainWindow):
         self.hexRXTable.horizontalHeader().setSectionResizeMode(QtWidgets.QHeaderView.Stretch)
         self.hexRXTable.resizeColumnsToContents()
         self.hexRXTable.clearContents() # clear cells
+        self.hexRXTable.setVerticalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
+        self.hexRXTable.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
 
         self.decRXTable = QTableWidget(self)  # Create a table
         self.decRXTable.setColumnCount(1)     #Set n columns
@@ -218,6 +221,9 @@ class MainWindow(QMainWindow):
         self.decRXTable.setHorizontalHeaderLabels(["Decimal"])
         self.decRXTable.verticalHeader().hide()
         self.decRXTable.horizontalHeader().setSectionResizeMode(QtWidgets.QHeaderView.Stretch)
+        self.decRXTable.setVerticalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
+        self.decRXTable.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
+        
         self.decRXTable.resizeColumnsToContents()
         self.decRXTable.clearContents() # clear cells
           
@@ -248,6 +254,9 @@ class MainWindow(QMainWindow):
         self.hexTXTable.verticalHeader().hide()
         self.hexTXTable.horizontalHeader().setSectionResizeMode(QtWidgets.QHeaderView.Stretch)
         self.hexTXTable.resizeColumnsToContents()
+        self.hexTXTable.setVerticalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
+        self.hexTXTable.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
+        
         self.hexTXTable.clearContents() # clear cells
 
         self.decTXTable = QTableWidget(self)  # Create a table
@@ -255,6 +264,8 @@ class MainWindow(QMainWindow):
         self.decTXTable.setRowCount(n_bytes)  # and n rows
         self.decTXTable.resizeColumnsToContents() # Do the resize of the columns by content
         self.decTXTable.setSizeAdjustPolicy(QtWidgets.QAbstractScrollArea.AdjustToContents)
+        self.decTXTable.setVerticalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
+        self.decTXTable.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
         self.decTXTable.setHorizontalHeaderLabels(["Decimal"])
         self.decTXTable.verticalHeader().hide()
         self.decTXTable.horizontalHeader().setSectionResizeMode(QtWidgets.QHeaderView.Stretch)
@@ -438,6 +449,7 @@ class MainWindow(QMainWindow):
                 self.set_nodeId(self.nodeComboBox.currentText())
             except Exception:
                 self.error_message(text="Make sure that the CAN interface is connected")
+                
         self.startButton = QPushButton("")
         self.startButton.setIcon(QIcon('graphics_utils/icons/icon_start.png'))
         self.startButton.setStatusTip('Send CAN message')
@@ -637,7 +649,14 @@ class MainWindow(QMainWindow):
             self.set_nodeId(self.nodeComboBox.currentText())
             self.set_index(str(_index))
             self.set_subIndex(str(_subIndex))
+        
         __apply_CANMessageSettings()   
+        self.TXProgressBar.setValue(0)
+        self.TXTable.clearContents() # clear cells
+        self.hexTXTable.clearContents() # clear cells
+        self.decTXTable.clearContents() # clear cells
+            
+            
         self.send_sdo_can()  
                         
     def write_can_message(self):
@@ -1311,7 +1330,7 @@ class MainWindow(QMainWindow):
         self.logger.notice("Processing data...")
         
         
-        self.logger.notice("Preparing an output file [%s.csv]..."%(rootdir[:-14]+"output_data/adc_data.csv"))
+        self.logger.notice("Preparing an output file [%s.csv]..."%(rootdir[:-14]+"output_data/adc_data"))
         self.out_file_csv = analysis_utils.open_csv_file(outname="adc_data", directory=rootdir[:-14]+"output_data" ) 
         # Write header to the data
         fieldnames = ['TimeStamp', 'Channel', "nodeId", "DLC", "ADCChannel", "ADCData" , "ADCDataConverted"]
@@ -1332,17 +1351,19 @@ class MainWindow(QMainWindow):
         except Exception:
             pass
         
+
+    def startRandomTimer(self, period =5000):
+        self.Randtimer = QtCore.QTimer(self)
+        self.Randtimer.timeout.connect(self.send_random_can)
+        self.Randtimer.start(period)
+
     def stopRandomTimer(self):
         try:
             self.Randtimer.stop()
         except Exception:
             pass
         
-    def startRandomTimer(self, period =5000):
-        self.Randtimer = QtCore.QTimer(self)
-        self.Randtimer.timeout.connect(self.send_random_can)
-        self.Randtimer.start(period)
-
+        
     def read_adc_channels(self):
         _adc_index = self.__adc_index
         _adc_channels_reg = self.get_adc_channels_reg()
@@ -1478,7 +1499,19 @@ class MainWindow(QMainWindow):
         RandomDumpMessage_action.setShortcut('Ctrl+G')
         RandomDumpMessage_action.setStatusTip('Send Random Messages to the bus')
         RandomDumpMessage_action.triggered.connect(self.send_random_can)
-                
+        
+#         trending_action = QAction(QIcon('graphics_utils/icons/icon_trend.jpg'), '&Trending', mainwindow)
+#         trending_action.setStatusTip('Data Trending')  # show when move mouse to the icon
+#         trending_action.setShortcut('Ctrl+T')
+# 
+#         def __trend():
+#             plot_adc = rootdir[:-14]+"/test_files/plot_adc.py"
+#             os.system("python3 "+plot_adc )
+#                     
+#         trending_action.triggered.connect(__trend)
+        
+
+        
         toolbar.addAction(canMessage_action)
         toolbar.addAction(settings_action)
         toolbar.addSeparator()
@@ -1486,7 +1519,8 @@ class MainWindow(QMainWindow):
         toolbar.addAction(runRandomMessage_action)
         toolbar.addAction(stopDumpMessage_action)
         toolbar.addAction(RandomDumpMessage_action)                          
-
+        toolbar.addSeparator()
+        #toolbar.addAction(trending_action)        
     '''
     Define child windows
     '''
