@@ -8,12 +8,9 @@ CHANNEL="can0"
 # SocketCAN script
 echo "CAN hardware OS drivers and config for" $CHANNEL
 sudo -S modprobe can
-sudo -S modprobe vcan
-sudo -S modprobe slcan
 sudo -S modprobe can-dev
 sudo -S modprobe can-raw
 sudo -S modprobe can-bcm
-sudo -S modprobe kvaser-usb
 sudo -S lsmod | grep can
 
 echo "Configuring the SocketCAN interface to bitrate of" $BITRATE
