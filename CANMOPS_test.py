@@ -5,7 +5,7 @@ import analib
 import time
 import logging
 import numpy as np
-from analysis import canWrapper
+from controlServer import canWrapper
 def test():
     # Define parameters
     NodeIds = wrapper.get_nodeList()
@@ -19,7 +19,7 @@ def test():
     while True:
         wrapper.writeCanMessage(SDO_RX + NodeIds[0], [Byte0,Byte1,Byte2,Byte3,0,0,0,0], flag=0, timeout=30)
         #Response from the node to master
-        cobid, data, dlc, flag, t = wrapper.readCanMessages()
+        cobid, data, dlc, flag, t = wrapper.read_can_message()
         print(f'ID: {cobid:03X}; Data: {data.hex()}, DLC: {dlc}')
         time.sleep(3)
     #   #write sdo message
@@ -51,7 +51,7 @@ def test():
 
 if __name__=='__main__':
     #wrapper = controlwrapper.Controlwrapper(interface = "AnaGate", set_channel =True)
-    wrapper = canWrapper.CanWrapper(interface = "socketcan", set_channel =True)
-    #wrapper = controlwrapper.Controlwrapper(interface = "Kvaser", set_channel =True)
+    #wrapper = canWrapper.CanWrapper(interface = "socketcan", set_channel =True)
+    wrapper = canWrapper.CanWrapper(interface = "Kvaser", set_channel =True)
     #wrapper.read_adc_channels()
     test()

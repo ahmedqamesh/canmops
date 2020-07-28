@@ -7,6 +7,7 @@ def set_channelConnection(channel=0,
                  openFlags=canlib.Open.ACCEPT_VIRTUAL,
                  bitrate=canlib.canBITRATE_500K,
                  outputControl=canlib.Driver.NORMAL):
+    
     ch = canlib.openChannel(channel, openFlags)
     print("Using channel: %s, EAN: %s" % (
         canlib.ChannelData(channel).device_name,

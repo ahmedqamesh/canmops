@@ -38,7 +38,7 @@ try:
     from canlib import canlib, Frame
     from canlib.canlib.exceptions import CanGeneralError
     from canlib.canlib import ChannelData
-    from analysis import CANopenConstants as coc
+    from controlServer import CANopenConstants as coc
 except:
     class CanGeneralError():
         pass
@@ -640,10 +640,12 @@ class CanWrapper(object):
                 timeout = 0xFFFFFFFF
             frame = Frame(id_=cobid, data=msg)  #  from tutorial
             self.__ch.writeWait(frame, timeout)
+        
         elif self.__interface == 'AnaGate':
             if not self.__ch.deviceOpen:
                 self.logger.notice('Reopening AnaGate CAN interface')
             self.__ch.write(cobid, msg, flag)
+        
         else:
             msg = can.Message(arbitration_id=cobid, data=msg, is_extended_id=False)
             try:
