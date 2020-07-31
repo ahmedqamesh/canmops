@@ -3,7 +3,7 @@ Application:
     app_version          :   "v1.1"
     app_icon_dir         :   "graphics_utils/icons/icon_mops.png"   
     can_settings         : True
-channel_ports:      {"0"}
+channel_ports:      {"0", "1"}
 
 Devices:    ["MOPS"] 
 

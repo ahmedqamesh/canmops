@@ -2,5 +2,6 @@ eclipse.preferences.version=1
 encoding//controlServer/CANopenConstants.py=utf-8
 encoding//controlServer/__version__.py=utf-8
 encoding//controlServer/objectDictionary.py=utf-8
+encoding//test_files/test_AnaGate.py=utf-8
 encoding/CANMOPS_GUI.py=utf-8
 encoding/CANMOPS_test.py=utf-8

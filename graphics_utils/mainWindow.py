@@ -1550,10 +1550,10 @@ class MainWindow(QMainWindow):
     def set_textBox_message(self, comunication_object=None, msg=None):
         if comunication_object == "SDO_RX"  :   
             color = QColor("green")
-            mode = "W    :"
+            mode = "RX   :"
         if comunication_object == "SDO_TX"  :   
             color = QColor("red") 
-            mode = "R    :"
+            mode = "TX   :"
         if comunication_object == "Decoded" :   
             color = QColor("blue")
             mode = "D    :"

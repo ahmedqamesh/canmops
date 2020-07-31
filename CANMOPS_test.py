@@ -50,7 +50,7 @@ def test():
 
 
 if __name__=='__main__':
-    #wrapper = controlwrapper.Controlwrapper(interface = "AnaGate", set_channel =True)
+    #wrapper = canWrapper.CanWrapper(interface = "AnaGate", set_channel =True)
     #wrapper = canWrapper.CanWrapper(interface = "socketcan", set_channel =True)
     wrapper = canWrapper.CanWrapper(interface = "Kvaser", set_channel =True)
     #wrapper.read_adc_channels()
