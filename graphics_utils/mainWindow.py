@@ -21,7 +21,7 @@ import matplotlib as mpl
 import numpy as np
 from random import randint
 from matplotlib.figure import Figure
-from graphics_utils import dataMonitoring , logWindow, childWindow, menuWindow
+from graphics_utils import dataMonitoring , childWindow, menuWindow
 from controlServer import analysis, analysis_utils , canWrapper
 import binascii
 from tqdm import tqdm
@@ -516,37 +516,37 @@ class MainWindow(QMainWindow):
     def set_connect(self):
         if self.connectButton.isChecked():
             _interface = self.get_interface()    
-            try: 
-                filename = rootdir[:-14]+self.config_dir +_interface+"_CANSettings.yml"
-                if (os.path.isfile(filename)and self.__canSettings):
-                    filename = os.path.join(rootdir[:-14],self.config_dir +_interface+"_CANSettings.yml")
-                    test_date =time.ctime(os.path.getmtime(filename))
-                    #Load settings from CAN settings file
-                    _canSettings = analysis_utils.open_yaml_file(file=self.config_dir +_interface+"_CANSettings.yml", directory=rootdir[:-14])
-                    self.logger.notice("Loading CAN settings from the file %s produced on %s"%(filename,test_date))
-                    _channels = _canSettings['CAN_Interfaces'][_interface]["channels"]
-                    _ipAddress = _canSettings['CAN_Interfaces'][_interface]["ipAddress"]
-                    _bitrate = _canSettings['CAN_Interfaces'][_interface]["bitrate"]
-                    _nodIds = _canSettings['CAN_Interfaces'][_interface]["nodIds"]
-                    
-                    #Update settings
-                    self.set_nodeList(_nodIds)
-                    self.set_channelPorts(list(str(_channels)))                
-                    self.set_channel(_channels)
-                    #Update buttons
-                    self.channelComboBox.clear()
-                    self.channelComboBox.addItems(list(str(_channels)))
-                    self.nodeComboBox.clear()
-                    self.nodeComboBox.addItems(list(map(str,_nodIds)))
-                    self.wrapper = canWrapper.CanWrapper(interface=_interface, bitrate = _bitrate, ipAddress = _ipAddress,
-                                                                channel = _channels, set_channel=True)
-                else:
-                    _channel = self.get_channel()
-                    _channels = analysis_utils.get_info_yaml(dictionary=self.__conf['CAN_Interfaces'], index=_interface, subindex="channels")
-                    _channels[_channel]
-                    self.wrapper = canWrapper.CanWrapper(interface=_interface, channel = _channel, set_channel=True)
-            except:
-                self.connectButton.setChecked(False)
+            #try: 
+            filename = rootdir[:-14]+self.config_dir +_interface+"_CANSettings.yml"
+            if (os.path.isfile(filename)and self.__canSettings):
+                filename = os.path.join(rootdir[:-14],self.config_dir +_interface+"_CANSettings.yml")
+                test_date =time.ctime(os.path.getmtime(filename))
+                #Load settings from CAN settings file
+                _canSettings = analysis_utils.open_yaml_file(file=self.config_dir +_interface+"_CANSettings.yml", directory=rootdir[:-14])
+                self.logger.notice("Loading CAN settings from the file %s produced on %s"%(filename,test_date))
+                _channels = _canSettings['CAN_Interfaces'][_interface]["channels"]
+                _ipAddress = _canSettings['CAN_Interfaces'][_interface]["ipAddress"]
+                _bitrate = _canSettings['CAN_Interfaces'][_interface]["bitrate"]
+                _nodIds = _canSettings['CAN_Interfaces'][_interface]["nodIds"]
+                
+                #Update settings
+                self.set_nodeList(_nodIds)
+                self.set_channelPorts(list(str(_channels)))                
+                self.set_channel(_channels)
+                #Update buttons
+                self.channelComboBox.clear()
+                self.channelComboBox.addItems(list(str(_channels)))
+                self.nodeComboBox.clear()
+                self.nodeComboBox.addItems(list(map(str,_nodIds)))
+                self.wrapper = canWrapper.CanWrapper(interface=_interface, bitrate = _bitrate, ipAddress = _ipAddress,
+                                                            channel = _channels, set_channel=True)
+            else:
+                _channel = self.get_channel()
+                _channels = analysis_utils.get_info_yaml(dictionary=self.__conf['CAN_Interfaces'], index=_interface, subindex="channels")
+                _channels[_channel]
+                self.wrapper = canWrapper.CanWrapper(interface=_interface, channel = _channel, set_channel=True)
+            #except:
+                #self.connectButton.setChecked(False)
         else:
            self.wrapper.stop()
            self.stopRandomTimer()
@@ -621,7 +621,7 @@ class MainWindow(QMainWindow):
         msg[0] = 0x40
         msg[1], msg[2] = index.to_bytes(2, 'little')
         msg[3] = subIndex
-        self.set_textBox_message(comunication_object="SDO_RX", msg=str(msg))
+        self.set_textBox_message(comunication_object="SDO_RX", msg=str([hex(m) for m in msg]))
         # printing response 
         self.set_textBox_message(comunication_object="SDO_TX", msg=str(response_from_node))
         # print decoded response
@@ -1550,13 +1550,13 @@ class MainWindow(QMainWindow):
     def set_textBox_message(self, comunication_object=None, msg=None):
         if comunication_object == "SDO_RX"  :   
             color = QColor("green")
-            mode = "RX   :"
+            mode = "RX [hex] :"
         if comunication_object == "SDO_TX"  :   
             color = QColor("red") 
-            mode = "TX   :"
+            mode = "TX [dec] :"
         if comunication_object == "Decoded" :   
             color = QColor("blue")
-            mode = "D    :"
+            mode = "D [hex] :"
         
         self.textBox.setTextColor(color)
         self.textBox.append(mode + msg)

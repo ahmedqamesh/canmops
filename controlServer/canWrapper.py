@@ -25,15 +25,12 @@ import verboselogs
 import coloredlogs as cl
 # Other files
 from controlServer import __version__
-from controlServer import objectDictionary
-    
+#from controlServer import objectDictionary
 try:
     import can
     import socket
-    
 except:
     print (colored("Warning: socketcan Package is not installed.......", 'red'), colored("Please ignore the warning if you are not using any socketcan drivers.", "green"))
-
 try:
     from canlib import canlib, Frame
     from canlib.canlib.exceptions import CanGeneralError
@@ -177,20 +174,20 @@ class CanWrapper(object):
         
     def set_channelConnection(self, interface=None):
         self.logger.notice('Setting the channel ...')
-        try:
-            if interface == 'Kvaser':
-                self.__ch = canlib.openChannel(self.__channel, canlib.canOPEN_ACCEPT_VIRTUAL)
-                self.__ch.setBusParams(self.__bitrate)
-                self.logger.notice('Going in \'Bus On\' state ...')
-                self.__ch.busOn()
-            elif interface == 'AnaGate':
-                self.__ch = analib.Channel(ipAddress=self.__ipAddress, port=self.__channel, baudrate=self.__bitrate)
-            else:
-                channel = "can"+str(self.__channel)
-                self.__ch = can.interface.Bus(bustype=interface, channel=channel, bitrate=self.__bitrate)     
-        except Exception:
-            self.logger.error("TCP/IP or USB socket error in %s interface"%interface)
-            sys.exit(1)
+        #try:
+        if interface == 'Kvaser':
+            self.__ch = canlib.openChannel(self.__channel, canlib.canOPEN_ACCEPT_VIRTUAL)
+            self.__ch.setBusParams(self.__bitrate)
+            self.logger.notice('Going in \'Bus On\' state ...')
+            self.__ch.busOn()
+        elif interface == 'AnaGate':
+            self.__ch = analib.Channel(ipAddress=self.__ipAddress, port=self.__channel, baudrate=self.__bitrate)
+        else:
+            channel = "can"+str(self.__channel)
+            self.__ch = can.interface.Bus(bustype=interface, channel=channel, bitrate=self.__bitrate)     
+        #except Exception:
+        #    self.logger.error("TCP/IP or USB socket error in %s interface"%interface)
+        #    sys.exit(1)
         self.logger.success(str(self))        
     
     def start_channelConnection(self, interface=None):
@@ -659,7 +656,7 @@ class CanWrapper(object):
         Pass channel string (example 'can0') to configure OS level drivers and interface.
         '''
         self.logger.info('CAN hardware OS drivers and config for %s'%channel)
-        os.system(". " + scrdir + "/socketcan_install.sh")
+        os.system(". " + scrdir + "/socketcan_enable.sh")
             
     def read_can_message(self):
         """Read incoming |CAN| messages and store them in the queue

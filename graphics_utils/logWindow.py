@@ -5,6 +5,7 @@ from PyQt5.QtWidgets import *
 from PyQt5.QtCore import QDateTime, Qt, QTimer, pyqtSlot
 from matplotlib.backends.qt_compat import QtCore, QtWidgets
 #from analysis import logger
+
 import logging
 from logging.handlers import RotatingFileHandler
 import verboselogs

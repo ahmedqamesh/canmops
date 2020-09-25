@@ -1,15 +1,9 @@
-import sys
-import logging
-loglevel = logging.getLogger('Analysis').getEffectiveLevel()
-#from analysis import logger
-import matplotlib.pyplot as plt
 from matplotlib.backends.qt_compat import QtCore, QtWidgets
 from matplotlib.backends.backend_qt5agg import FigureCanvas
 from PyQt5.QtCore    import *
 from PyQt5.QtGui     import *
 from PyQt5.QtWidgets import *
 from graphics_utils import mainWindow
-import yaml
 class MenuBar(QWidget):  
     
     def __init__(self,parent=mainWindow):

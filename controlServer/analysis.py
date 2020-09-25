@@ -7,7 +7,6 @@ import numba
 import tables as tb
 from tqdm import tqdm
 from scipy.optimize import curve_fit
-
 class Analysis(object):
     
     def __init__(self):

@@ -1,5 +1,5 @@
 Application:
-    app_name             :   'CANMoPS'
+    app_name             :   'CANMOPS'
     app_version          :   "v1.1"
     app_icon_dir         :   "graphics_utils/icons/icon_mops.png"   
     can_settings         : True
@@ -10,7 +10,7 @@ Devices:    ["MOPS"]
 default_values:
     index_items     : ["0x1000"]
     bitrate_items   : ["10000", "20000", "50000", "62500", "100000", "125000", "250000", "500000", "1000000"]     
-    bytes           : ["64","0","16","0","0","0","0","0"] 
+    bytes           : ["40","0","10","0","0","0","0","0"] 
     subIndex        : "0"
     cobid           : "0x601"
     dlc             : "8"
