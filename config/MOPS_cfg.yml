@@ -1,7 +1,7 @@
 Application:
     device_name             :   'MOPS'
     device_version          :   "v1.0"
-    icon_dir                :   "graphics_utils/icons/icon_mops.png"
+    icon_dir                :   "graphicsUtils/icons/icon_mops.png"
     nodeIds                 :   {"1", "8"}
     index_items             :   {  
                                 "0x1000" :  {"description_items" :"<html><b> Device type</b> [Default 191(hex)]</b></html>",

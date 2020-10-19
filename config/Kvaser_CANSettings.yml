@@ -1,6 +1,6 @@
 CAN_Interfaces:
   Kvaser:
-    bitrate: 125000
+    bitrate: null
     channels: 0
     ipAddress: None
     nodIds:

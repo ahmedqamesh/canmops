@@ -2,12 +2,17 @@
 # variables
 BITRATE=125000
 CHANNEL="can0"
-#Install python-can
-#pip install python-can
+#echo "Unloading all the kernel modules if on"
+#sudo modprobe -r can_bcm
+#sudo modprobe -r systec_can
+#sudo modprobe -r can_raw
+#sudo modprobe -r can
+#sudo modprobe -r can_dev
 
 # SocketCAN script
 echo "CAN hardware OS drivers and config for" $CHANNEL
 sudo -S modprobe can
+sudo -S modprobe systec_can
 sudo -S modprobe can-dev
 sudo -S modprobe can-raw
 sudo -S modprobe can-bcm

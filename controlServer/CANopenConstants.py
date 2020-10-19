@@ -17,6 +17,7 @@ try:
     from canlib import canlib
 except Exception:
     pass
+
 MAX_DATABYTES = 8
 """:obj:`int` : The maxmimum number of data bytes in a standard |CAN|
 message"""

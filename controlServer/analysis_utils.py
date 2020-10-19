@@ -1,47 +1,25 @@
 
 from __future__ import division
-from tqdm import tqdm
-from scipy.optimize import curve_fit
 import logging
 import os
-import logging
-import argparse
 import yaml
-import json
-import ast
-from mpl_toolkits.axes_grid1 import make_axes_locatable
-from matplotlib.backends.backend_pdf import PdfPages
-import matplotlib.ticker as ticker
-from matplotlib.ticker import MaxNLocator
-from matplotlib.colors import LogNorm
-from scipy.optimize import curve_fit
-from scipy import interpolate
+#from mpl_toolkits.axes_grid1 import make_axes_locatable
+#from matplotlib.backends.backend_pdf import PdfPages
+#import matplotlib.ticker as ticker
+#from matplotlib.ticker import MaxNLocator
+#from matplotlib.colors import LogNorm
+#import matplotlib.pyplot as plt
+#from matplotlib import gridspec
+#from scipy import interpolate
 import tables as tb
 import numpy as np
-import matplotlib.pyplot as plt
-from matplotlib import gridspec
 import pandas as pd
-import time
-import random
-from numba import njit
 import csv
 from pathlib import Path
 from logging.handlers import RotatingFileHandler
 import coloredlogs as cl
-import verboselogs
-        
-def define_configured_array(size_x=1, z=20, x=20, size_z=1):
-    #log.info('Creating a configuration array for the snake pattern')
-    config_beamspot = np.zeros(shape=(z, 5), dtype=np.float64)
-    for step_z in np.arange(0, z):
-        if step_z % 2 == 0:
-            a, b, c = 0, x, 1
-        else:
-            size_x = size_x * -1
-            a, b, c = x - 1, -1, -1
-        config_beamspot[step_z] = a, b, c, size_x, size_z
-    return config_beamspot
-
+#import verboselogs
+    
 def save_to_h5(data=None, outname=None, directory=None, title = "Beamspot scan results"):
     if not os.path.exists(directory):
             os.mkdir(directory)

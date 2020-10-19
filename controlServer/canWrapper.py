@@ -4,14 +4,12 @@ import time
 import datetime
 import sys
 import os
-from matplotlib.backends.backend_qt5agg import FigureCanvas
-from matplotlib.backends.qt_compat import QtCore, QtWidgets
 from PyQt5.QtCore    import *
 from PyQt5.QtGui     import *
 from PyQt5.QtWidgets import *
-from pathlib import Path
+# from pathlib import Path
 from threading import Thread, Event, Lock
-import matplotlib as mpl
+# import matplotlib as mpl
 import numpy as np
 from controlServer import analysis, analysis_utils
 # Third party modules
@@ -20,17 +18,15 @@ from tqdm import tqdm
 import ctypes as ct
 import logging
 from termcolor import colored
-from logging.handlers import RotatingFileHandler
 import verboselogs
 import coloredlogs as cl
 # Other files
 from controlServer import __version__
-#from controlServer import objectDictionary
 try:
     import can
-    import socket
+    #import socket
 except:
-    print (colored("Warning: socketcan Package is not installed.......", 'red'), colored("Please ignore the warning if you are not using any socketcan drivers.", "green"))
+    print (colored("Warning: SocketCAN Package is not installed.......", 'red'), colored("Please ignore the warning if you are not using any socketcan drivers.", "green"))
 try:
     from canlib import canlib, Frame
     from canlib.canlib.exceptions import CanGeneralError
@@ -39,7 +35,7 @@ try:
 except:
     class CanGeneralError():
         pass
-    print (colored("Warning: Canlib Package is not installed.......", 'red'), colored("Please ignore the warning if you are not using any Kvaser commercial controllers.", "green"))
+    print (colored("Warning: Canlib Package is not installed.......", 'red'), colored("Please ignore the warning if you are not using any CANLib packages (in case SocketCAN is used)", "green"))
 
 try:
     import analib
@@ -47,19 +43,17 @@ except:
     print (colored("Warning: AnaGate Package is not installed.......", 'red'), colored("Please ignore the warning if you are not using any AnaGate commercial controllers.", "green"))
 
 scrdir = os.path.dirname(os.path.abspath(__file__))
-class BusEmptyError(Exception):
-    pass
+# class BusEmptyError(Exception):
+#    pass
 
 
 class CanWrapper(object):
 
-    def __init__(self, parent=None,
-                 config=None, interface=None,
-                 device=None,channel=None, 
-                 bitrate=None,ipAddress=None,
+    def __init__(self,
+                 interface=None, channel=None,
+                 bitrate=None, ipAddress=None,
                  set_channel=False,
                  console_loglevel=logging.INFO,
-                 file_loglevel=logging.INFO,
                  logformat='%(asctime)s - %(levelname)s - %(message)s'):
        
         super(CanWrapper, self).__init__()  # super keyword to call its methods from a subclass:
@@ -70,11 +64,7 @@ class CanWrapper(object):
         self.logger = logging.getLogger(__name__)
         cl.install(fmt=logformat, level=console_loglevel, isatty=True, milliseconds=True)
         # Read configurations from a file
-        if config is None:
-            self.__conf = analysis_utils.open_yaml_file(file=config_dir + "main_cfg.yml", directory=scrdir[:-14])
-        self._index_items = self.__conf["default_values"]["index_items"]
-        self.__devices = self.__conf["Devices"]      
-        self.__adctrim = self.__conf["default_values"]["adctrim"]
+        self.__conf = analysis_utils.open_yaml_file(file=config_dir + "main_cfg.yml", directory=scrdir[:-14])
         self.__bitrate_items = self.__conf['default_values']['bitrate_items']
         self.__bytes = self.__conf["default_values"]["bytes"]
         self.__subIndex = self.__conf["default_values"]["subIndex"]
@@ -83,7 +73,7 @@ class CanWrapper(object):
         self.__channelPorts = self.__conf["channel_ports"]
         self.__ipAddress = analysis_utils.get_info_yaml(dictionary=self.__conf['CAN_Interfaces'], index=interface, subindex="ipAddress")
         self.__bitrate = analysis_utils.get_info_yaml(dictionary=self.__conf['CAN_Interfaces'], index=interface, subindex="bitrate")
-        self.__channels  = analysis_utils.get_info_yaml(dictionary=self.__conf['CAN_Interfaces'], index=interface, subindex="channels")
+        self.__channels = analysis_utils.get_info_yaml(dictionary=self.__conf['CAN_Interfaces'], index=interface, subindex="channels")
         self.__channel = list(analysis_utils.get_info_yaml(dictionary=self.__conf['CAN_Interfaces'], index=interface, subindex="channels"))[0]         
         self.logger.notice('... Loading all the configurations!')
         # Initialize default arguments
@@ -105,7 +95,7 @@ class CanWrapper(object):
         self.__busOn = False  
         """:obj:`int` : Internal attribute for the channel index"""
         if channel is not None:
-            self.__channel  = channel
+            self.__channel = channel
        
         """Internal attribute for the |CAN| channel"""
         self.__ch = None        
@@ -120,6 +110,7 @@ class CanWrapper(object):
         self.__kvaserLock = Lock()
         self.confirmNodes()
         self.logger.success('... Done!')
+
         # Import Object Dictionary from EDS
 #         self.logger.notice('Importing Object Dictionary ...')
 #         self.logger.debug('File path for EDS not given. Looking in '
@@ -145,10 +136,13 @@ class CanWrapper(object):
         
     def _parseBitRate(self, bitrate):
         if self.__interface == 'Kvaser':
-            if bitrate not in coc.CANLIB_BITRATES:
-                raise ValueError(f'Bitrate {bitrate} not in list of allowed '
-                                 f'values!')
-            return coc.CANLIB_BITRATES[bitrate]
+            try: 
+                if bitrate not in coc.CANLIB_BITRATES:
+                    raise ValueError(f'Bitrate {bitrate} not in list of allowed '
+                                     f'values!')
+                return coc.CANLIB_BITRATES[bitrate]
+            except Exception:
+                pass
         if self.__interface == 'AnaGate':
             if bitrate not in analib.constants.BAUDRATES:
                 raise ValueError(f'Bitrate {bitrate} not in list of allowed '
@@ -160,7 +154,7 @@ class CanWrapper(object):
     def confirmNodes(self, timeout=100):
         self.logger.notice('Checking bus connections ...')
         for channel in self.__channels:
-            _nodeIds =self.__channels[channel]
+            _nodeIds = self.__channels[channel]
             self.set_nodeList(_nodeIds)
             self.logger.info(f'Connection to channel {channel} has been ' f'verified.')
             for nodeId in _nodeIds:
@@ -174,20 +168,20 @@ class CanWrapper(object):
         
     def set_channelConnection(self, interface=None):
         self.logger.notice('Setting the channel ...')
-        #try:
-        if interface == 'Kvaser':
-            self.__ch = canlib.openChannel(self.__channel, canlib.canOPEN_ACCEPT_VIRTUAL)
-            self.__ch.setBusParams(self.__bitrate)
-            self.logger.notice('Going in \'Bus On\' state ...')
-            self.__ch.busOn()
-        elif interface == 'AnaGate':
-            self.__ch = analib.Channel(ipAddress=self.__ipAddress, port=self.__channel, baudrate=self.__bitrate)
-        else:
-            channel = "can"+str(self.__channel)
-            self.__ch = can.interface.Bus(bustype=interface, channel=channel, bitrate=self.__bitrate)     
-        #except Exception:
-        #    self.logger.error("TCP/IP or USB socket error in %s interface"%interface)
-        #    sys.exit(1)
+        try:
+            if interface == 'Kvaser':
+                self.__ch = canlib.openChannel(self.__channel, canlib.canOPEN_ACCEPT_VIRTUAL)
+                self.__ch.setBusParams(self.__bitrate)
+                self.logger.notice('Going in \'Bus On\' state ...')
+                self.__ch.busOn()
+            elif interface == 'AnaGate':
+                self.__ch = analib.Channel(ipAddress=self.__ipAddress, port=self.__channel, baudrate=self.__bitrate)
+            else:
+                channel = "can" + str(self.__channel)
+                self.__ch = can.interface.Bus(bustype=interface, channel=channel, bitrate=self.__bitrate)     
+        except Exception:
+            self.logger.error("TCP/IP or USB socket error in %s interface"%interface)
+            sys.exit(1)
         self.logger.success(str(self))        
     
     def start_channelConnection(self, interface=None):
@@ -219,30 +213,31 @@ class CanWrapper(object):
         """
         
         count = 0
-        while count<2:#True:
-            #count = 0 if count == 10 else count
+        while count < 2:  # True:
+            # count = 0 if count == 10 else count
              # Loop over all channelPorts
             for channel in self.__channelPorts:
             # Loop over all connected CAN nodeIds
-                _nodeIds =self.__channels[int(channel)]
+                _nodeIds = self.__channels[int(channel)]
                 for nodeId in _nodeIds:                                                       
-                    #Read ADC channels
+                    # Read ADC channels
                     _adc_channels_reg = self.__adc_channels_reg
                     _dictionary = self.__dictionary_items
                     _adc_index = self.__adc_index
-                    _subIndexItems = list(analysis_utils.get_subindex_yaml(dictionary=_dictionary, index=_adc_index, subindex ="subindex_items"))
-                    pbar = tqdm(total=len(_subIndexItems)*10,desc="ADC channels",iterable=True)
+                    _subIndexItems = list(analysis_utils.get_subindex_yaml(dictionary=_dictionary, index=_adc_index, subindex="subindex_items"))
+                    pbar = tqdm(total=len(_subIndexItems) * 10, desc="ADC channels", iterable=True)
                     for i in np.arange(len(_subIndexItems)):
                         _index = int(_adc_index, 16)
                         _subIndex = int(_subIndexItems[i], 16)
-                        adcVals = self.send_sdo_can(nodeId, _index,_subIndex, 3000)
-                        #self.__mypyDCs[nodeId].write('ADCTRIM')
+                        adcVals = self.send_sdo_can(nodeId, _index, _subIndex, 3000)
+                        # self.__mypyDCs[nodeId].write('ADCTRIM')
                         if adcVals is not None:
-                            vals = analysis.Analysis().adc_conversion(_adc_channels_reg[str(i)],adcVals)
+                            vals = analysis.Analysis().adc_conversion(_adc_channels_reg[str(i)], adcVals)
                         pbar.update(10)
                     pbar.close()
                     #
             count += 1
+
     def stop(self):
         """Close |CAN| channel and stop the |OPCUA| server
         Make sure that this is called so that the connection is closed in a
@@ -428,6 +423,7 @@ class CanWrapper(object):
             self.start()
         else:
             self.__ch.baudrate = bitrate     
+
     @property
     def mypyDCs(self):
         """:obj:`dict`: Dictionary containing |DCS| Controller mirror classes.
@@ -495,7 +491,7 @@ class CanWrapper(object):
         messageValid = False
         while time.perf_counter() - t0 < timeout / 1000:
             with self.__lock:
-                #check the message validity [nodid, msg size,...]
+                # check the message validity [nodid, msg size,...]
                 for i, (cobid_ret, ret, dlc, flag, t) in zip(range(len(self.__canMsgQueue)), self.__canMsgQueue):
                     messageValid = (dlc == 8 
                                     and cobid_ret == SDO_TX + nodeId
@@ -520,10 +516,10 @@ class CanWrapper(object):
                               f'{nodeId} with abort code {abort_code:08X}')
             self.cnt['SDO read abort'] += 1
             return None
-        #Here some Bitwise Operators are needed to perform  bit by bit operation
+        # Here some Bitwise Operators are needed to perform  bit by bit operation
         # ret[0] =67 [bin(ret[0]) = 0b1000011] //from int to binary
-        #(ret[0] >> 2) will divide ret[0] by 2**2 [Returns ret[0] with the bits shifted to the right by 2 places. = 0b10000]
-        #(ret[0] >> 2) & 0b11 & Binary AND Operator [copies a bit to the result if it exists in both operands = 0b0]
+        # (ret[0] >> 2) will divide ret[0] by 2**2 [Returns ret[0] with the bits shifted to the right by 2 places. = 0b10000]
+        # (ret[0] >> 2) & 0b11 & Binary AND Operator [copies a bit to the result if it exists in both operands = 0b0]
         # 4 - ((ret[0] >> 2) & 0b11) for expedited transfer the object dictionary does not get larger than 4 bytes.
         nDatabytes = 4 - ((ret[0] >> 2) & 0b11) if ret[0] != 0x42 else 4
         data = []
@@ -574,7 +570,7 @@ class CanWrapper(object):
         msg[4:] = [data[i] for i in range(4)]
         # Send the request message
         try:
-            self.writeCanMessage(cobid, msg,timeout=timeout)
+            self.writeCanMessage(cobid, msg, timeout=timeout)
         except CanGeneralError:
             self.cnt['SDO write request timeout'] += 1
             return False
@@ -617,7 +613,6 @@ class CanWrapper(object):
             self.logger.success('SDO write protocol successful!')
         return True
     
-    
     def writeCanMessage(self, cobid, msg, flag=0, timeout=None):
         """Combining writing functions for different |CAN| interfaces
         Parameters
@@ -648,14 +643,14 @@ class CanWrapper(object):
             try:
                 self.__ch.send(msg)
             except can.CanError:
-                self.hardwareConfig("can"+str(self.__channel))
+                self.hardwareConfig("can" + str(self.__channel))
             
     def hardwareConfig(self, channel):
 
         '''
         Pass channel string (example 'can0') to configure OS level drivers and interface.
         '''
-        self.logger.info('CAN hardware OS drivers and config for %s'%channel)
+        self.logger.info('CAN hardware OS drivers and config for %s' % channel)
         os.system(". " + scrdir + "/socketcan_enable.sh")
             
     def read_can_message(self):
@@ -703,7 +698,7 @@ class CanWrapper(object):
             Function pointer to the callback function
         """
 
-        def cbFunc(cobid, data, dlc, flag, handle):
+        def cbFunc(cobid, data, dlc, flag):
             """Callback function.
 
             Appends incoming messages to the message queue and logs them.
@@ -722,8 +717,6 @@ class CanWrapper(object):
                 Data Length Code
             flag : :obj:`int`
                 Message flags
-            handle : :obj:`int`
-                Internal handle of the AnaGate channel. Just needed for the API
                 class to work.
             """
             data = ct.string_at(data, dlc)
