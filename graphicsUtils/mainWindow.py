@@ -409,20 +409,29 @@ class MainWindow(QMainWindow):
         nodeLabel.setText("NodeId ")
         self.nodeComboBox = QComboBox()
         self.nodeComboBox.setStatusTip('Connected CAN Nodes as defined in the main_cfg.yml file')
-
+        self.nodeComboBox.setFixedSize(70,25)
+        
+        cobidLabel = QLabel("CobId", self)
+        cobidLabel.setText("   CobId   ")
+        self.mainCobIdTextBox = QLineEdit(self.__cobid, self)
+        self.mainCobIdTextBox.setFixedSize(70,25)
+        
         indexLabel = QLabel("Index", self)
         indexLabel.setText("   Index   ")
         self.mainIndexTextBox = QLineEdit("0x1000", self)
+        self.mainIndexTextBox.setFixedSize(70,25)
         
         subIndexLabel = QLabel("    SubIndex", self)
         subIndexLabel.setText("SubIndex")
         self.mainSubIndextextbox = QLineEdit(self.__subIndex, self)
-
+        self.mainSubIndextextbox.setFixedSize(70,25)
+        
         def __apply_CANMessageSettings():
             try:
                 self.set_index(self.mainIndexTextBox.text())
                 self.set_subIndex(self.mainSubIndextextbox.text())
                 self.set_nodeId(self.nodeComboBox.currentText())
+                self.set_cobid(self.mainCobIdTextBox.text())
             except Exception:
                 self.error_message(text="Make sure that the CAN interface is connected")
                 
@@ -433,11 +442,16 @@ class MainWindow(QMainWindow):
         self.startButton.clicked.connect(self.send_sdo_can)                 
         defaultMessageWindowLayout.addWidget(nodeLabel, 3, 0)
         defaultMessageWindowLayout.addWidget(self.nodeComboBox, 4, 0)   
-        defaultMessageWindowLayout.addWidget(indexLabel, 3, 1)
-        defaultMessageWindowLayout.addWidget(self.mainIndexTextBox, 4, 1)
-        defaultMessageWindowLayout.addWidget(subIndexLabel, 3, 2)
-        defaultMessageWindowLayout.addWidget(self.mainSubIndextextbox, 4, 2)       
-        defaultMessageWindowLayout.addWidget(self.startButton, 4, 3)
+        
+        defaultMessageWindowLayout.addWidget(cobidLabel, 3, 1)
+        defaultMessageWindowLayout.addWidget(self.mainCobIdTextBox, 4, 1)
+        
+        defaultMessageWindowLayout.addWidget(indexLabel, 3, 2)
+        defaultMessageWindowLayout.addWidget(self.mainIndexTextBox, 4, 2)        
+        
+        defaultMessageWindowLayout.addWidget(subIndexLabel, 3, 3)
+        defaultMessageWindowLayout.addWidget(self.mainSubIndextextbox, 4, 3)       
+        defaultMessageWindowLayout.addWidget(self.startButton, 4, 4)
 
         self.setCentralWidget(plotframe)
         plotframe.setLayout(defaultMessageWindowLayout)
@@ -515,12 +529,12 @@ class MainWindow(QMainWindow):
                 self.nodeComboBox.clear()
                 self.nodeComboBox.addItems(list(map(str, _nodIds)))
                 self.wrapper = canWrapper.CanWrapper(interface=_interface, bitrate=_bitrate, ipAddress=_ipAddress,
-                                                            channel=_channels, set_channel=True)
+                                                            channel=_channels)
             else:
                 _channel = self.get_channel()
                 _channels = analysis_utils.get_info_yaml(dictionary=self.__conf['CAN_Interfaces'], index=_interface, subindex="channels")
                 _channels[_channel]
-                self.wrapper = canWrapper.CanWrapper(interface=_interface, channel=_channel, set_channel=True)
+                self.wrapper = canWrapper.CanWrapper(interface=_interface, channel=_channel)
             # except:
                 # self.connectButton.setChecked(False)
         else:
@@ -568,7 +582,7 @@ class MainWindow(QMainWindow):
         
         # Apply the settings to the main server
         self.wrapper = canWrapper.CanWrapper(interface=_interface, bitrate=_bitrate, ipAddress=str(_ipAddress),
-                                            channel=int(_channel), set_channel=True)
+                                            channel=int(_channel))
         #except Exception:
         #   self.error_message(text="Please choose an interface or close the window")
     '''
@@ -596,7 +610,7 @@ class MainWindow(QMainWindow):
         # printing the read message with cobid = SDO_RX + nodeId
         MAX_DATABYTES = 8
         msg = [0 for i in range(MAX_DATABYTES)]
-        msg[0] = 0x40
+        msg[0] = 0x40   # Defines a read (reads data only from the node) dictionary object in CANOPN standard
         msg[1], msg[2] = index.to_bytes(2, 'little')
         msg[3] = subIndex
         self.set_textBox_message(comunication_object="SDO_RX", msg=str([hex(m)[2:] for m in msg]))
@@ -930,7 +944,7 @@ class MainWindow(QMainWindow):
     def deviceChildWindow(self, ChildWindow):
         
         def __status_device():
-            #  check if the MOPS is alive or not. MOPS should repond with a CAN message
+            #  check if the MOPS is alive or not. MOPS should respond with a CAN message
             try:
                 cobid = 0x701
                 bytes = [0, 0, 0, 0, 0, 0, 0, 0]
@@ -965,15 +979,21 @@ class MainWindow(QMainWindow):
         
         nodeLabel = QLabel("", self)
         nodeLabel.setText("Connected nodes :")
-        
+                
         deviceNodeComboBox = QComboBox(self)
         nodeItems = self.__nodeIds
         self.set_nodeList(nodeItems)
         for item in list(map(str, nodeItems)): deviceNodeComboBox.addItem(item)
 
+        cobidLabel = QLabel("CobId", self)
+        cobidLabel.setText("CobId")
+        CobIdTextBox = QLineEdit(self.__cobid, self)
+        CobIdTextBox.setFixedSize(70,25)
+            
         def __set_bus():
             self.set_nodeId(deviceNodeComboBox.currentText())
-        
+            self.set_cobid(CobIdTextBox.text())
+                   
         self.GridLayout = QGridLayout()    
         icon = QLabel(self)
         pixmap = QPixmap(self.get_icon_dir())
@@ -986,11 +1006,12 @@ class MainWindow(QMainWindow):
         BottonHLayout = QHBoxLayout()
         startButton = QPushButton("")
         startButton.setIcon(QIcon('graphicsUtils/icons/icon_start.png'))
+        startButton.setStatusTip('Send CAN message')  # show when move mouse to the icon
         startButton.clicked.connect(__set_bus)
         startButton.clicked.connect(self.send_sdo_can)
 
         def __reset_device():
-            self.set_cobid(0x0)
+            #self.set_cobid(0x0)
             self.set_bytes([0, 0, 0, 0, 0, 0, 0, 0]) 
             self.write_can_message()
             
@@ -1004,10 +1025,10 @@ class MainWindow(QMainWindow):
         trendingButton.clicked.connect(self.show_trendWindow)
         
         BottonHLayout.addWidget(startButton)
-        BottonHLayout.addWidget(restartButton)
+        #BottonHLayout.addWidget(restartButton)
         # BottonHLayout.addWidget(trendingButton)
         
-        firstVLayout = QVBoxLayout()              
+        firstVLayout = QVBoxLayout()
         firstVLayout.addWidget(icon)
         firstVLayout.addWidget(device_title)
         firstVLayout.addLayout(BottonHLayout)
@@ -1056,7 +1077,7 @@ class MainWindow(QMainWindow):
         HLayout.addSpacing(350)
         HLayout.addWidget(close_button)
         
-        # Add Adc channels tab
+        # Add Adc channels tab [These values will be updated with the timer self.initiateTimer]
         self.adcValuesWindow()
         self.monitoringValuesWindow()
         self.configurationValuesWindow()
@@ -1066,18 +1087,22 @@ class MainWindow(QMainWindow):
         nodeHLayout = QHBoxLayout()
         nodeHLayout.addWidget(nodeLabel)
         nodeHLayout.addWidget(deviceNodeComboBox)
-        nodeHLayout.addSpacing(300)
+        nodeHLayout.addSpacing(600)
         
+        codidLayout = QHBoxLayout()
+        codidLayout.addWidget(cobidLabel)
+        codidLayout.addWidget(CobIdTextBox)
+        codidLayout.addSpacing(600)
         self.tabLayout.addLayout(channelHLayout, 0, 0)
         self.tabLayout.addLayout(nodeHLayout, 1, 0)
-        self.tabLayout.addWidget(self.devicetTabs, 2, 0)
-        self.tabLayout.addLayout(HLayout, 3, 0)
+        self.tabLayout.addLayout(codidLayout, 2, 0)
+        self.tabLayout.addWidget(self.devicetTabs, 3, 0)
+        self.tabLayout.addLayout(HLayout, 4, 0)
 
         self.devicetTabs.addTab(self.tab1, "Object Dictionary")
         self.devicetTabs.addTab(self.tab2, "Device Channels") 
         
-        def __set_bus():
-            self.set_nodeId(deviceNodeComboBox.currentText())
+
             
         mainLayout = QGridLayout()     
         HBox = QHBoxLayout()
@@ -1118,8 +1143,8 @@ class MainWindow(QMainWindow):
             _subIndexItems = list(analysis_utils.get_subindex_yaml(dictionary=_dictionary, index=_adc_indices[i], subindex="subindex_items"))
             labelChannel = [_subIndexItems[k] for k in np.arange(len(_subIndexItems) * len(_adc_indices))]
             self.ChannelBox = [_subIndexItems[k] for k in np.arange(len(_subIndexItems) * len(_adc_indices))]
-            self.trendingBox = [_subIndexItems[k] for k in np.arange(len(_subIndexItems) * len(_adc_indices))]
-            self.trendingBotton = [_subIndexItems[k] for k in np.arange(len(_subIndexItems) * len(_adc_indices))]
+#             self.trendingBox = [_subIndexItems[k] for k in np.arange(len(_subIndexItems) * len(_adc_indices))]
+#             self.trendingBotton = [_subIndexItems[k] for k in np.arange(len(_subIndexItems) * len(_adc_indices))]
             _start_a = 1  # to ignore the first subindex
             a = 0
             for s in np.arange(_start_a, len(_subIndexItems)): 
@@ -1127,7 +1152,7 @@ class MainWindow(QMainWindow):
                 # self.y[s] = [0 for _ in range(2)]  # 10 data points
                 subindex_description_item = analysis_utils.get_subindex_description_yaml(dictionary=_dictionary, index=_adc_indices[i], subindex=_subIndexItems[s])
                 labelChannel[a] = QLabel("Channel", self)
-                labelChannel[a].setText("Ch" + str(s + 2) + ":")
+                labelChannel[a].setText("Ch" + str(s) + ":")
                 self.ChannelBox[a] = QLineEdit("", self)
                 self.ChannelBox[a].setStyleSheet("background-color: white; border: 1px inset black;")
                 self.ChannelBox[a].setReadOnly(True)
@@ -1139,15 +1164,15 @@ class MainWindow(QMainWindow):
                     icon_dir = 'graphicsUtils/icons/icon_thermometer.png'
                 pixmap = QPixmap(icon_dir)
                 icon.setPixmap(pixmap.scaled(20, 20))
-                self.trendingBotton[a] = QPushButton("")
-                self.trendingBotton[a].setObjectName(str(a))
-                self.trendingBotton[a].setIcon(QIcon('graphicsUtils/icons/icon_trend.jpg'))
-                self.trendingBotton[a].setStatusTip('Data Trending')
-                self.trendingBotton[a].clicked.connect(self.show_trendWindow)
-                self.trendingBox[a] = QCheckBox(str(s))
-                self.trendingBox[a].setStatusTip('Data Trending')
-                self.trendingBox[a].setChecked(False)
-                self.trendingBox[a].stateChanged.connect(self.stateBox)
+#                 self.trendingBotton[a] = QPushButton("")
+#                 self.trendingBotton[a].setObjectName(str(a))
+#                 self.trendingBotton[a].setIcon(QIcon('graphicsUtils/icons/icon_trend.jpg'))
+#                 self.trendingBotton[a].setStatusTip('Data Trending')
+#                 self.trendingBotton[a].clicked.connect(self.show_trendWindow)
+#                 self.trendingBox[a] = QCheckBox(str(s))
+#                 self.trendingBox[a].setStatusTip('Data Trending')
+#                 self.trendingBox[a].setChecked(False)
+#                 self.trendingBox[a].stateChanged.connect(self.stateBox)
                 grid_location = s - 1  # to relocate the boxes
                 col_len = int(len(_subIndexItems) / 2)
                 if grid_location < col_len:
@@ -1299,14 +1324,16 @@ class MainWindow(QMainWindow):
     def initiateTimer(self, period=50000):
         self.timer = QtCore.QTimer(self)
         self.control_logger.disabled = True
-        self.logger.notice("Processing data...")
+        self.logger.notice("Reading ADC data...")
         
-        self.logger.notice("Preparing an output file [%s.csv]..." % (lib_dir + "output_data/adc_data"))
-        self.out_file_csv = analysis_utils.open_csv_file(outname="adc_data", directory=lib_dir + "output_data") 
+        # A possibility to save the data into a file
+        #self.logger.notice("Preparing an output file [%s.csv]..." % (lib_dir + "output_data/adc_data"))
+        #self.out_file_csv = analysis_utils.open_csv_file(outname="adc_data", directory=lib_dir + "output_data") 
+        
         # Write header to the data
-        fieldnames = ['TimeStamp', 'Channel', "nodeId", "DLC", "ADCChannel", "ADCData" , "ADCDataConverted"]
-        writer = csv.DictWriter(self.out_file_csv, fieldnames=fieldnames)
-        writer.writeheader()
+        #fieldnames = ['TimeStamp', 'Channel', "nodeId", "DLC", "ADCChannel", "ADCData" , "ADCDataConverted"]
+        #writer = csv.DictWriter(self.out_file_csv, fieldnames=fieldnames)
+        #writer.writeheader()
         
         # Save data to a file
         self.timer.timeout.connect(self.read_adc_channels)
@@ -1317,6 +1344,7 @@ class MainWindow(QMainWindow):
     def stopTimer(self):
         try:
             self.timer.stop()
+            self.logger.notice("Stop reading ADC data...")
         except Exception:
             pass
 
@@ -1338,36 +1366,33 @@ class MainWindow(QMainWindow):
         _adc_indices = list(self.__adc_index)
         ts = time.time()
         a = 0
-        csv_writer = writer(self.out_file_csv)
+        #csv_writer = writer(self.out_file_csv)
         # Add contents of list as last row in the csv file
         for i in np.arange(len(_adc_indices)):
             _subIndexItems = list(analysis_utils.get_subindex_yaml(dictionary=_dictionary, index=_adc_indices[i], subindex="subindex_items"))
             self.set_index(_adc_indices[i])  # set index for later usage
             self.adc_converted = []
-            # pbar = tqdm(total=len(_subIndexItems)*10,desc="ADC channels",iterable=True)
             _start_a = 1  # to ignore the first subindex it is not ADC
             for s in np.arange(_start_a, len(_subIndexItems)):
                 self.set_subIndex(_subIndexItems[s])
                 data_point = self.send_sdo_can(print_sdo=False)
                 # self.out_file_csv.write("%i, %i, %i, %i,%i, %i, %i, %i\n"%(i,2,3,4,5,6,7,8))
                 correction = s - 1  # to relocate the boxes
-                self.adc_converted = np.append(self.adc_converted, analysis.Analysis().adc_conversion(_adc_channels_reg[str(s + 2)], data_point))
+                self.adc_converted = np.append(self.adc_converted, analysis.Analysis().adc_conversion(_adc_channels_reg[str(s)], data_point))
                 if self.adc_converted[correction] is not None:
                     self.ChannelBox[a].setText(str(round(self.adc_converted[correction], 3)))
-                    csv_writer.writerow((str(ts),
-                                         str(self.get_channel()),
-                                         str(self.get_nodeId()),
-                                         8,
-                                         str(a),
-                                         str(data_point),
-                                         str(round(self.adc_converted[correction], 3))))
+#                     csv_writer.writerow((str(ts),
+#                                          str(self.get_channel()),
+#                                          str(self.get_nodeId()),
+#                                          8,
+#                                          str(a),
+#                                          str(data_point),
+#                                          str(round(self.adc_converted[correction], 3))))
                     # if self.trendingBox[s].isChecked():
                     #    self.update_figure(data=self.adc_converted[correction], i=s)
                 else:
                     self.ChannelBox[a].setText(str(self.adc_converted[correction]))
                 a = a + 1
-             #   pbar.update(10)
-            # pbar.close()
         return self.adc_converted
 
     def read_monitoring_values(self):

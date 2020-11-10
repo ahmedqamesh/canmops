@@ -48,7 +48,6 @@ class CanWrapper(object):
     def __init__(self,
                  interface=None, channel=None,
                  bitrate=None, ipAddress=None,
-                 set_channel=False,
                  console_loglevel=logging.INFO,
                  logformat='%(asctime)s - %(levelname)s - %(message)s'):
        
@@ -95,8 +94,7 @@ class CanWrapper(object):
        
         """Internal attribute for the |CAN| channel"""
         self.__ch = None        
-        if set_channel:
-            self.set_channelConnection(interface=self.__interface)
+        self.set_channelConnection(interface=self.__interface)
 
         """Internal attribute for the |CAN| channel"""
         self.__busOn = True
@@ -173,6 +171,7 @@ class CanWrapper(object):
             elif interface == 'AnaGate':
                 self.__ch = analib.Channel(ipAddress=self.__ipAddress, port=self.__channel, baudrate=self.__bitrate)
             else:
+                
                 channel = "can" + str(self.__channel)
                 self.__ch = can.interface.Bus(bustype=interface, channel=channel, bitrate=self.__bitrate)     
         except Exception:
@@ -260,9 +259,14 @@ class CanWrapper(object):
                 self.__ch.close()
             else:
                 self.__ch.shutdown()
+                channel = "can" + str(self.__channel)
+                #os.system(". " + scrdir + "/socketcan_enable.sh")
+                #os.system("sudo -S ip link set down %s"%channel)
                 
         self.__busOn = False
         self.logger.warning('Stopping the server.')
+
+
         
     # Setter and getter functions
     def set_subIndex(self, x):
@@ -464,7 +468,6 @@ class CanWrapper(object):
         self.logger.notice("Reading an object via |SDO|")
         SDO_TX = 0x580  
         SDO_RX = 0x600
-        
         interface = self.get_interface()
         self.start_channelConnection(interface=interface)
         if nodeId is None or index is None or subindex is None:
@@ -609,13 +612,13 @@ class CanWrapper(object):
             self.logger.success('SDO write protocol successful!')
         return True
     
-    def writeCanMessage(self, cobid, msg, flag=0, timeout=None):
+    def writeCanMessage(self, cobid, data, flag=0, timeout=None):
         """Combining writing functions for different |CAN| interfaces
         Parameters
         ----------
         cobid : :obj:`int`
             |CAN| identifier
-        msg : :obj:`list` of :obj:`int` or :obj:`bytes`
+        data : :obj:`list` of :obj:`int` or :obj:`bytes`
             Data bytes
         flag : :obj:`int`, optional
             Message flag (|RTR|, etc.). Defaults to zero.
@@ -626,16 +629,17 @@ class CanWrapper(object):
         if self.__interface == 'Kvaser':
             if timeout is None:
                 timeout = 0xFFFFFFFF
-            frame = Frame(id_=cobid, data=msg)  #  from tutorial
+            frame = Frame(id_=cobid, data=data)  #  from tutorial
             self.__ch.writeWait(frame, timeout)
         
         elif self.__interface == 'AnaGate':
             if not self.__ch.deviceOpen:
                 self.logger.notice('Reopening AnaGate CAN interface')
-            self.__ch.write(cobid, msg, flag)
+            self.__ch.write(cobid, data, flag)
         
         else:
-            msg = can.Message(arbitration_id=cobid, data=msg, is_extended_id=False)
+            msg = can.Message(arbitration_id=cobid, data=data, is_extended_id=False)
+
             try:
                 self.__ch.send(msg)
             except can.CanError:

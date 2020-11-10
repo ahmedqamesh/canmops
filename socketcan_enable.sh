@@ -1,7 +1,11 @@
 #!/bin/bash
 # variables
+echo "Initializing SocketCAN...."
 BITRATE=125000
 CHANNEL="can0"
+echo "Bringing the driver down if Up"
+sudo -S ip link set down $CHANNEL
+
 #echo "Unloading all the kernel modules if on"
 #sudo modprobe -r can_bcm
 #sudo modprobe -r systec_can
@@ -21,6 +25,7 @@ sudo -S lsmod | grep can
 
 echo "Configuring the SocketCAN interface to bitrate of" $BITRATE
 sudo -S ip link set $CHANNEL type can bitrate $BITRATE
+
 echo "Bringing the driver  up"
 sudo -S ip link set up $CHANNEL
 ifconfig $CHANNEL
