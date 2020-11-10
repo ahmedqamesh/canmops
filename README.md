@@ -6,7 +6,7 @@ This Python package requires a working [Python 3.6](https://www.python.org/ "Off
 For more information contact ahmed.qamesh@cern.ch
 ```
 ## Dependencies
-All third-party Python packages that are needed are installed on-the-fly so you do not need to worry about these. The necessary AnaGate libraries are also included in this repository. For the use of Kvaser CAN interfaces you have to install the [Kvaser drivers](https://www.kvaser.com/downloads-kvaser/ "Kvaser download page") first which are avaiable for [Windows](https://www.kvaser.com/downloads-kvaser/?utm_source=software&utm_ean=7330130980013&utm_status=latest) and [Linux](https://www.kvaser.com/downloads-kvaser/?utm_source=software&utm_ean=7330130980754&utm_status=latest).
+All third-party Python packages that are needed can be found on the [Twiki](https://gitlab.cern.ch/aqamesh/canmops/-/wikis/home) page. The necessary AnaGate libraries are also included in this repository. For the use of Kvaser CAN interfaces you have to install the [Kvaser drivers](https://www.kvaser.com/downloads-kvaser/ "Kvaser download page") first which are avaiable for [Windows](https://www.kvaser.com/downloads-kvaser/?utm_source=software&utm_ean=7330130980013&utm_status=latest) and [Linux](https://www.kvaser.com/downloads-kvaser/?utm_source=software&utm_ean=7330130980754&utm_status=latest).
 
 ### System Requirements:
 Operating System: Windows and Linux
@@ -16,12 +16,12 @@ If you are using an AnaGate Ethernet CAN interface you will probably need to man
 It has happened that the USB port was not correctly reset after the Kvaser interface has been disconnected so that the connection to other USB devices could not be established. As a workaround I recommend rebooting the system.
 
 ## Documentation
-Documentation can be found under: https://github.com/ahmedqamesh/CANMoPs/wiki
+Documentation can be found under: https://gitlab.cern.ch/aqamesh/canmops/-/wikis/home
 
 ### Installation and usage
 Clone the repository to get a copy of the source code (for developers):
 ```
-git clone https://github.com/ahmedqamesh/CANMoPs.git
+git clone ssh://git@gitlab.cern.ch:7999/aqamesh/canmops.git
 ```
 Make sure that the CAN interface is connected and the needed software is installed.
 Simply in the home directory run:
