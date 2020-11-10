@@ -9,7 +9,6 @@ from PyQt5.QtGui     import *
 from PyQt5.QtWidgets import *
 # from pathlib import Path
 from threading import Thread, Event, Lock
-# import matplotlib as mpl
 import numpy as np
 from controlServer import analysis, analysis_utils
 # Third party modules
@@ -43,9 +42,6 @@ except:
     print (colored("Warning: AnaGate Package is not installed.......", 'red'), colored("Please ignore the warning if you are not using any AnaGate controllers.", "green"))
 
 scrdir = os.path.dirname(os.path.abspath(__file__))
-# class BusEmptyError(Exception):
-#    pass
-
 
 class CanWrapper(object):
 

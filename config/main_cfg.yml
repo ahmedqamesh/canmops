@@ -1,11 +1,11 @@
 Application:
     app_name             :   'CANMOPS'
-    app_version          :   "v1.1"
+    app_version          :   "v1.2"
     app_icon_dir         :   "graphicsUtils/icons/icon_mops.png"   
-    can_settings         : True
+    can_settings         : True     # Allow to load all the default settings from the last update [saved in $HOME/config/]
 channel_ports:      {"0", "1"}
 
-Devices:    ["MOPS"] 
+Devices:    ["MOPS"] #Configured devices
 
 default_values:
     index_items     : ["0x1000"]
@@ -14,7 +14,8 @@ default_values:
     subIndex        : "0"
     cobid           : "0x601"
     dlc             : "8"
-    adctrim         : 0    
+    adctrim         : 0  
+      
 CAN_Interfaces:   {"AnaGate"    :{"bitrate":125000 , "ipAddress":"192.168.1.254"    ,"timeout":500    ,"channels":{1: [1,2],0:[1,2]}},
                    "Kvaser"     :{"bitrate":125000 , "ipAddress":"None"             ,"timeout":500    ,"channels":{0: [1]}},
                    "socketcan"  :{"bitrate":125000 , "ipAddress":"None"             ,"timeout":500    ,"channels":{0: [1]}}}

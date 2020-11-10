@@ -444,7 +444,7 @@ class MainWindow(QMainWindow):
         self.defaultMessageGroupBox.setLayout(defaultMessageWindowLayout)
         
     def configure_DeviceBox(self, conf):
-        self.configureDeviceBoxGroupBox = QGroupBox("Message Settings")
+        self.configureDeviceBoxGroupBox = QGroupBox("Configured Devices")
         plotframe = QFrame(self)
         plotframe.setStyleSheet("QWidget { background-color: #eeeeec; }")
         plotframe.setLineWidth(0.6)
@@ -458,7 +458,7 @@ class MainWindow(QMainWindow):
             self.deviceButton.setIcon(QIcon('graphicsUtils/icons/icon_question.png'))
             self.deviceButton.clicked.connect(self.update_deviceBox)
         else:
-            deviceLabel.setText("Configured Device [" + self.__devices[0] + "]")
+            deviceLabel.setText("[" + self.__devices[0] + "]")
             self.update_deviceBox()
         self.configureDeviceBoxLayout.addWidget(deviceLabel)
         self.configureDeviceBoxLayout.addWidget(self.deviceButton)
@@ -599,18 +599,21 @@ class MainWindow(QMainWindow):
         msg[0] = 0x40
         msg[1], msg[2] = index.to_bytes(2, 'little')
         msg[3] = subIndex
-        self.set_textBox_message(comunication_object="SDO_RX", msg=str([hex(m) for m in msg]))
+        self.set_textBox_message(comunication_object="SDO_RX", msg=str([hex(m)[2:] for m in msg]))
         # printing response 
-        self.set_textBox_message(comunication_object="SDO_TX", msg=str(response_from_node))
+        b1, b2, b3, b4 = response_from_node.to_bytes(4, 'little')
+        TX_response = [0x43]+ msg[1:4] + [b1, b2, b3, b4]
+        self.set_textBox_message(comunication_object="SDO_TX", msg=str([hex(m)[2:] for m in TX_response]))
         # print decoded response
         if response_from_node is not None:
+            #fill the Bytes/bits table
+            # printing RX 
             decoded_response = f'{response_from_node:03X}\n-----------------------------------------------------------------------'
             self.set_table_content(bytes=msg, comunication_object="SDO_RX")
-            b1, b2, b3, b4, b5, b6, b7, b8 = response_from_node.to_bytes(8, 'little')
-            bytes = [b1, b2, b3, b4, b5, b6, b7, b8]             
-            self.set_table_content(bytes=bytes, comunication_object="SDO_TX")
+            # printing TX           
+            self.set_table_content(bytes=TX_response, comunication_object="SDO_TX")
         else:
-            decoded_response = f'{response_from_node}\n------------------------------------------------------------------------'
+            decoded_response = f'{response_from_node:03X}\n------------------------------------------------------------------------'
         self.set_textBox_message(comunication_object="Decoded", msg=decoded_response)
 
     def send_random_can(self): 
@@ -639,7 +642,7 @@ class MainWindow(QMainWindow):
     def write_can_message(self):
         cobid = self.get_cobid()
         bytes = self.get_bytes()
-        bytes_hex = [hex(b) for b in bytes]
+        bytes_hex = [hex(b)[2:] for b in bytes]
         try:
             # Send the can Message
             self.set_textBox_message(comunication_object="SDO_RX", msg=str(bytes_hex))
@@ -654,11 +657,12 @@ class MainWindow(QMainWindow):
         cobid, data, dlc, flag, t = self.wrapper.read_can_message()
         outtdata = int.from_bytes(data, byteorder=sys.byteorder)
         b1, b2, b3, b4, b5, b6, b7, b8 = outtdata.to_bytes(8, 'little') 
-        self.logger.info(f'Got data: [{b1:02x}  {b2:02x}  {b3:02x}  {b4:02x}  {b5:02x}  {b6:02x}  {b7:02x} {b8:02x}]')
+        self.logger.info(f'Got data: [{b5:02x},  {b6:02x},  {b7:02x}, {b8:02x}]')
+        outtdata = [b1, b2, b3, b4, b5, b6, b7, b8]
         if print_sdo == True:
             self.set_table_content(bytes=data, comunication_object="SDO_TX")
             response = f'{data.hex()}\n------------------------------------------------------------------------'
-            self.set_textBox_message(comunication_object="SDO_TX", msg=response)
+            self.set_textBox_message(comunication_object="SDO_TX", msg=str([hex(b)[2:] for b in outtdata]))
         return cobid, data, dlc, flag, t
     
     def dump_can_message(self, TIMEOUT=2):
@@ -729,7 +733,7 @@ class MainWindow(QMainWindow):
             textboxValue = [self.ByteTextbox[i] for i in np.arange(len(self.ByteTextbox))]
             for i in np.arange(len(self.ByteTextbox)):
                 textboxValue[i] = self.ByteTextbox[i].text()
-            self.set_bytes([int(b, 16) for b in textboxValue]) #list(map(int, textboxValue)))
+            self.set_bytes([int(b, 16) for b in textboxValue])
             
         buttonBox = QHBoxLayout()
         send_button = QPushButton("Send")
@@ -860,7 +864,6 @@ class MainWindow(QMainWindow):
             secondItems = ["1", "2", "3", "4"]
             secondComboBox = QComboBox(ChildWindow)
             for item in secondItems: secondComboBox.addItem(item)
-            # secondComboBox.activated[str].connect(self.clicked)
             thirdLabel.setText("Bit Timing:")
             thirdItems = self.get_bitrate_items()
             thirdComboBox = QComboBox(ChildWindow)
@@ -871,13 +874,10 @@ class MainWindow(QMainWindow):
             firstLabel.setText("")
             firstItems = self.get_bitrate_items() 
             for item in firstItems: firstComboBox.addItem(item)
-            
-            # firstComboBox.activated[str].connect(self.clicked)
             secondLabel.setText("SJW:")
             secondItems = ["1", "2", "3", "4"]
             secondComboBox = QComboBox(ChildWindow)
             for item in secondItems: secondComboBox.addItem(item)
-            # secondComboBox.activated[str].connect(self.clicked)
             thirdLabel.setText("Bit Timing:")
             thirdItems = self.get_bitrate_items()
             thirdComboBox = QComboBox(ChildWindow)
@@ -906,12 +906,10 @@ class MainWindow(QMainWindow):
             firstItems = [""]
             firstComboBox = QComboBox(ChildWindow)
             for item in firstItems: firstComboBox.addItem(item)
-            # firstComboBox.activated[str].connect(self.clicked)
             secondLabel.setText("")
             seconditems = [""]
             secondComboBox = QComboBox(ChildWindow)
             for item in seconditems: secondComboBox.addItem(item)
-            # secondComboBox.activated[str].connect(self.clicked)
             thirdLabel.setText("")
             thirdItems = [""]
             thirdComboBox = QComboBox(ChildWindow)
@@ -1521,10 +1519,10 @@ class MainWindow(QMainWindow):
             mode = "RX [hex] :"
         if comunication_object == "SDO_TX"  :   
             color = QColor("red") 
-            mode = "TX [dec] :"
+            mode = "TX [hex] :"
         if comunication_object == "Decoded" :   
             color = QColor("blue")
-            mode = "D [hex] :"
+            mode = "TX Decoded [hex] :"
         
         self.textBox.setTextColor(color)
         self.textBox.append(mode + msg)
