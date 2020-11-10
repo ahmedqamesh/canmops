@@ -40,7 +40,7 @@ except:
 try:
     import analib
 except:
-    print (colored("Warning: AnaGate Package is not installed.......", 'red'), colored("Please ignore the warning if you are not using any AnaGate commercial controllers.", "green"))
+    print (colored("Warning: AnaGate Package is not installed.......", 'red'), colored("Please ignore the warning if you are not using any AnaGate controllers.", "green"))
 
 scrdir = os.path.dirname(os.path.abspath(__file__))
 # class BusEmptyError(Exception):
@@ -75,7 +75,7 @@ class CanWrapper(object):
         self.__bitrate = analysis_utils.get_info_yaml(dictionary=self.__conf['CAN_Interfaces'], index=interface, subindex="bitrate")
         self.__channels = analysis_utils.get_info_yaml(dictionary=self.__conf['CAN_Interfaces'], index=interface, subindex="channels")
         self.__channel = list(analysis_utils.get_info_yaml(dictionary=self.__conf['CAN_Interfaces'], index=interface, subindex="channels"))[0]         
-        self.logger.notice('... Loading all the configurations!')
+        self.logger.notice('... Loading all the configurations from the file %s!'%(config_dir + "main_cfg.yml"))
         # Initialize default arguments
         """:obj:`str` : Internal attribute for the interface"""
         self.__interface = interface
@@ -167,7 +167,7 @@ class CanWrapper(object):
                                      f'verified.')
         
     def set_channelConnection(self, interface=None):
-        self.logger.notice('Setting the channel ...')
+        self.logger.notice('Setting the channel to %s interface...'%interface)
         try:
             if interface == 'Kvaser':
                 self.__ch = canlib.openChannel(self.__channel, canlib.canOPEN_ACCEPT_VIRTUAL)
