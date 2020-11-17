@@ -29,7 +29,7 @@ class MenuBar(QWidget):
         # exit_action.triggered.connect(self.stop)
         exit_action.triggered.connect(qApp.quit)
 
-        # fileMenu.addSeparator()
+
         fileMenu.addAction(exit_action)
            
     # 4. Help menu

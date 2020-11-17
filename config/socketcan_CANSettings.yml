@@ -1,6 +1,6 @@
 CAN_Interfaces:
   socketcan:
-    bitrate: null
+    bitrate: 125000
     channels: 0
     ipAddress: None
     nodIds:

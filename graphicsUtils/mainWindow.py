@@ -590,18 +590,18 @@ class MainWindow(QMainWindow):
     '''
                
     def send_sdo_can(self, trending=False, print_sdo=True):
-        try:
-            _index = int(self.get_index(), 16)
-            _subIndex = int(self.get_subIndex(), 16)
-            _nodeId = self.get_nodeId()
-            _nodeId = int(_nodeId[0])      
-            self.__response = self.wrapper.send_sdo_can(_nodeId, _index, _subIndex, 3000)
-            if print_sdo == True:
-                self.control_logger.disabled = False
-                self.print_sdo_can(index=_index, subIndex=_subIndex, response_from_node=self.__response)
-            return self.__response
-        except Exception:
-            pass
+        #try:
+        _index = int(self.get_index(), 16)
+        _subIndex = int(self.get_subIndex(), 16)
+        _nodeId = self.get_nodeId()
+        _nodeId = int(_nodeId[0])      
+        self.__response = self.wrapper.send_sdo_can(_nodeId, _index, _subIndex, 3000)
+        if print_sdo == True:
+            self.control_logger.disabled = False
+            self.print_sdo_can(index=_index, subIndex=_subIndex, response_from_node=self.__response)
+        return self.__response
+        #except Exception:
+        #    self.error_message(text="Make sure that the CAN interface is connected")
 
     def error_message(self, text=False):
         QMessageBox.about(self, "Error Message", text)
@@ -614,32 +614,34 @@ class MainWindow(QMainWindow):
         msg[1], msg[2] = index.to_bytes(2, 'little')
         msg[3] = subIndex
         self.set_textBox_message(comunication_object="SDO_RX", msg=str([hex(m)[2:] for m in msg]))
-        # printing response 
-        b1, b2, b3, b4 = response_from_node.to_bytes(4, 'little')
-        TX_response = [0x43]+ msg[1:4] + [b1, b2, b3, b4]
-        self.set_textBox_message(comunication_object="SDO_TX", msg=str([hex(m)[2:] for m in TX_response]))
+        self.set_table_content(bytes=msg, comunication_object="SDO_RX")
+        
         # print decoded response
         if response_from_node is not None:
+            # printing response 
+            b1, b2, b3, b4 = response_from_node.to_bytes(4, 'little')
+            TX_response = [0x43]+ msg[1:4] + [b1, b2, b3, b4]
+            self.set_textBox_message(comunication_object="SDO_TX", msg=str([hex(m)[2:] for m in TX_response]))
+        
             #fill the Bytes/bits table
-            # printing RX 
             decoded_response = f'{response_from_node:03X}\n-----------------------------------------------------------------------'
-            self.set_table_content(bytes=msg, comunication_object="SDO_RX")
             # printing TX           
             self.set_table_content(bytes=TX_response, comunication_object="SDO_TX")
         else:
-            decoded_response = f'{response_from_node:03X}\n------------------------------------------------------------------------'
-        self.set_textBox_message(comunication_object="Decoded", msg=decoded_response)
+            decoded_response = f'\n------------------------------------------------------------------------'
+        self.set_textBox_message(comunication_object="newline", msg=decoded_response)
 
     def send_random_can(self): 
         _index = np.random.randint(1000, 2500)
-        _subIndex = np.random.randint(0, 8)
+        _subIndex = np.random.randint(0, 5)
         MAX_DATABYTES = 8
         msg = [0 for i in range(MAX_DATABYTES)]
         msg[0] = 0x40
         msg[1], msg[2] = _index.to_bytes(2, 'little')
         msg[3] = _subIndex
         self.set_table_content(bytes=msg, comunication_object="SDO_RX")        
-
+        self.set_textBox_message(comunication_object="SDO_RX", msg=str([hex(m)[2:] for m in msg]))
+        
         def __apply_CANMessageSettings():
             self.set_nodeId(self.nodeComboBox.currentText())
             self.set_index(str(_index))
@@ -650,8 +652,7 @@ class MainWindow(QMainWindow):
         self.TXTable.clearContents()  # clear cells
         self.hexTXTable.clearContents()  # clear cells
         self.decTXTable.clearContents()  # clear cells
-            
-        self.send_sdo_can()  
+        self.send_sdo_can(print_sdo = False)  
                         
     def write_can_message(self):
         cobid = self.get_cobid()
@@ -659,24 +660,27 @@ class MainWindow(QMainWindow):
         bytes_hex = [hex(b)[2:] for b in bytes]
         try:
             # Send the can Message
-            self.set_textBox_message(comunication_object="SDO_RX", msg=str(bytes_hex))
             self.wrapper.writeCanMessage(cobid, bytes, flag=0, timeout=200)
-            self.set_table_content(bytes=bytes, comunication_object="SDO_RX")
             # receive the message
             self.read_can_message()
+            self.set_textBox_message(comunication_object="newline", msg="-----------------------------------------------------------------------") 
         except Exception:
             self.error_message(text="Make sure that the CAN interface is connected")
             
     def read_can_message(self, print_sdo=True):
-        cobid, data, dlc, flag, t = self.wrapper.read_can_message()
-        outtdata = int.from_bytes(data, byteorder=sys.byteorder)
-        b1, b2, b3, b4, b5, b6, b7, b8 = outtdata.to_bytes(8, 'little') 
-        self.logger.info(f'Got data: [{b5:02x},  {b6:02x},  {b7:02x}, {b8:02x}]')
-        outtdata = [b1, b2, b3, b4, b5, b6, b7, b8]
-        if print_sdo == True:
-            self.set_table_content(bytes=data, comunication_object="SDO_TX")
-            response = f'{data.hex()}\n------------------------------------------------------------------------'
-            self.set_textBox_message(comunication_object="SDO_TX", msg=str([hex(b)[2:] for b in outtdata]))
+        readCanMessage = self.wrapper.read_can_message()
+        if readCanMessage is not None:
+           cobid, data, dlc, flag, t = readCanMessage
+           outtdata = int.from_bytes(data, byteorder=sys.byteorder)
+           b1, b2, b3, b4, b5, b6, b7, b8 = outtdata.to_bytes(8, 'little') 
+           self.logger.info(f'Got data: [{b5:02x},  {b6:02x},  {b7:02x}, {b8:02x}]')
+           outtdata = [b1, b2, b3, b4, b5, b6, b7, b8]
+           if print_sdo == True:
+               self.set_table_content(bytes=data, comunication_object="SDO_TX")
+               #response = f'{data.hex()}\n------------------------------------------------------------------------'
+               self.set_textBox_message(comunication_object="SDO_TX", msg=str([hex(b)[2:] for b in outtdata]))
+        else:
+            cobid, data, dlc, flag, t = None,None,None,None,None
         return cobid, data, dlc, flag, t
     
     def dump_can_message(self, TIMEOUT=2):
@@ -687,13 +691,14 @@ class MainWindow(QMainWindow):
             except Exception:
                 pass  
   
-        signal.signal(signal.SIGALRM, timeout_handler)
-        signal.alarm(TIMEOUT)    
-        try:
-            self.read_can_message(print_sdo=False)
-            signal.alarm(0)
-        except Exception:
-            pass
+        #signal.signal(signal.SIGALRM, timeout_handler)
+        #signal.alarm(TIMEOUT)    
+        #try:
+        self.read_can_message(print_sdo=False)
+        self.set_textBox_message(comunication_object="ErrorFrame", msg="ErrorFrame\n------------------------------------------------------------------------")
+        #signal.alarm(0)
+        #except Exception:
+        #    pass
 
     '''
     Define all child windows
@@ -946,15 +951,15 @@ class MainWindow(QMainWindow):
         def __status_device():
             #  check if the MOPS is alive or not. MOPS should respond with a CAN message
             try:
-                cobid = 0x701
+                cobid_TX = 0x701
                 bytes = [0, 0, 0, 0, 0, 0, 0, 0]
-                self.wrapper.writeCanMessage(cobid, bytes, flag=0, timeout=200)
+                self.wrapper.writeCanMessage(cobid_TX, bytes, flag=0, timeout=200)
                 # receive the message
-                _, data, _, _, _ = self.read_can_message(print_sdo=False)
-                if data is not None: 
+                cobid_RX, data, _, _, _ = self.read_can_message(print_sdo=False)
+                if cobid_RX == cobid_TX:
                    self.logger.info("%s device is in an active state" % (self.__deviceName))
                 else: 
-                    self.logger.error("%s device is in not active" % (self.__deviceName))
+                    self.logger.error("%s device is not active" % (self.__deviceName))
             except Exception:
                 self.error_message(text="Make sure that the CAN interface is connected")
         
@@ -1488,6 +1493,12 @@ class MainWindow(QMainWindow):
         RandomDumpMessage_action.setShortcut('Ctrl+G')
         RandomDumpMessage_action.setStatusTip('Send Random Messages to the bus')
         RandomDumpMessage_action.triggered.connect(self.send_random_can)
+        # fileMenu.addSeparator()
+        clear_action = QAction(QIcon('graphicsUtils/icons/icon_clear.png'), '&Clear', mainwindow)
+        clear_action.setShortcut('Ctrl+X')
+        clear_action.setStatusTip('Clear All the menus')
+        clear_action.triggered.connect(self.clear_textBox_message)
+        clear_action.triggered.connect(self.clear_table_content)
         
 #         trending_action = QAction(QIcon('graphicsUtils/icons/icon_trend.jpg'), '&Trending', mainwindow)
 #         trending_action.setStatusTip('Data Trending')  # show when move mouse to the icon
@@ -1502,11 +1513,12 @@ class MainWindow(QMainWindow):
         toolbar.addAction(canMessage_action)
         toolbar.addAction(settings_action)
         toolbar.addSeparator()
-        # toolbar.addAction(canDumpMessage_action)
+        toolbar.addAction(canDumpMessage_action)
         toolbar.addAction(runRandomMessage_action)
         toolbar.addAction(stopDumpMessage_action)
         toolbar.addAction(RandomDumpMessage_action)                          
         toolbar.addSeparator()
+        toolbar.addAction(clear_action)
         # toolbar.addAction(trending_action)        
 
     '''
@@ -1540,18 +1552,26 @@ class MainWindow(QMainWindow):
 
     def set_textBox_message(self, comunication_object=None, msg=None):
         if comunication_object == "SDO_RX"  :   
-            color = QColor("green")
+            color = QColor("black")
             mode = "RX [hex] :"
         if comunication_object == "SDO_TX"  :   
-            color = QColor("red") 
+            color = QColor("blue") 
             mode = "TX [hex] :"
         if comunication_object == "Decoded" :   
-            color = QColor("blue")
+            color = QColor("green")
             mode = "TX Decoded [hex] :"
-        
+        if comunication_object == "ErrorFrame" :   
+            color = QColor("red")
+            mode = "E:    "
+        if comunication_object == "newline" :
+            color = QColor("green")
+            mode = ""        
         self.textBox.setTextColor(color)
         self.textBox.append(mode + msg)
-        
+    
+    def clear_textBox_message(self):
+         self.textBox.clear()
+         
     def set_table_content(self, bytes=None, comunication_object=None):
         self.update_progressBar(comunication_object=comunication_object)
         n_bytes = 8 - 1
@@ -1581,7 +1601,15 @@ class MainWindow(QMainWindow):
                 for b in np.arange(len(slicedBits)):
                     self.TXTable.setItem(byte, n_bytes - b, QTableWidgetItem(slicedBits[b]))
                     self.TXTable.item(byte, n_bytes - b).setBackground(QColor(self.get_color(int(slicedBits[b]))))
-                    
+    
+    def clear_table_content(self):
+        self.TXTable.clearContents() 
+        self.hexTXTable.clearContents() 
+        self.decTXTable.clearContents() 
+        self.RXTable.clearContents() 
+        self.hexRXTable.clearContents() 
+        self.decRXTable.clearContents()
+                  
     def set_index_value(self):
         index = self.IndexListBox.currentItem().text()
         self.set_index(index)

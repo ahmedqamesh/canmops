@@ -661,6 +661,7 @@ class CanWrapper(object):
         the :class:`~threading.Event` :attr:`pill2kill` and is therefore
         designed to be used as a :class:`~threading.Thread`.
         """
+        self.__pill2kill = Event()
         while not self.__pill2kill.is_set():            
             try:
                 if self.__interface == 'Kvaser':
@@ -676,6 +677,8 @@ class CanWrapper(object):
                         raise analib.CanNoMsg
                 else:
                     readcan = self.__ch.recv(1.0)
+                    if readcan == None:
+                        self.__pill2kill.set()
                     cobid, data, dlc, flag, t = readcan.arbitration_id, readcan.data, readcan.dlc, readcan.is_extended_id, readcan.timestamp
                 with self.__lock:
                      self.__canMsgQueue.appendleft((cobid, data, dlc, flag, t))
