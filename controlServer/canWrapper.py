@@ -644,6 +644,7 @@ class CanWrapper(object):
                 self.__ch.send(msg)
             except can.CanError:
                 self.hardwareConfig("can" + str(self.__channel))
+                self.logger.notice("Please restart CANMOPS")
             
     def hardwareConfig(self, channel):
 
