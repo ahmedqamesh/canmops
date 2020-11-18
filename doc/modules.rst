@@ -5,4 +5,4 @@ All modules
    :maxdepth: 4
 
    analib
-   dcsControllerServer
+   controlServer

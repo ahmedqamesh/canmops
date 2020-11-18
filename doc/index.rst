@@ -14,9 +14,8 @@ Welcome to DCSController's documentation!
    installation
    usage
    anagate
-   serverclass
    analib
-   dcsControllerServer
+   controllerServer
 
 
 
