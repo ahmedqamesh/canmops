@@ -12,7 +12,6 @@ Welcome to MOPS's documentation!
 
    installation
    usage
-   anagate
    controlServer
 
 
