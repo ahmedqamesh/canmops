@@ -1,10 +1,9 @@
-.. DCSController documentation master file, created by
+.. MOPS documentation master file, created by
    sphinx-quickstart on Mon Sep 17 20:30:04 2018.
    You can adapt this file completely to your liking, but it should at least
    contain the root `toctree` directive.
 
-
-Welcome to DCSController's documentation!
+Welcome to MOPS's documentation!
 =========================================
 
 .. toctree::
@@ -14,8 +13,7 @@ Welcome to DCSController's documentation!
    installation
    usage
    anagate
-   analib
-   controllerServer
+   controlServer
 
 
 
