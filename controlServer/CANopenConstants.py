@@ -3,7 +3,7 @@
 """ALl kind of constants used in CANopen.
 
 Documentation of official CANopen constants is taken from the official CANopen
-specification [CiA301]_.
+specification [CiA301].
 
 :Author: Ahmed Qamesh
 :Contact: ahmed.qamesh@cern.ch
