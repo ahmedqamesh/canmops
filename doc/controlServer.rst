@@ -6,7 +6,7 @@ Submodules
 ----------
 
 controlServer.CANopenConstants module
--------------------------------------------
+-------------------------------------
 
 .. automodule:: controlServer.CANopenConstants
     :members:
@@ -14,7 +14,7 @@ controlServer.CANopenConstants module
     :show-inheritance:
 
 controlServer.canWrapper module
-----------------------------------------------
+-------------------------------
 
 .. automodule:: controlServer.canWrapper
     :members:
@@ -22,7 +22,7 @@ controlServer.canWrapper module
     :show-inheritance:
 
 controlServer.analysis module
-----------------------------------------------
+-----------------------------
 
 .. automodule:: controlServer.analysis
     :members:
