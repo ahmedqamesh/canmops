@@ -518,7 +518,6 @@ class MainWindow(QMainWindow):
                 _ipAddress = _canSettings['CAN_Interfaces'][_interface]["ipAddress"]
                 _bitrate = _canSettings['CAN_Interfaces'][_interface]["bitrate"]
                 _nodIds = _canSettings['CAN_Interfaces'][_interface]["nodIds"]
-                
                 # Update settings
                 self.set_nodeList(_nodIds)
                 self.set_channelPorts(list(str(_channels)))                
