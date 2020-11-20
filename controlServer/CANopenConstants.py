@@ -1,9 +1,9 @@
 #!/usr/bin/python
 # -*- coding: utf-8 -*-
-"""ALl kind of constants used in CANopen.
+"""ALl kind of constants used in CANopen_ or |PSPP| chips.
 
 Documentation of official CANopen constants is taken from the official CANopen
-specification [CiA301].
+specification [CiA301]_.
 
 :Author: Ahmed Qamesh
 :Contact: ahmed.qamesh@cern.ch

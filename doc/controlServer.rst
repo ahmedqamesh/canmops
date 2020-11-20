@@ -4,15 +4,18 @@ controlServer package
 
 Submodules
 ----------
+
 controlServer.CANopenConstants module
--------------------------------------
-.. automodule:: controlServer.CANopenConstants
+-------------------------------------------
+
+.. automodule:: dcsControllerServer.CANopenConstants
     :members:
     :undoc-members:
     :show-inheritance:
 
 controlServer.canWrapper module
 -------------------------------
+
 .. automodule:: controlServer.canWrapper
     :members:
     :undoc-members:
@@ -20,13 +23,16 @@ controlServer.canWrapper module
 
 controlServer.analysis module
 -----------------------------
+
 .. automodule:: controlServer.analysis
     :members:
     :undoc-members:
     :show-inheritance:
-    
+
+   
 Module contents
 ---------------
+
 .. automodule:: controlServer
     :members:
     :undoc-members:

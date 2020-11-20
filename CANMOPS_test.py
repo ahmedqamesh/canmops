@@ -6,7 +6,7 @@ import numpy as np
 from controlServer import canWrapper
 def test():
     # Define parameters
-    NodeIds = wrapper.get_nodeList()
+    NodeIds = [1,8]
     SDO_RX = 0x600
     index = 0x1000
     Byte0= cmd = 0x40 #Defines a read (reads data only from the node) dictionary object in CANOPN standard
@@ -22,24 +22,24 @@ def test():
    
     #Example (1): get node Id
     
-    VendorId = wrapper.send_sdo_can(NodeIds[0], 0x1000,0,3000)
-    #print(f'Device type: {VendorId:03X}')
-         
-    c_index = 0x2400
-    c_subindices  = ["1","2","3","4","5","6","7","8","9","A","B","C","D","E","F",
-                    "10","11","12","13","14","15","16","17","18","19","1A","1B","1C","1D","1E","1F","20"]
-    values = []
-    for c_subindex in c_subindices: # Each i represents one channel
-         value = wrapper.send_sdo_can(NodeIds[0], c_index,int(c_subindex,16),3000)
-         values = np.append(values, value)
-
-    for c_index in c_subindices:
-        id = c_subindices.index(c_index)
-        channel = int(c_index, 16)+2
-        if values[id] is not None:
-             print("Channel %i = %0.3f "%(channel,values[id]))
-        else:
-            print("Channel %i = %s "%(channel,"None"))
+    VendorId = wrapper.send_sdo_can(NodeIds[0], 0x1000,0,1000)
+    print(f'Device type: {VendorId:03X}')
+#          
+#     c_index = 0x2400
+#     c_subindices  = ["1","2","3","4","5","6","7","8","9","A","B","C","D","E","F",
+#                     "10","11","12","13","14","15","16","17","18","19","1A","1B","1C","1D","1E","1F","20"]
+#     values = []
+#     for c_subindex in c_subindices: # Each i represents one channel
+#          value = wrapper.send_sdo_can(NodeIds[0], c_index,int(c_subindex,16),3000)
+#          values = np.append(values, value)
+# 
+#     for c_index in c_subindices:
+#         id = c_subindices.index(c_index)
+#         channel = int(c_index, 16)+2
+#         if values[id] is not None:
+#              print("Channel %i = %0.3f "%(channel,values[id]))
+#         else:
+#             print("Channel %i = %s "%(channel,"None"))
     wrapper.stop()        
 
 

@@ -1,9 +1,0 @@
-qtawesome
-###### Requirements without Version Specifiers ######
-coloredlogs
-verboselogs
-aenum
-analib
-
-###### A particular file ######
-# ./packages/canlib-1.6.615-py2.py3-none-any.whl

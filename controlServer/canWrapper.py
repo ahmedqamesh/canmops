@@ -78,8 +78,8 @@ class CanWrapper(object):
         """:obj:`int` : Internal attribute for the bit rate"""
         if bitrate is not None:
             self.__bitrate = bitrate
-        self.__bitrate = self._parseBitRate(self.__bitrate)   
         
+        self.__bitrate = self._parseBitRate(self.__bitrate)   
         """:obj:`int` : Internal attribute for the IP Address"""  
         if ipAddress is not None:
              self.__ipAddress = ipAddress
@@ -95,14 +95,14 @@ class CanWrapper(object):
         """Internal attribute for the |CAN| channel"""
         self.__ch = None        
         self.set_channelConnection(interface=self.__interface)
-
         """Internal attribute for the |CAN| channel"""
         self.__busOn = True
-        self.__canMsgQueue = deque([], 2)
+        self.__canMsgQueue = deque([], 10)
         self.__pill2kill = Event()
         self.__lock = Lock()
         self.__kvaserLock = Lock()
-        self.confirmNodes()
+        #self.confirmNodes()
+        #self.confirmMops(channel = self.__channel)
         self.logger.success('... Done!')
 
         # Import Object Dictionary from EDS
@@ -112,7 +112,6 @@ class CanWrapper(object):
 #         edsfile = os.path.join(scrdir, 'DCSControllerOD.eds')
 #         self.__od = objectDictionary.objectDictionary(self.logger).from_eds(self.logger, edsfile, 0)
 #         value = self.__od[0x1800][1]
-#         print(value)
     def __str__(self):
         if self.__interface == 'Kvaser':
             num_channels = canlib.getNumberOfChannels()
@@ -159,7 +158,23 @@ class CanWrapper(object):
                 else:
                     self.logger.info(f'Connection to node {nodeId} in channel {channel} has been '
                                      f'verified.')
-        
+    def confirmMops(self,channel =0, timeout=100):
+        self.logger.notice('Checking MOPS status ...')
+        _nodeIds = self.__channels[channel]
+        self.set_nodeList(_nodeIds)
+        self.logger.info(f'Connection to channel {channel} has been ' f'verified.')
+        for nodeId in _nodeIds: 
+            # Send the status message
+            cobid_TX = 0x701
+            self.writeCanMessage(cobid_TX, [0, 0, 0, 0, 0, 0, 0, 0], flag=0, timeout=200)
+            # receive the message
+            cobid_RX, data, _, _, _ = self.read_can_message()
+            if cobid_RX == cobid_TX and (data[0]==0x85 or data[0]==0x05):
+                self.logger.info(f'Connection to MOPS with nodeId {nodeId} in channel {channel} has been '
+                                 f'verified.')
+            else:
+               self.logger.error(f'Connection to MOPS with nodeId {nodeId} in channel {channel} failed')
+                                
     def set_channelConnection(self, interface=None):
         self.logger.notice('Setting the channel to %s interface...'%interface)
         try:
@@ -171,7 +186,6 @@ class CanWrapper(object):
             elif interface == 'AnaGate':
                 self.__ch = analib.Channel(ipAddress=self.__ipAddress, port=self.__channel, baudrate=self.__bitrate)
             else:
-                
                 channel = "can" + str(self.__channel)
                 self.__ch = can.interface.Bus(bustype=interface, channel=channel, bitrate=self.__bitrate)     
         except Exception:
@@ -265,9 +279,328 @@ class CanWrapper(object):
                 
         self.__busOn = False
         self.logger.warning('Stopping the server.')
-
-
         
+    def send_sdo_can(self, nodeId, index, subindex, timeout=1000, MAX_DATABYTES=8):
+        """Read an object via |SDO|
+    
+        Currently expedited and segmented transfer is supported by this method.
+        The function will writing the dictionary request from the master to the node then read the response from the node to the master
+        The user has to decide how to decode the data.
+        
+        Parameters
+        ----------
+        nodeId : :obj:`int`
+            The id from the node to read from
+        index : :obj:`int`
+            The Object Dictionary index to read from
+        subindex : :obj:`int`
+            |OD| Subindex. Defaults to zero for single value entries.
+        timeout : :obj:`int`, optional
+            |SDO| timeout in milliseconds
+    
+        Returns
+        -------
+        :obj:`list` of :obj:`int`
+            The data if was successfully read
+        :data:`None`
+            In case of errors
+        """
+        self.logger.notice("Reading an object via |SDO|")
+        SDO_TX = 0x580  
+        SDO_RX = 0x600
+        self.start_channelConnection(interface=self.__interface)
+        if nodeId is None or index is None or subindex is None:
+            self.logger.warning('SDO read protocol cancelled before it could begin.')         
+            return None
+        self.cnt['SDO read total'] += 1
+        self.logger.info(f'Send SDO read request to node {nodeId}.')
+        cobid = SDO_RX + nodeId
+        msg = [0 for i in range(MAX_DATABYTES)]
+        msg[0] = 0x40
+        msg[1], msg[2] = index.to_bytes(2, 'little')
+        msg[3] = subindex
+        try:
+            self.writeCanMessage(cobid, msg, timeout=timeout)
+        except CanGeneralError:
+            self.cnt['SDO read request timeout'] += 1
+            return None
+        # Wait for response
+        t0 = time.perf_counter()
+        messageValid = False
+        while time.perf_counter() - t0 < timeout / 1000:
+            with self.__lock:
+                # check the message validity [nodid, msg size,...]
+                for i, (cobid_ret, ret, dlc, flag, t) in zip(range(len(self.__canMsgQueue)), self.__canMsgQueue):
+                    messageValid = (dlc == 8 
+                                    and cobid_ret == SDO_TX + nodeId
+                                    and ret[0] in [0x80, 0x43, 0x47, 0x4b, 0x4f, 0x42] 
+                                    and int.from_bytes([ret[1], ret[2]], 'little') == index
+                                    and ret[3] == subindex)
+                    if messageValid:
+                        del self.__canMsgQueue[i]
+                        break
+            if messageValid:
+                break
+        else:
+            self.logger.info(f'SDO read response timeout (node {nodeId}, index'
+                             f' {index:04X}:{subindex:02X})')
+            self.cnt['SDO read response timeout'] += 1
+            return None
+        # Check command byte
+        if ret[0] == 0x80:
+            abort_code = int.from_bytes(ret[4:], 'little')
+            self.logger.error(f'Received SDO abort message while reading '
+                              f'object {index:04X}:{subindex:02X} of node '
+                              f'{nodeId} with abort code {abort_code:08X}')
+            self.cnt['SDO read abort'] += 1
+            return None
+        # Here some Bitwise Operators are needed to perform  bit by bit operation
+        # ret[0] =67 [bin(ret[0]) = 0b1000011] //from int to binary
+        # (ret[0] >> 2) will divide ret[0] by 2**2 [Returns ret[0] with the bits shifted to the right by 2 places. = 0b10000]
+        # (ret[0] >> 2) & 0b11 & Binary AND Operator [copies a bit to the result if it exists in both operands = 0b0]
+        # 4 - ((ret[0] >> 2) & 0b11) for expedited transfer the object dictionary does not get larger than 4 bytes.
+        nDatabytes = 4 - ((ret[0] >> 2) & 0b11) if ret[0] != 0x42 else 4
+        data = []
+        for i in range(nDatabytes):  
+            data.append(ret[4 + i])
+        self.logger.info(f'Got data: {data}')
+        return int.from_bytes(data, 'little')
+
+    
+    def sdoWrite(self, nodeId, index, subindex, value, timeout=1000):
+        """Write an object via |SDO| expedited write protocol
+        This sends the request and analyses the response.
+        Parameters
+        ----------
+        nodeId : :obj:`int`
+            The id from the node to read from
+        index : :obj:`int`
+            The |OD| index to read from
+        subindex : :obj:`int`
+            Subindex. Defaults to zero for single value entries
+        value : :obj:`int`
+            The value you want to write.
+        timeout : :obj:`int`, optional
+            |SDO| timeout in milliseconds
+        Returns
+        -------
+        :obj:`bool`
+            If writing the object was successful
+        """
+
+        # Create the request message
+        self.logger.notice(f'Send SDO write request to node {nodeId}, object '
+                           f'{index:04X}:{subindex:X} with value {value:X}.')
+        self.cnt['SDO write total'] += 1
+        if value < self.__od[index][subindex].minimum or value > self.__od[index][subindex].maximum:
+            self.logger.error(f'Value for SDO write protocol outside value ' f'range!')
+            self.cnt['SDO write value range'] += 1
+            return False
+        SDO_TX = 0x580  
+        SDO_RX = 0x600
+        
+        cobid = SDO_RX + nodeId
+        datasize = len(f'{value:X}') // 2 + 1
+        data = value.to_bytes(4, 'little')
+        msg = [0 for i in range(8)]
+        msg[0] = (((0b00010 << 2) | (4 - datasize)) << 2) | 0b11
+        msg[1], msg[2] = index.to_bytes(2, 'little')
+        msg[3] = subindex
+        msg[4:] = [data[i] for i in range(4)]
+        # Send the request message
+        try:
+            self.writeCanMessage(cobid, msg, timeout=timeout)
+        except CanGeneralError:
+            self.cnt['SDO write request timeout'] += 1
+            return False
+#         except analib.exception.DllException as ex:
+#             self.logger.exception(ex)
+#             self.cnt['SDO write request timeout'] += 1
+#             return False
+
+        # Read the response from the bus
+        t0 = time.perf_counter()
+        messageValid = False
+        while time.perf_counter() - t0 < timeout / 1000:
+            with self.lock:
+                for i, (cobid_ret, ret, dlc, flag, t) in \
+                        zip(range(len(self.__canMsgQueue)),
+                            self.__canMsgQueue):
+                    messageValid = \
+                        (dlc == 8 and cobid_ret == SDO_TX + nodeId
+                         and ret[0] in [0x80, 0b1100000] and
+                         int.from_bytes([ret[1], ret[2]], 'little') == index
+                         and ret[3] == subindex)
+                    if messageValid:
+                        del self.__canMsgQueue[i]
+                        break
+            if messageValid:
+                break
+        else:
+            self.logger.warning('SDO write timeout')
+            self.cnt['SDO write timeout'] += 1
+            return False
+        # Analyse the response
+        if ret[0] == 0x80:
+            abort_code = int.from_bytes(ret[4:], 'little')
+            self.logger.error(f'Received SDO abort message while writing '
+                              f'object {index:04X}:{subindex:02X} of node '
+                              f'{nodeId} with abort code {abort_code:08X}')
+            self.cnt['SDO write abort'] += 1
+            return False
+        else:
+            self.logger.success('SDO write protocol successful!')
+        return True
+    
+    def writeCanMessage(self, cobid, data, flag=0, timeout=None):
+        """Combining writing functions for different |CAN| interfaces
+        Parameters
+        ----------
+        cobid : :obj:`int`
+            |CAN| identifier
+        data : :obj:`list` of :obj:`int` or :obj:`bytes`
+            Data bytes
+        flag : :obj:`int`, optional
+            Message flag (|RTR|, etc.). Defaults to zero.
+        timeout : :obj:`int`, optional
+            |SDO| write timeout in milliseconds. When :data:`None` or not
+            given an infinit timeout is used.
+        """
+        if self.__interface == 'Kvaser':
+            if timeout is None:
+                timeout = 0xFFFFFFFF
+            frame = Frame(id_=cobid, data=data)  #  from tutorial
+            self.__ch.writeWait(frame, timeout)
+        
+        elif self.__interface == 'AnaGate':
+            if not self.__ch.deviceOpen:
+                self.logger.notice('Reopening AnaGate CAN interface')
+            self.__ch.write(cobid, data, flag)
+        
+        else:
+            msg = can.Message(arbitration_id=cobid, data=data, is_extended_id=False)
+
+            try:
+                self.__ch.send(msg)
+            except can.CanError:
+                self.hardwareConfig("can" + str(self.__channel))
+                self.logger.notice("Please restart CANMOPS")
+            
+    def hardwareConfig(self, channel):
+
+        '''
+        Pass channel string (example 'can0') to configure OS level drivers and interface.
+        '''
+        self.logger.info('CAN hardware OS drivers and config for %s' % channel)
+        os.system(". " + scrdir + "/socketcan_enable.sh")
+            
+    def read_can_message(self):
+        """Read incoming |CAN| messages and store them in the queue
+        :attr:`canMsgQueue`.
+
+        This method runs an endless loop which can only be stopped by setting
+        the :class:`~threading.Event` :attr:`pill2kill` and is therefore
+        designed to be used as a :class:`~threading.Thread`.
+        """
+        self.__pill2kill = Event()
+        while not self.__pill2kill.is_set():            
+            try:
+                if self.__interface == 'Kvaser':
+                    frame = self.__ch.read()
+                    cobid, data, dlc, flag, t = (frame.id, frame.data,
+                                                 frame.dlc, frame.flags,
+                                                 frame.timestamp)
+                    if frame is None or (cobid == 0 and dlc == 0):
+                        raise canlib.CanNoMsg
+                elif self.__interface == 'AnaGate':
+                    cobid, data, dlc, flag, t = self.__ch.getMessage()
+                    if (cobid == 0 and dlc == 0):
+                        raise analib.CanNoMsg
+                else:
+                    readcan = self.__ch.recv(1.0)
+                    if readcan == None:
+                        self.__pill2kill.set()
+                    cobid, data, dlc, flag, t = readcan.arbitration_id, readcan.data, readcan.dlc, readcan.is_extended_id, readcan.timestamp
+                with self.__lock:
+                    self.__canMsgQueue.appendleft((cobid, data, dlc, flag, t))
+                self.dumpMessage(cobid, data, dlc, flag, t)
+                return cobid, data, dlc, flag, t
+            except:  # (canlib.CanNoMsg, analib.CanNoMsg):
+                pass
+        
+    # The following functions are to read the can messages
+    def _anagateCbFunc(self):
+        """Wraps the callback function for AnaGate |CAN| interfaces. This is
+        neccessary in order to have access to the instance attributes.
+
+        The callback function is called asychronous but the instance attributes
+        are accessed in a thread-safe way.
+
+        Returns
+        -------
+        cbFunc
+            Function pointer to the callback function
+        """
+
+        def cbFunc(cobid, data, dlc, flag):
+            """Callback function.
+
+            Appends incoming messages to the message queue and logs them.
+
+            Parameters
+            ----------
+            cobid : :obj:`int`
+                |CAN| identifier
+            data : :class:`~ctypes.c_char` :func:`~cytpes.POINTER`
+                |CAN| data - max length 8. Is converted to :obj:`bytes` for
+                internal treatment using :func:`~ctypes.string_at` function. It
+                is not possible to just use :class:`~ctypes.c_char_p` instead
+                because bytes containing zero would be interpreted as end of
+                data.
+            dlc : :obj:`int`
+                Data Length Code
+            flag : :obj:`int`
+                Message flags
+                class to work.
+            """
+            data = ct.string_at(data, dlc)
+            t = time.time()
+            with self.__lock:
+                self.__canMsgQueue.appendleft((cobid, data, dlc, flag, t))
+            self.dumpMessage(cobid, data, dlc, flag, t)
+        
+        return cbFunc
+    
+    def dumpMessage(self, cobid, msg, dlc, flag, t):
+        """Dumps a CANopen message to the screen and log file
+
+        Parameters
+        ----------
+        cobid : :obj:`int`
+            |CAN| identifier
+        msg : :obj:`bytes`
+            |CAN| data - max length 8
+        dlc : :obj:`int`
+            Data Length Code
+        flag : :obj:`int`
+            Flags, a combination of the :const:`canMSG_xxx` and
+            :const:`canMSGERR_xxx` values
+        t : obj'int'
+        """
+        if self.__interface == 'Kvaser':
+            if (flag & canlib.canMSG_ERROR_FRAME != 0):
+                self.logger.error("***ERROR FRAME RECEIVED***")
+        else:
+            msgstr = '{:3X} {:d}   '.format(cobid, dlc)
+            for i in range(len(msg)):
+                msgstr += '{:02x}  '.format(msg[i])
+            msgstr += '    ' * (8 - len(msg))
+            st = datetime.datetime.fromtimestamp(t).strftime('%H:%M:%S')
+            msgstr += str(st)
+            if self.__interface == 'Kvaser':
+                self.logger.info(coc.MSGHEADER)
+            self.logger.info(msgstr)
+
     # Setter and getter functions
     def set_subIndex(self, x):
         self.__subIndex = x
@@ -438,329 +771,6 @@ class CanWrapper(object):
     @property
     def myDCs(self):
         """:obj:`list` : List of created UA objects"""
-        return self.__myDCs
-        
-    def send_sdo_can(self, nodeId, index, subindex, timeout=100, MAX_DATABYTES=8):
-        """Read an object via |SDO|
-    
-        Currently expedited and segmented transfer is supported by this method.
-        The function will writing the dictionary request from the master to the node then read the response from the node to the master
-        The user has to decide how to decode the data.
-        
-        Parameters
-        ----------
-        nodeId : :obj:`int`
-            The id from the node to read from
-        index : :obj:`int`
-            The Object Dictionary index to read from
-        subindex : :obj:`int`
-            |OD| Subindex. Defaults to zero for single value entries.
-        timeout : :obj:`int`, optional
-            |SDO| timeout in milliseconds
-    
-        Returns
-        -------
-        :obj:`list` of :obj:`int`
-            The data if was successfully read
-        :data:`None`
-            In case of errors
-        """
-        self.logger.notice("Reading an object via |SDO|")
-        SDO_TX = 0x580  
-        SDO_RX = 0x600
-        interface = self.get_interface()
-        self.start_channelConnection(interface=interface)
-        if nodeId is None or index is None or subindex is None:
-            self.logger.warning('SDO read protocol cancelled before it could begin.')         
-            return None
-        self.cnt['SDO read total'] += 1
-        self.logger.info(f'Send SDO read request to node {nodeId}.')
-        cobid = SDO_RX + nodeId
-        msg = [0 for i in range(MAX_DATABYTES)]
-        msg[0] = 0x40
-        msg[1], msg[2] = index.to_bytes(2, 'little')
-        msg[3] = subindex
-        try:
-            self.writeCanMessage(cobid, msg, timeout=timeout)
-        except CanGeneralError:
-            self.cnt['SDO read request timeout'] += 1
-            return None
-        # Wait for response
-        t0 = time.perf_counter()
-        messageValid = False
-        while time.perf_counter() - t0 < timeout / 1000:
-            with self.__lock:
-                # check the message validity [nodid, msg size,...]
-                for i, (cobid_ret, ret, dlc, flag, t) in zip(range(len(self.__canMsgQueue)), self.__canMsgQueue):
-                    messageValid = (dlc == 8 
-                                    and cobid_ret == SDO_TX + nodeId
-                                    and ret[0] in [0x80, 0x43, 0x47, 0x4b, 0x4f, 0x42] 
-                                    and int.from_bytes([ret[1], ret[2]], 'little') == index
-                                    and ret[3] == subindex)
-                    if messageValid:
-                        del self.__canMsgQueue[i]
-                        break
-            if messageValid:
-                break
-        else:
-            self.logger.info(f'SDO read response timeout (node {nodeId}, index'
-                             f' {index:04X}:{subindex:02X})')
-            self.cnt['SDO read response timeout'] += 1
-            return None
-        # Check command byte
-        if ret[0] == 0x80:
-            abort_code = int.from_bytes(ret[4:], 'little')
-            self.logger.error(f'Received SDO abort message while reading '
-                              f'object {index:04X}:{subindex:02X} of node '
-                              f'{nodeId} with abort code {abort_code:08X}')
-            self.cnt['SDO read abort'] += 1
-            return None
-        # Here some Bitwise Operators are needed to perform  bit by bit operation
-        # ret[0] =67 [bin(ret[0]) = 0b1000011] //from int to binary
-        # (ret[0] >> 2) will divide ret[0] by 2**2 [Returns ret[0] with the bits shifted to the right by 2 places. = 0b10000]
-        # (ret[0] >> 2) & 0b11 & Binary AND Operator [copies a bit to the result if it exists in both operands = 0b0]
-        # 4 - ((ret[0] >> 2) & 0b11) for expedited transfer the object dictionary does not get larger than 4 bytes.
-        nDatabytes = 4 - ((ret[0] >> 2) & 0b11) if ret[0] != 0x42 else 4
-        data = []
-        for i in range(nDatabytes):  
-            data.append(ret[4 + i])
-        self.logger.info(f'Got data: {data}')
-        return int.from_bytes(data, 'little')
-
-    def sdoWrite(self, nodeId, index, subindex, value, timeout=3000):
-        """Write an object via |SDO| expedited write protocol
-        This sends the request and analyses the response.
-        Parameters
-        ----------
-        nodeId : :obj:`int`
-            The id from the node to read from
-        index : :obj:`int`
-            The |OD| index to read from
-        subindex : :obj:`int`
-            Subindex. Defaults to zero for single value entries
-        value : :obj:`int`
-            The value you want to write.
-        timeout : :obj:`int`, optional
-            |SDO| timeout in milliseconds
-        Returns
-        -------
-        :obj:`bool`
-            If writing the object was successful
-        """
-
-        # Create the request message
-        self.logger.notice(f'Send SDO write request to node {nodeId}, object '
-                           f'{index:04X}:{subindex:X} with value {value:X}.')
-        self.cnt['SDO write total'] += 1
-        if value < self.__od[index][subindex].minimum or value > self.__od[index][subindex].maximum:
-            self.logger.error(f'Value for SDO write protocol outside value ' f'range!')
-            self.cnt['SDO write value range'] += 1
-            return False
-        SDO_TX = 0x580  
-        SDO_RX = 0x600
-        
-        cobid = SDO_RX + nodeId
-        datasize = len(f'{value:X}') // 2 + 1
-        data = value.to_bytes(4, 'little')
-        msg = [0 for i in range(8)]
-        msg[0] = (((0b00010 << 2) | (4 - datasize)) << 2) | 0b11
-        msg[1], msg[2] = index.to_bytes(2, 'little')
-        msg[3] = subindex
-        msg[4:] = [data[i] for i in range(4)]
-        # Send the request message
-        try:
-            self.writeCanMessage(cobid, msg, timeout=timeout)
-        except CanGeneralError:
-            self.cnt['SDO write request timeout'] += 1
-            return False
-#         except analib.exception.DllException as ex:
-#             self.logger.exception(ex)
-#             self.cnt['SDO write request timeout'] += 1
-#             return False
-
-        # Read the response from the bus
-        t0 = time.perf_counter()
-        messageValid = False
-        while time.perf_counter() - t0 < timeout / 1000:
-            with self.lock:
-                for i, (cobid_ret, ret, dlc, flag, t) in \
-                        zip(range(len(self.__canMsgQueue)),
-                            self.__canMsgQueue):
-                    messageValid = \
-                        (dlc == 8 and cobid_ret == SDO_TX + nodeId
-                         and ret[0] in [0x80, 0b1100000] and
-                         int.from_bytes([ret[1], ret[2]], 'little') == index
-                         and ret[3] == subindex)
-                    if messageValid:
-                        del self.__canMsgQueue[i]
-                        break
-            if messageValid:
-                break
-        else:
-            self.logger.warning('SDO write timeout')
-            self.cnt['SDO write timeout'] += 1
-            return False
-        # Analyse the response
-        if ret[0] == 0x80:
-            abort_code = int.from_bytes(ret[4:], 'little')
-            self.logger.error(f'Received SDO abort message while writing '
-                              f'object {index:04X}:{subindex:02X} of node '
-                              f'{nodeId} with abort code {abort_code:08X}')
-            self.cnt['SDO write abort'] += 1
-            return False
-        else:
-            self.logger.success('SDO write protocol successful!')
-        return True
-    
-    def writeCanMessage(self, cobid, data, flag=0, timeout=None):
-        """Combining writing functions for different |CAN| interfaces
-        Parameters
-        ----------
-        cobid : :obj:`int`
-            |CAN| identifier
-        data : :obj:`list` of :obj:`int` or :obj:`bytes`
-            Data bytes
-        flag : :obj:`int`, optional
-            Message flag (|RTR|, etc.). Defaults to zero.
-        timeout : :obj:`int`, optional
-            |SDO| write timeout in milliseconds. When :data:`None` or not
-            given an infinit timeout is used.
-        """
-        if self.__interface == 'Kvaser':
-            if timeout is None:
-                timeout = 0xFFFFFFFF
-            frame = Frame(id_=cobid, data=data)  #  from tutorial
-            self.__ch.writeWait(frame, timeout)
-        
-        elif self.__interface == 'AnaGate':
-            if not self.__ch.deviceOpen:
-                self.logger.notice('Reopening AnaGate CAN interface')
-            self.__ch.write(cobid, data, flag)
-        
-        else:
-            msg = can.Message(arbitration_id=cobid, data=data, is_extended_id=False)
-
-            try:
-                self.__ch.send(msg)
-            except can.CanError:
-                self.hardwareConfig("can" + str(self.__channel))
-                self.logger.notice("Please restart CANMOPS")
-            
-    def hardwareConfig(self, channel):
-
-        '''
-        Pass channel string (example 'can0') to configure OS level drivers and interface.
-        '''
-        self.logger.info('CAN hardware OS drivers and config for %s' % channel)
-        os.system(". " + scrdir + "/socketcan_enable.sh")
-            
-    def read_can_message(self):
-        """Read incoming |CAN| messages and store them in the queue
-        :attr:`canMsgQueue`.
-
-        This method runs an endless loop which can only be stopped by setting
-        the :class:`~threading.Event` :attr:`pill2kill` and is therefore
-        designed to be used as a :class:`~threading.Thread`.
-        """
-        self.__pill2kill = Event()
-        while not self.__pill2kill.is_set():            
-            try:
-                if self.__interface == 'Kvaser':
-                    frame = self.__ch.read()
-                    cobid, data, dlc, flag, t = (frame.id, frame.data,
-                                                 frame.dlc, frame.flags,
-                                                 frame.timestamp)
-                    if frame is None or (cobid == 0 and dlc == 0):
-                        raise canlib.CanNoMsg
-                elif self.__interface == 'AnaGate':
-                    cobid, data, dlc, flag, t = self.__ch.getMessage()
-                    if (cobid == 0 and dlc == 0):
-                        raise analib.CanNoMsg
-                else:
-                    readcan = self.__ch.recv(1.0)
-                    if readcan == None:
-                        self.__pill2kill.set()
-                    cobid, data, dlc, flag, t = readcan.arbitration_id, readcan.data, readcan.dlc, readcan.is_extended_id, readcan.timestamp
-                with self.__lock:
-                     self.__canMsgQueue.appendleft((cobid, data, dlc, flag, t))
-                self.dumpMessage(cobid, data, dlc, flag, t)
-                return cobid, data, dlc, flag, t
-            except:  # (canlib.CanNoMsg, analib.CanNoMsg):
-                pass
-        
-    # The following functions are to read the can messages
-    def _anagateCbFunc(self):
-        """Wraps the callback function for AnaGate |CAN| interfaces. This is
-        neccessary in order to have access to the instance attributes.
-
-        The callback function is called asychronous but the instance attributes
-        are accessed in a thread-safe way.
-
-        Returns
-        -------
-        cbFunc
-            Function pointer to the callback function
-        """
-
-        def cbFunc(cobid, data, dlc, flag):
-            """Callback function.
-
-            Appends incoming messages to the message queue and logs them.
-
-            Parameters
-            ----------
-            cobid : :obj:`int`
-                |CAN| identifier
-            data : :class:`~ctypes.c_char` :func:`~cytpes.POINTER`
-                |CAN| data - max length 8. Is converted to :obj:`bytes` for
-                internal treatment using :func:`~ctypes.string_at` function. It
-                is not possible to just use :class:`~ctypes.c_char_p` instead
-                because bytes containing zero would be interpreted as end of
-                data.
-            dlc : :obj:`int`
-                Data Length Code
-            flag : :obj:`int`
-                Message flags
-                class to work.
-            """
-            data = ct.string_at(data, dlc)
-            t = time.time()
-            with self.__lock:
-                self.__canMsgQueue.appendleft((cobid, data, dlc, flag, t))
-            self.dumpMessage(cobid, data, dlc, flag, t)
-        
-        return cbFunc
-    
-    def dumpMessage(self, cobid, msg, dlc, flag, t):
-        """Dumps a CANopen message to the screen and log file
-
-        Parameters
-        ----------
-        cobid : :obj:`int`
-            |CAN| identifier
-        msg : :obj:`bytes`
-            |CAN| data - max length 8
-        dlc : :obj:`int`
-            Data Length Code
-        flag : :obj:`int`
-            Flags, a combination of the :const:`canMSG_xxx` and
-            :const:`canMSGERR_xxx` values
-        t : obj'int'
-        """
-        if self.__interface == 'Kvaser':
-            if (flag & canlib.canMSG_ERROR_FRAME != 0):
-                self.logger.error("***ERROR FRAME RECEIVED***")
-        else:
-            msgstr = '{:3X} {:d}   '.format(cobid, dlc)
-            for i in range(len(msg)):
-                msgstr += '{:02x}  '.format(msg[i])
-            msgstr += '    ' * (8 - len(msg))
-            st = datetime.datetime.fromtimestamp(t).strftime('%H:%M:%S')
-            msgstr += str(st)
-            if self.__interface == 'Kvaser':
-                self.logger.info(coc.MSGHEADER)
-            self.logger.info(msgstr)
-
-                                                  
+        return self.__myDCs                                                  
 if __name__ == "__main__":
     pass

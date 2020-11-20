@@ -83,11 +83,7 @@ Application:
                                                                         "1D":"<html><u>subindex 1D</u>:Ch31</html>",                                                     
                                                                         "1E":"<html><u>subindex 1E</u>:Ch32</html>",
                                                                         "1F":"<html><u>subindex 1F</u>:Ch33</html>",
-                                                                        "20":"<html><u>subindex 20</u>:Ch34</html>"}}
-                               ,"0x701":  {"description_items" :"<html><b>Check MOPS status: MOPS should respond with a CAN message back</b></b></html>",
-                                             "subindex_items"    :{     "-----":"<html><b>-----</b></html>"}}                                 
-                               ,"0x0"  :  {"description_items" :"<html><b> Reset device</b></b></html>",
-                                             "subindex_items"    :{     "-----":"<html><b>-----</b></html>"}}}
+                                                                        "20":"<html><u>subindex 20</u>:Ch34</html>"}}}
 adc_channels_reg:
     mon_index               : {"0x2310"}
     conf_index              : {"0x1000","0x1001","0x1005","0x1014","0x1018","0x1018","0x2001"}
