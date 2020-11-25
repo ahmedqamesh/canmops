@@ -1,0 +1,7 @@
+README.md
+setup.py
+CANMOPSWrapper.egg-info/PKG-INFO
+CANMOPSWrapper.egg-info/SOURCES.txt
+CANMOPSWrapper.egg-info/dependency_links.txt
+CANMOPSWrapper.egg-info/requires.txt
+CANMOPSWrapper.egg-info/top_level.txt

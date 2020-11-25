@@ -1,7 +1,23 @@
+
+#!/usr/bin/python
+# -*- coding: utf-8 -*-
+"""
+This module provides a class for a CAN wrapper for the ADC channels of the MOPS Chip.
+It also provides a function for using this server as a command line tool.
+Note
+----
+:Author: Ahmed Qamesh
+:Contact: ahmed.qamesh@cern.ch
+:Organization: Bergische Universität Wuppertal
+.. __: `OPC UA`_
+"""
+# Standard library modules
+
 from __future__ import annotations
 from typing import *
 import time
 import datetime
+import numba
 import sys
 import os
 from PyQt5.QtCore    import *
@@ -19,6 +35,8 @@ import logging
 from termcolor import colored
 import verboselogs
 import coloredlogs as cl
+import csv
+from csv import writer
 # Other files
 from controlServer import __version__
 try:
@@ -41,25 +59,27 @@ try:
 except:
     print (colored("Warning: AnaGate Package is not installed.......", 'red'), colored("Please ignore the warning if you are not using any AnaGate controllers.", "green"))
 
-scrdir = os.path.dirname(os.path.abspath(__file__))
+rootdir = os.path.dirname(os.path.abspath(__file__))
 
 class CanWrapper(object):
 
+
     def __init__(self,
                  interface=None, channel=None,
-                 bitrate=None, ipAddress=None,
+                 bitrate=None,  samplePoint = None,
+                 ipAddress=None,
                  console_loglevel=logging.INFO,
+                 
                  logformat='%(asctime)s - %(levelname)s - %(message)s'):
        
         super(CanWrapper, self).__init__()  # super keyword to call its methods from a subclass:
         config_dir = "config/"
-        
         """:obj:`~logging.Logger`: Main logger for this class"""
         verboselogs.install()
         self.logger = logging.getLogger(__name__)
         cl.install(fmt=logformat, level=console_loglevel, isatty=True, milliseconds=True)
         # Read configurations from a file
-        self.__conf = analysis_utils.open_yaml_file(file=config_dir + "main_cfg.yml", directory=scrdir[:-14])
+        self.__conf = analysis_utils.open_yaml_file(file=config_dir + "main_cfg.yml", directory=rootdir[:-14])
         self.__bitrate_items = self.__conf['default_values']['bitrate_items']
         self.__bytes = self.__conf["default_values"]["bytes"]
         self.__subIndex = self.__conf["default_values"]["subIndex"]
@@ -68,6 +88,7 @@ class CanWrapper(object):
         self.__channelPorts = self.__conf["channel_ports"]
         self.__ipAddress = analysis_utils.get_info_yaml(dictionary=self.__conf['CAN_Interfaces'], index=interface, subindex="ipAddress")
         self.__bitrate = analysis_utils.get_info_yaml(dictionary=self.__conf['CAN_Interfaces'], index=interface, subindex="bitrate")
+        self.__samplepoint = analysis_utils.get_info_yaml(dictionary=self.__conf['CAN_Interfaces'], index=interface, subindex="samplePoint")
         self.__channels = analysis_utils.get_info_yaml(dictionary=self.__conf['CAN_Interfaces'], index=interface, subindex="channels")
         self.__channel = list(analysis_utils.get_info_yaml(dictionary=self.__conf['CAN_Interfaces'], index=interface, subindex="channels"))[0]         
         self.logger.notice('... Loading all the configurations from the file %s!'%(config_dir + "main_cfg.yml"))
@@ -97,19 +118,19 @@ class CanWrapper(object):
         self.set_channelConnection(interface=self.__interface)
         """Internal attribute for the |CAN| channel"""
         self.__busOn = True
-        self.__canMsgQueue = deque([], 10)
+        self.__canMsgQueue = deque([], 50) # queue with a size of 5o to queue all the messages in the bus
+        self.__gotMessage =False
         self.__pill2kill = Event()
         self.__lock = Lock()
         self.__kvaserLock = Lock()
         #self.confirmNodes()
         #self.confirmMops(channel = self.__channel)
         self.logger.success('... Done!')
-
         # Import Object Dictionary from EDS
 #         self.logger.notice('Importing Object Dictionary ...')
 #         self.logger.debug('File path for EDS not given. Looking in '
 #                               'the dicrectory of this script.')
-#         edsfile = os.path.join(scrdir, 'DCSControllerOD.eds')
+#         edsfile = os.path.join(rootdir, 'DCSControllerOD.eds')
 #         self.__od = objectDictionary.objectDictionary(self.logger).from_eds(self.logger, edsfile, 0)
 #         value = self.__od[0x1800][1]
     def __str__(self):
@@ -151,7 +172,7 @@ class CanWrapper(object):
             self.set_nodeList(_nodeIds)
             self.logger.info(f'Connection to channel {channel} has been ' f'verified.')
             for nodeId in _nodeIds:
-                dev_t = self.send_sdo_can(nodeId, 0x1000, 0, timeout)
+                dev_t = self.send_sdo_can_thread(nodeId, 0x1000, 0, timeout)
                 if dev_t is None:
                     self.logger.error(f'Node {nodeId} in channel {channel} did not answer!')
                     # self.__nodeList.remove(nodeId)
@@ -166,9 +187,9 @@ class CanWrapper(object):
         for nodeId in _nodeIds: 
             # Send the status message
             cobid_TX = 0x701
-            self.writeCanMessage(cobid_TX, [0, 0, 0, 0, 0, 0, 0, 0], flag=0, timeout=200)
+            self.write_can_message(cobid_TX, [0, 0, 0, 0, 0, 0, 0, 0], flag=0, timeout=200)
             # receive the message
-            cobid_RX, data, _, _, _ = self.read_can_message()
+            cobid_RX, data, _, _, _ = self.read_can_message_thread()
             if cobid_RX == cobid_TX and (data[0]==0x85 or data[0]==0x05):
                 self.logger.info(f'Connection to MOPS with nodeId {nodeId} in channel {channel} has been '
                                  f'verified.')
@@ -211,41 +232,49 @@ class CanWrapper(object):
             # self.__ch.setCallback(self.__cbFunc)
         else:
             pass
-        self.__canMsgThread = Thread(target=self.read_can_message)
+        self.__canMsgThread = Thread(target=self.read_can_message_thread)
         self.__canMsgThread.start()
-    
-    def read_adc_channels(self):
+
+        
+    def read_adc_channels(self,file, directory ,nodeId, out_file_csv):
         """Start actual CANopen communication
         This function contains an endless loop in which it is looped over all
         ADC channels. Each value is read using
-        :meth:`send_sdo_can` and written to its corresponding
-        """
-        
-        count = 0
-        while count < 2:  # True:
-            # count = 0 if count == 10 else count
-             # Loop over all channelPorts
-            for channel in self.__channelPorts:
-            # Loop over all connected CAN nodeIds
-                _nodeIds = self.__channels[int(channel)]
-                for nodeId in _nodeIds:                                                       
-                    # Read ADC channels
-                    _adc_channels_reg = self.__adc_channels_reg
-                    _dictionary = self.__dictionary_items
-                    _adc_index = self.__adc_index
-                    _subIndexItems = list(analysis_utils.get_subindex_yaml(dictionary=_dictionary, index=_adc_index, subindex="subindex_items"))
-                    pbar = tqdm(total=len(_subIndexItems) * 10, desc="ADC channels", iterable=True)
-                    for i in np.arange(len(_subIndexItems)):
-                        _index = int(_adc_index, 16)
-                        _subIndex = int(_subIndexItems[i], 16)
-                        adcVals = self.send_sdo_can(nodeId, _index, _subIndex, 3000)
-                        # self.__mypyDCs[nodeId].write('ADCTRIM')
-                        if adcVals is not None:
-                            vals = analysis.Analysis().adc_conversion(_adc_channels_reg[str(i)], adcVals)
-                        pbar.update(10)
-                    pbar.close()
-                    #
-            count += 1
+        :meth:`send_sdo_can_thread` and written to its corresponding
+        """     
+        dev = analysis_utils.open_yaml_file(file=file, directory=directory)
+        dictionary_items = dev["Application"]["index_items"]
+        _adc_channels_reg = dev["adc_channels_reg"]["adc_channels"]
+        _adc_index = list(dev["adc_channels_reg"]["adc_index"])[0]
+        _channelItems = [int(channel) for channel in list(_adc_channels_reg)]
+        # Write header to the data
+        fieldnames = ['Time', 'Channel', "nodeId", "DLC", "ADCChannel", "ADCData" , "ADCDataConverted"]
+        writer = csv.DictWriter(out_file_csv, fieldnames=fieldnames)
+        writer.writeheader()    
+        csv_writer = writer(out_file_csv)
+        monitoringTime = time.time()
+        while True:                                             
+            # Read ADC channels
+            pbar = tqdm(total=len(_channelItems)+1 , desc="ADC channels", iterable=True)
+            for channel in np.arange(_channelItems[0],_channelItems[-1]+1,1):
+                subindex = channel - 2
+                data_point = self.read_sdo_can(nodeId, int(_adc_index, 16),subindex, 1000)
+                ts = time.time()
+                elapsedtime = ts-monitoringTime
+                if data_point is not None:
+                    adc_converted = analysis.Analysis().adc_conversion(_adc_channels_reg[str(channel)], data_point)
+                    
+#                     writer.writerow((str(round(elapsedtime,1)),
+#                                      str(self.get_channel()),
+#                                      str(nodeId),
+#                                      8,
+#                                      str(subindex),
+#                                      str(data_point),
+#                                      str(round(adc_converted, 3))))         
+                    self.logger.info(f'Got data for channel {channel}: = {adc_converted}')
+                time.sleep(0.25)
+                pbar.update(1)
+            pbar.close()
 
     def stop(self):
         """Close |CAN| channel and stop the |OPCUA| server
@@ -274,13 +303,13 @@ class CanWrapper(object):
             else:
                 self.__ch.shutdown()
                 channel = "can" + str(self.__channel)
-                #os.system(". " + scrdir + "/socketcan_enable.sh")
+                #os.system(". " + rootdir + "/socketcan_enable.sh")
                 #os.system("sudo -S ip link set down %s"%channel)
                 
         self.__busOn = False
         self.logger.warning('Stopping the server.')
         
-    def send_sdo_can(self, nodeId, index, subindex, timeout=1000, MAX_DATABYTES=8):
+    def send_sdo_can_thread(self, nodeId, index, subindex, timeout=100, MAX_DATABYTES=8):
         """Read an object via |SDO|
     
         Currently expedited and segmented transfer is supported by this method.
@@ -320,13 +349,15 @@ class CanWrapper(object):
         msg[1], msg[2] = index.to_bytes(2, 'little')
         msg[3] = subindex
         try:
-            self.writeCanMessage(cobid, msg, timeout=timeout)
+            self.write_can_message(cobid, msg, timeout=timeout)
         except CanGeneralError:
             self.cnt['SDO read request timeout'] += 1
             return None
         # Wait for response
         t0 = time.perf_counter()
         messageValid = False
+        errorResponse = False
+        errorReset = False
         while time.perf_counter() - t0 < timeout / 1000:
             with self.__lock:
                 # check the message validity [nodid, msg size,...]
@@ -336,18 +367,23 @@ class CanWrapper(object):
                                     and ret[0] in [0x80, 0x43, 0x47, 0x4b, 0x4f, 0x42] 
                                     and int.from_bytes([ret[1], ret[2]], 'little') == index
                                     and ret[3] == subindex)
-                    if messageValid:
+                    #errorResponse and errorReset are meant to deal with any disturbance in the signal due to the reset of the chip 
+                    errorResponse = (dlc == 8 and cobid_ret == 0x88 and ret[0] in [0x00])
+                    if (messageValid or errorResponse):
                         del self.__canMsgQueue[i]
                         break
-            if messageValid:
+                    
+            if (messageValid):
                 break
+            if (errorResponse):
+                return None
         else:
             self.logger.info(f'SDO read response timeout (node {nodeId}, index'
                              f' {index:04X}:{subindex:02X})')
             self.cnt['SDO read response timeout'] += 1
             return None
         # Check command byte
-        if ret[0] == 0x80:
+        if ret[0] == (0x80 or 0x88):
             abort_code = int.from_bytes(ret[4:], 'little')
             self.logger.error(f'Received SDO abort message while reading '
                               f'object {index:04X}:{subindex:02X} of node '
@@ -366,8 +402,107 @@ class CanWrapper(object):
         self.logger.info(f'Got data: {data}')
         return int.from_bytes(data, 'little')
 
+    def return_valid_message(self,nodeId, index, subindex, cobid_ret, ret, dlc):
+        messageValid =False
+        SDO_TX = 0x580  
+        SDO_RX = 0x600
+        messageValid = (dlc == 8 
+                and cobid_ret == SDO_TX + nodeId
+                and ret[0] in [0x80, 0x43, 0x47, 0x4b, 0x4f, 0x42] 
+                and int.from_bytes([ret[1], ret[2]], 'little') == index
+                and ret[3] == subindex)       
+        errorResponse = (dlc == 8 and cobid_ret == 0x88 and ret[0] in [0x00]) # SocketCAN error message
+        errorReset = (dlc == 8 and cobid_ret == 0x700+nodeId and ret[0] in [0x05,0x08]) 
+        if (errorReset):
+            cobid_ret, ret, dlc, flag, t = self.read_can_message()
+            messageValid = (dlc == 8 
+                    and cobid_ret == SDO_TX + nodeId
+                    and ret[0] in [0x80, 0x43, 0x47, 0x4b, 0x4f, 0x42] 
+                    and int.from_bytes([ret[1], ret[2]], 'little') == index
+                    and ret[3] == subindex)
+        
+        if (errorResponse):
+            cobid_ret, ret, dlc, flag, t = self.read_can_message(timeout = 1.0)
+            errorReset = (dlc == 8 and cobid_ret == 0x700+nodeId and ret[0] in [0x05,0x08]) 
+            if (errorReset):
+                cobid_ret, ret, dlc, flag, t = self.read_can_message(timeout = 1.0)
+                messageValid = (dlc == 8 
+                        and cobid_ret == SDO_TX + nodeId
+                        and ret[0] in [0x80, 0x43, 0x47, 0x4b, 0x4f, 0x42] 
+                        and int.from_bytes([ret[1], ret[2]], 'little') == index
+                        and ret[3] == subindex)
+        if messageValid:
+            nDatabytes = 4 - ((ret[0] >> 2) & 0b11) if ret[0] != 0x42 else 4
+            data = []
+            for i in range(nDatabytes):  
+                data.append(ret[4 + i])
+                #self.logger.info(f'Got data: {data}')
+            return int.from_bytes(data, 'little')
+        
+                     
+        else:
+            self.logger.info(f'SDO read response timeout (node {nodeId}, index'
+                 f' {index:04X}:{subindex:02X})')
+            self.cnt['SDO read response timeout'] += 1
+            return None
+        
+    def read_sdo_can(self, nodeId, index, subindex, timeout=100, MAX_DATABYTES=8):
+        """Read an object via |SDO|
     
-    def sdoWrite(self, nodeId, index, subindex, value, timeout=1000):
+        Currently expedited and segmented transfer is supported by this method.
+        The function will writing the dictionary request from the master to the node then read the response from the node to the master
+        The user has to decide how to decode the data.
+        
+        Parameters
+        ----------
+        nodeId : :obj:`int`
+            The id from the node to read from
+        index : :obj:`int`
+            The Object Dictionary index to read from
+        subindex : :obj:`int`
+            |OD| Subindex. Defaults to zero for single value entries.
+        timeout : :obj:`int`, optional
+            |SDO| timeout in milliseconds
+    
+        Returns
+        -------
+        :obj:`list` of :obj:`int`
+            The data if was successfully read
+        :data:`None`
+            In case of errors
+        """
+        SDO_TX = 0x580  
+        SDO_RX = 0x600
+        if nodeId is None or index is None or subindex is None:
+            self.logger.warning('SDO read protocol cancelled before it could begin.')         
+            return None
+        self.cnt['SDO read total'] += 1
+        cobid = SDO_RX + nodeId
+        msg = [0 for i in range(MAX_DATABYTES)]
+        msg[0] = 0x40
+        msg[1], msg[2] = index.to_bytes(2, 'little')
+        msg[3] = subindex
+        try:
+            self.write_can_message(cobid, msg, timeout=timeout)
+        except CanGeneralError:
+            self.cnt['SDO read request timeout'] += 1
+            return None
+        self.__readCanMessage = self.read_can_message()
+        if (self.__readCanMessage):
+           cobid_ret, ret, dlc, flag, t = self.__readCanMessage
+           outData = self.return_valid_message(nodeId, index, subindex, cobid_ret, ret, dlc)
+           # Check command byte
+           if ret[0] == (0x80):
+                abort_code = int.from_bytes(ret[4:], 'little')
+                self.logger.error(f'Received SDO abort message while reading '
+                                  f'object {index:04X}:{subindex:02X} of node '
+                                  f'{nodeId} with abort code {abort_code:08X}')
+                self.cnt['SDO read abort'] += 1
+                return None            
+           else:
+                return outData      
+    
+    def write_sdo_can(self, nodeId, index, subindex, value, timeout=1000):
         """Write an object via |SDO| expedited write protocol
         This sends the request and analyses the response.
         Parameters
@@ -387,7 +522,6 @@ class CanWrapper(object):
         :obj:`bool`
             If writing the object was successful
         """
-
         # Create the request message
         self.logger.notice(f'Send SDO write request to node {nodeId}, object '
                            f'{index:04X}:{subindex:X} with value {value:X}.')
@@ -398,7 +532,6 @@ class CanWrapper(object):
             return False
         SDO_TX = 0x580  
         SDO_RX = 0x600
-        
         cobid = SDO_RX + nodeId
         datasize = len(f'{value:X}') // 2 + 1
         data = value.to_bytes(4, 'little')
@@ -409,7 +542,7 @@ class CanWrapper(object):
         msg[4:] = [data[i] for i in range(4)]
         # Send the request message
         try:
-            self.writeCanMessage(cobid, msg, timeout=timeout)
+            self.write_can_message(cobid, msg, timeout=timeout)
         except CanGeneralError:
             self.cnt['SDO write request timeout'] += 1
             return False
@@ -452,7 +585,7 @@ class CanWrapper(object):
             self.logger.success('SDO write protocol successful!')
         return True
     
-    def writeCanMessage(self, cobid, data, flag=0, timeout=None):
+    def write_can_message(self, cobid, data, flag=0, timeout=None):
         """Combining writing functions for different |CAN| interfaces
         Parameters
         ----------
@@ -481,20 +614,20 @@ class CanWrapper(object):
             msg = can.Message(arbitration_id=cobid, data=data, is_extended_id=False)
 
             try:
-                self.__ch.send(msg)
+                self.__ch.send(msg,timeout)
             except can.CanError:
-                self.hardwareConfig("can" + str(self.__channel))
+                self.hardware_config("can" + str(self.__channel))
                 self.logger.notice("Please restart CANMOPS")
             
-    def hardwareConfig(self, channel):
+    def hardware_config(self, channel):
 
         '''
         Pass channel string (example 'can0') to configure OS level drivers and interface.
         '''
         self.logger.info('CAN hardware OS drivers and config for %s' % channel)
-        os.system(". " + scrdir + "/socketcan_enable.sh")
-            
-    def read_can_message(self):
+        os.system(". " + rootdir + "/socketcan_wrapper_enable.sh %i %s %i" %(self.__bitrate,str(self.__samplepoint), self.__channel))
+           
+    def read_can_message_thread(self):
         """Read incoming |CAN| messages and store them in the queue
         :attr:`canMsgQueue`.
 
@@ -517,17 +650,39 @@ class CanWrapper(object):
                     if (cobid == 0 and dlc == 0):
                         raise analib.CanNoMsg
                 else:
-                    readcan = self.__ch.recv(1.0)
-                    if readcan == None:
+                    readcan = self.__ch.recv( timeout =1.0)
+                    if readcan is None:
                         self.__pill2kill.set()
+                        #raise can.CanError
                     cobid, data, dlc, flag, t = readcan.arbitration_id, readcan.data, readcan.dlc, readcan.is_extended_id, readcan.timestamp
                 with self.__lock:
                     self.__canMsgQueue.appendleft((cobid, data, dlc, flag, t))
                 self.dumpMessage(cobid, data, dlc, flag, t)
                 return cobid, data, dlc, flag, t
-            except:  # (canlib.CanNoMsg, analib.CanNoMsg):
+            except: #(canlib.CanNoMsg, analib.CanNoMsg,can.CanError):
                 pass
-        
+
+    def read_can_message(self,timeout =1.0):         
+        if self.__interface == 'Kvaser':
+            frame = self.__ch.read()
+            cobid, data, dlc, flag, t = (frame.id, frame.data,
+                                         frame.dlc, frame.flags,
+                                         frame.timestamp)
+            if frame is None or (cobid == 0 and dlc == 0):
+                raise canlib.CanNoMsg
+        elif self.__interface == 'AnaGate':
+            cobid, data, dlc, flag, t = self.__ch.getMessage()
+            if (cobid == 0 and dlc == 0):
+                raise analib.CanNoMsg
+        else:
+            readcan = self.__ch.recv( timeout =timeout)
+            if readcan is not None:
+                #raise can.CanError
+                cobid, data, dlc, flag, t = readcan.arbitration_id, readcan.data, readcan.dlc, readcan.is_extended_id, readcan.timestamp
+            else:
+                cobid, data, dlc, flag, t = None,None, None, None, None
+        return cobid, data, dlc, flag, t
+                   
     # The following functions are to read the can messages
     def _anagateCbFunc(self):
         """Wraps the callback function for AnaGate |CAN| interfaces. This is
@@ -637,7 +792,10 @@ class CanWrapper(object):
             self.start()
         else:
             self.__bitrate = bitrate 
-            
+ 
+    def set_sample_point(self,x):
+        self.__sample_point = float(x)
+                   
     def get_DllVersion(self):
         ret = analib.wrapper.dllInfo()
         return ret
@@ -651,6 +809,9 @@ class CanWrapper(object):
     def get_bitrate(self):
         return self.__bitrate
 
+    def get_sample_point(self):
+        return self.__sample_point
+        
     def get_ipAddress(self):
         """:obj:`str` : Network address of the AnaGate partner. Only used for
         AnaGate CAN interfaces."""
@@ -729,7 +890,7 @@ class CanWrapper(object):
     @property
     def pill2kill(self):
         """:class:`threading.Event` : Stop event for the message collecting
-        method :meth:`read_can_message`"""
+        method :meth:`read_can_message_thread`"""
         return self.__pill2kill
     
     # @property
@@ -772,5 +933,93 @@ class CanWrapper(object):
     def myDCs(self):
         """:obj:`list` : List of created UA objects"""
         return self.__myDCs                                                  
+def main():
+    """Wrapper function for using the server as a command line tool
+
+    The command line tool accepts arguments for configuring the server which
+    are tranferred to the :class:`DCSControllerServer` class.
+    """
+
+    # Parse arguments
+    parser = ArgumentParser(description='OPCUA CANopen server for DCS '
+                            'Controller',
+                            epilog='For more information contact '
+                            'sebastian.scholz@cern.ch',
+                            formatter_class=ArgumentDefaultsHelpFormatter)
+    parser.set_defaults(interface='Kvaser')
+
+    # Server configuration group
+    sGroup = parser.add_argument_group('OPC UA server configuration')
+    sGroup.add_argument('-E', '--endpoint', metavar='ENDPOINT',
+                        help='Endpoint of the OPCUA server',
+                        default='opc.tcp://localhost:4840/')
+    sGroup.add_argument('-e', '--edsfile', metavar='EDSFILE',
+                        default=os.path.join(rootdir,
+                                             'DCSControllerOD.eds'),
+                        help='File path of Electronic Data Sheet (EDS)')
+    sGroup.add_argument('-x', '--xmlfile', metavar='XMLFILE',
+                        default=os.path.join(rootdir,
+                                             'dcscontrollerdesign.xml'),
+                        help='File path of OPCUA XML design file')
+    sGroup.add_argument('--config', metavar='CONFIG',
+                        default=os.path.join(rootdir,
+                                             'DCSControllerConfig.ini'),
+                        help='File path of server configuration file')
+    sGroup.add_argument('-p', '--period', metavar='PERIOD', type=int,
+                        default=500,
+                        help='Publishing interval for data subscriptions in '
+                        'milliseconds')
+
+    # CAN interface
+    CGroup = parser.add_argument_group('CAN interface')
+    iGroup = CGroup.add_mutually_exclusive_group()
+    iGroup.add_argument('-K', '--kvaser', action='store_const', const='Kvaser',
+                        dest='interface',
+                        help='Use Kvaser CAN interface (default). When no '
+                        'Kvaser interface is found or connected a virtual '
+                        'channel is used.')
+    iGroup.add_argument('-A', '--anagate', action='store_const',
+                        const='AnaGate', dest='interface',
+                        help='Use AnaGate Ethernet CAN interface')
+
+    # CAN settings group
+    cGroup = parser.add_argument_group('CAN settings')
+    cGroup.add_argument('-C', '--channel', metavar='CHANNEL', type=int,
+                        help='Number of CAN channel to use', default=0)
+    cGroup.add_argument('-i', '--ipaddress', metavar='IPADDRESS',
+                        default='192.168.1.254', dest='ipAddress',
+                        help='IP address of the AnaGate Ethernet CAN '
+                        'interface')
+    cGroup.add_argument('-b', '--bitrate', metavar='BITRATE', type=int,
+                        default=125000,
+                        help='CAN bitrate as integer in bit/s')
+
+    # Logging configuration
+    lGroup = parser.add_argument_group('Logging settings')
+    lGroup.add_argument('-c', '--console_loglevel',
+                        choices={'NOTSET', 'SPAM', 'DEBUG', 'VERBOSE', 'INFO',
+                                 'NOTICE', 'SUCCESS', 'WARNING', 'ERROR',
+                                 'CRITICAL'},
+                        default='NOTICE',
+                        help='Level of console logging')
+    lGroup.add_argument('-f', '--file_loglevel',
+                        choices={'NOTSET', 'SPAM', 'DEBUG', 'VERBOSE', 'INFO',
+                                 'NOTICE', 'SUCCESS', 'WARNING', 'ERROR',
+                                 'CRITICAL'},
+                        default='INFO',
+                        help='Level of file logging')
+    lGroup.add_argument('-d', '--logdir', metavar='LOGDIR',
+                        default=os.path.join(rootdir, 'log'),
+                        help='Directory where log files should be stored')
+
+    # Program version
+    parser.add_argument('-v', '--version', action='version',
+                        version=__version__)
+    args = parser.parse_args()
+    
+    # Start the server
+    with CanWrapper(**vars(args)) as wrapper:
+        wrapper.start()
+        
 if __name__ == "__main__":
     pass

@@ -19,7 +19,7 @@ def test():
                     "10","11","12","13","14","15","16","17","18","19","1A","1B","1C","1D","1E","1F","20"]
     values = []
     for c_subindex in c_subindices: # Each i represents one channel
-         value = wrapper.send_sdo_can(NodeIds[0], c_index,int(c_subindex,16),3000)
+         value = wrapper.send_sdo_can(NodeIds[0], c_index,int(c_subindex,16),1000)
          values = np.append(values, value)
 
     for c_index in c_subindices:

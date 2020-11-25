@@ -13,16 +13,16 @@ class Analysis(object):
         '''
         the function will convert each ADC value into a reasonable physical quantity
         > MOPS has 12 bits ADC value ==> 2^12 = 4096 (this means that we can read from 0 -> 4096 different values)
-        > The full 12 bits ADC covers 850 mV (this means that each ADC value corresponds to 4096/850 = 0.207 mV)
+        > The full 12 bits ADC covers 1.2V (this means that each ADC value corresponds to 850/4096 = 0.207 mV this is the resolution of the ADC)
         Example: 
         Each ADC value should be multiplied by 0.207 to give the answer in mV
         To measure Voltage: the value should be multiplied by 40 (Resistor ratio)
         '''
         if value is not None:
             if adc_channels_reg == "V":
-                value = value * 207 * 10e-6
+                value = value *1# 207 * 10e-6
             elif adc_channels_reg == "T":
-                value = value * 207 * 10e-6
+                value = value * 1#207 * 10e-6
             else:
                 value = value * 207 * 10e-6
         return value

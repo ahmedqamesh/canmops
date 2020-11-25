@@ -1,14 +1,12 @@
 #!/bin/bash
 # variables
-n_buses=0
-echo "Type in a string and then press Enter:"
-read response
-echo "You entered: $response"
-
+n_buses=1
 echo "Initializing SocketCAN...."
-BITRATE=125000
+BITRATE=114285
 CHANNEL="can"
-SAMPLEPOINT = 0.5
+SAMPLEPOINT=0.5
+echo "Setting the bus to a bitrate of $BITRATE [Sample Point $SAMPLEPOINT]"
+
 #echo "Unloading all the kernel modules if on"
 #sudo modprobe -r can_bcm
 #sudo modprobe -r systec_can
@@ -37,7 +35,7 @@ do
 	sudo -S ip link set up $CHANNEL$i
 	ifconfig $CHANNEL$i
 done
-for i in range $n_buses 
+for i in range 0 $n_buses 
 do 
 	ip -details link show $CHANNEL$i
 done

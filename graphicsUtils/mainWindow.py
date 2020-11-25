@@ -53,6 +53,7 @@ class MainWindow(QMainWindow):
         self.__canSettings = self.__conf["Application"]["can_settings"]
         # self._index_items = self.__conf["default_values"]["index_items"]
         self.__bitrate_items = self.__conf['default_values']['bitrate_items']
+        self.__sample_points = self.__conf['default_values']['sample_points']
         self.__bytes = self.__conf["default_values"]["bytes"]
         self.__subIndex = self.__conf["default_values"]["subIndex"]
         self.__cobid = self.__conf["default_values"]["cobid"]
@@ -60,14 +61,14 @@ class MainWindow(QMainWindow):
         self.__interfaceItems = list(self.__conf['CAN_Interfaces'].keys()) 
         self.__channelPorts = self.__conf["channel_ports"]
         self.__devices = self.__conf["Devices"]
-        # Search for predefined CAN settings
+        self.__timeout = 3000
         self.__interface = None
         self.__channel = None
         self.__ipAddress = None
         self.__bitrate = None
+        self.__sample_point =None
         self.configure_DeviceBox(None)
         self.index_description_items = None
-        # self.subIndex_description_items = None
         self.__response = None
         self.wrapper = None
         # Show a textBox
@@ -351,14 +352,6 @@ class MainWindow(QMainWindow):
         self.channelComboBox.setStatusTip('Possible ports as defined in the main_cfg.yml file')
         for item in list(__channelList): self.channelComboBox.addItem(item)  
 
-        timingLabel = QLabel("")
-        timingLabel.setText("Bus Speed in bit/s:")
-        timingItems = self.get_bitrate_items()
-        self.timingComboBox = QComboBox()
-        self.timingComboBox.setStatusTip('Bus Speed in bit/s')
-        for item in timingItems: self.timingComboBox.addItem(item)
-        self.timingComboBox.activated[str].connect(self.set_bitrate)
-        
         interfaceLabel = QLabel("interface")
         interfaceLabel.setText("  Interfaces")
         self.interfaceComboBox = QComboBox()
@@ -398,12 +391,10 @@ class MainWindow(QMainWindow):
                 
         defaultSettingsWindowLayout.addWidget(channelLabel, 0, 0)
         defaultSettingsWindowLayout.addWidget(self.channelComboBox, 1, 0)
-        defaultSettingsWindowLayout.addWidget(timingLabel, 0, 1)
-        defaultSettingsWindowLayout.addWidget(self.timingComboBox, 1, 1)
-        defaultSettingsWindowLayout.addWidget(interfaceLabel, 0, 2)
-        defaultSettingsWindowLayout.addWidget(self.interfaceComboBox, 1, 2)
+        defaultSettingsWindowLayout.addWidget(interfaceLabel, 0, 1)
+        defaultSettingsWindowLayout.addWidget(self.interfaceComboBox, 1, 1)
         
-        defaultSettingsWindowLayout.addWidget(self.connectButton, 1, 3)
+        defaultSettingsWindowLayout.addWidget(self.connectButton, 1, 2)
 
         self.setCentralWidget(plotframe)
         plotframe.setLayout(defaultSettingsWindowLayout)
@@ -450,7 +441,7 @@ class MainWindow(QMainWindow):
         self.startButton.setIcon(QIcon('graphicsUtils/icons/icon_start.png'))
         self.startButton.setStatusTip('Send CAN message')
         self.startButton.clicked.connect(__apply_CANMessageSettings)
-        self.startButton.clicked.connect(self.send_sdo_can)                 
+        self.startButton.clicked.connect(self.send_sdo_can_thread)                 
         defaultMessageWindowLayout.addWidget(nodeLabel, 3, 0)
         defaultMessageWindowLayout.addWidget(self.nodeComboBox, 4, 0)   
         
@@ -529,18 +520,21 @@ class MainWindow(QMainWindow):
                     _ipAddress = _canSettings['CAN_Interfaces'][_interface]["ipAddress"]
                     _bitrate = _canSettings['CAN_Interfaces'][_interface]["bitrate"]
                     _nodIds = _canSettings['CAN_Interfaces'][_interface]["nodIds"]
+                    _samplePoint = _canSettings['CAN_Interfaces'][_interface]["samplePoint"]
+                    
                     # Update settings
                     self.set_nodeList(_nodIds)
                     self.set_channelPorts(list(str(_channels)))                
                     self.set_channel(_channels)
+                    _channel = self.get_channel()
                     # Update buttons
                     self.channelComboBox.clear()
                     self.channelComboBox.addItems(list(str(_channels)))
                     self.nodeComboBox.clear()
                     self.nodeComboBox.addItems(list(map(str, _nodIds)))
                     
-                    _channel = self.get_channel()
-                    self.wrapper = canWrapper.CanWrapper(interface=_interface, bitrate=_bitrate, ipAddress=_ipAddress,
+                    
+                    self.wrapper = canWrapper.CanWrapper(interface=_interface, bitrate=_bitrate, samplePoint = _samplePoint, ipAddress=_ipAddress,
                                                                 channel=_channel)
                     if self.__deviceName == "MOPS":
                         self.wrapper.confirmMops(channel=_channel)
@@ -550,9 +544,8 @@ class MainWindow(QMainWindow):
                 else:
                     _channel = self.get_channel()
                     _bitrate = self.get_bitrate()
-                    # _channels = analysis_utils.get_info_yaml(dictionary=self.__conf['CAN_Interfaces'], index=_interface, subindex="channels")
-                    # _channels[_channel]
-                    self.wrapper = canWrapper.CanWrapper(interface=_interface, bitrate=_bitrate, channel=_channel)
+                    _samplePoint =self.get_sample_point()
+                    self.wrapper = canWrapper.CanWrapper(interface=_interface, bitrate=_bitrate, samplePoint = _samplePoint, channel=_channel)
                 
                     if self.__deviceName == "MOPS":
                         self.wrapper.confirmMops(channel=_channel)
@@ -568,6 +561,7 @@ class MainWindow(QMainWindow):
         
     def stop_server(self):
         try:
+            self.stopTimer()
             self.wrapper.stop()
         except:
             pass
@@ -581,6 +575,7 @@ class MainWindow(QMainWindow):
             _interface = self.get_interface()
             _channel = self.get_channel()
             _channels = analysis_utils.get_info_yaml(dictionary=self.__conf['CAN_Interfaces'], index=_interface, subindex="channels")
+            _sample_point = self.get_sample_point()
             _nodeItems = _channels[int(_channel)]
             _timeout = 500
             if _interface == "AnaGate":
@@ -599,7 +594,7 @@ class MainWindow(QMainWindow):
             self.nodeComboBox.addItems(list(map(str, _nodeItems)))
             self.connectButton.setChecked(True)
             # Save the settings into a file
-            dict_file = {"CAN_Interfaces": {_interface:{"bitrate":_bitrate , "ipAddress":str(_ipAddress), "timeout":_timeout, "channels":int(_channel), "nodIds":_nodeItems}}}
+            dict_file = {"CAN_Interfaces": {_interface:{"bitrate":_bitrate ,"samplePoint":_sample_point, "ipAddress":str(_ipAddress), "timeout":_timeout, "channels":int(_channel), "nodIds":_nodeItems}}}
             self.logger.info("Saving CAN settings to the file %s" % lib_dir + self.config_dir + _interface + "_CANSettings.yml") 
             with open(lib_dir + self.config_dir + _interface + "_CANSettings.yml", 'w') as yaml_file:
                 yaml.dump(dict_file, yaml_file, default_flow_style=False)
@@ -613,15 +608,26 @@ class MainWindow(QMainWindow):
     '''
     Define can communication messages
     '''
-               
-    def send_sdo_can(self, trending=False, print_sdo=True):
+    def read_sdo_can(self):
         try:
             _index = int(self.get_index(), 16)
             _subIndex = int(self.get_subIndex(), 16)
             _nodeId = self.get_nodeId()
             _nodeId = int(_nodeId[0])
             _interface = self.get_interface()
-            self.__response = self.wrapper.send_sdo_can(_nodeId, _index, _subIndex, 1000)
+            self.__response = self.wrapper.read_sdo_can(_nodeId, _index, _subIndex, self.__timeout)
+            return self.__response
+        except Exception:
+            self.error_message(text="Make sure that the CAN interface is connected")
+                           
+    def send_sdo_can_thread(self, trending=False, print_sdo=True):
+        try:
+            _index = int(self.get_index(), 16)
+            _subIndex = int(self.get_subIndex(), 16)
+            _nodeId = self.get_nodeId()
+            _nodeId = int(_nodeId[0])
+            _interface = self.get_interface()
+            self.__response = self.wrapper.send_sdo_can_thread(_nodeId, _index, _subIndex, self.__timeout)
             if print_sdo == True:
                 self.control_logger.disabled = False
                 self.print_sdo_can(index=_index, subIndex=_subIndex, response_from_node=self.__response)
@@ -678,7 +684,7 @@ class MainWindow(QMainWindow):
         self.TXTable.clearContents()  # clear cells
         self.hexTXTable.clearContents()  # clear cells
         self.decTXTable.clearContents()  # clear cells
-        self.send_sdo_can(print_sdo=False)  
+        self.send_sdo_can_thread(print_sdo=False)  
                         
     def write_can_message(self):
         cobid = self.get_cobid()
@@ -690,15 +696,15 @@ class MainWindow(QMainWindow):
                
         try:
             # Send the can Message
-            self.wrapper.writeCanMessage(cobid, bytes, flag=0, timeout=200)
+            self.wrapper.write_can_message(cobid, bytes, flag=0, timeout=200)
             # receive the message
-            self.read_can_message()
+            self.read_can_message_thread()
             self.set_textBox_message(comunication_object="newline", msg="-----------------------------------------------------------------------") 
         except Exception:
             self.error_message(text="Make sure that the CAN interface is connected")
             
-    def read_can_message(self, print_sdo=True):
-        readCanMessage = self.wrapper.read_can_message()
+    def read_can_message_thread(self, print_sdo=True):
+        readCanMessage = self.wrapper.read_can_message_thread()
         if readCanMessage is not None:
            cobid, data, dlc, flag, t = readCanMessage
            outtdata = int.from_bytes(data, byteorder=sys.byteorder)
@@ -723,7 +729,7 @@ class MainWindow(QMainWindow):
         # signal.signal(signal.SIGALRM, timeout_handler)
         # signal.alarm(TIMEOUT)    
         # try:
-        self.read_can_message(print_sdo=False)
+        self.read_can_message_thread(print_sdo=False)
         self.set_textBox_message(comunication_object="ErrorFrame", msg="ErrorFrame\n------------------------------------------------------------------------")
         # signal.alarm(0)
         # except Exception:
@@ -903,6 +909,7 @@ class MainWindow(QMainWindow):
         firstLabel = QLabel("firstLabel", ChildWindow)
         secondLabel = QLabel("secondLabel", ChildWindow)
         thirdLabel = QLabel("thirdLabel", ChildWindow)
+        sampleLabel = QLabel("sampleLabel")
         firstComboBox = QComboBox(ChildWindow)
         if (interface == "Kvaser"):
             # firstLabel.setText("")
@@ -917,7 +924,13 @@ class MainWindow(QMainWindow):
             thirdComboBox = QComboBox(ChildWindow)
             for item in thirdItems: thirdComboBox.addItem(item)
             thirdComboBox.activated[str].connect(self.set_bitrate)
-
+            sampleLabel.setText("Sample point label")
+            sampleItems = self.get_sample_points()
+            sampleComboBox = QComboBox()
+            sampleComboBox.setStatusTip('The location of Sample point in percentage inside each bit period')
+            for item in sampleItems: sampleComboBox.addItem(item)
+            sampleComboBox.activated[str].connect(self.set_sample_point)
+        
         if (interface == "socketcan"):
             # firstLabel.setText("")
             # firstItems = self.get_bitrate_items() 
@@ -926,12 +939,18 @@ class MainWindow(QMainWindow):
             secondItems = ["1", "2", "3", "4"]
             secondComboBox = QComboBox(ChildWindow)
             for item in secondItems: secondComboBox.addItem(item)
-            thirdLabel.setText("Bit Speed in bit/s:")
+            thirdLabel.setText("Bus Speed in bit/s:")
             thirdItems = self.get_bitrate_items()
             thirdComboBox = QComboBox(ChildWindow)
             for item in thirdItems: thirdComboBox.addItem(item)
             thirdComboBox.activated[str].connect(self.set_bitrate)
-                        
+            sampleLabel.setText("Sample point label")
+            sampleItems = self.get_sample_points()
+            sampleComboBox = QComboBox()
+            sampleComboBox.setStatusTip('The location of Sample point in percentage inside each bit period')
+            for item in sampleItems: sampleComboBox.addItem(item)
+            sampleComboBox.activated[str].connect(self.set_sample_point)
+                                    
         if (interface == "AnaGate"):
             firstLabel.setText("IP address:")
             self.firsttextbox = QLineEdit('192.168.1.254', ChildWindow)
@@ -939,14 +958,20 @@ class MainWindow(QMainWindow):
             secondItems = ["1", "2", "3", "4"]
             secondComboBox = QComboBox(ChildWindow)
             for item in secondItems: secondComboBox.addItem(item)
-            thirdLabel.setText("Bit Speed in bit/s:")
+            thirdLabel.setText("Bus Speed in bit/s:")
             thirdItems = self.get_bitrate_items()
             thirdComboBox = QComboBox(ChildWindow)
             for item in thirdItems: thirdComboBox.addItem(item)
             thirdComboBox.activated[str].connect(self.set_bitrate)
             SubSecondGridLayout.addWidget(firstLabel, 0, 0)
             SubSecondGridLayout.addWidget(self.firsttextbox, 0, 1)
-            
+            sampleLabel.setText("Sample point label")
+            sampleItems = self.get_sample_points()
+            sampleComboBox = QComboBox()
+            sampleComboBox.setStatusTip('The location of Sample point in percentage inside each bit period')
+            for item in sampleItems: sampleComboBox.addItem(item)
+            sampleComboBox.activated[str].connect(self.set_sample_point)
+                        
         if (interface == "Others"): 
             firstLabel.setText("Bus Speed in bit/s:")
             firstItems = [""]
@@ -962,6 +987,13 @@ class MainWindow(QMainWindow):
             thirdComboBox.activated[str].connect(self.set_bitrate)
             for item in thirdItems: thirdComboBox.addItem(item)
             SubSecondGridLayout.addWidget(firstComboBox, 0, 1)
+            sampleLabel.setText("Sample point label")
+            sampleItems = self.get_sample_points()
+            sampleComboBox = QComboBox()
+            sampleComboBox.setStatusTip('The location of Sample point in percentage inside each bit period')
+            for item in sampleItems: sampleComboBox.addItem(item)
+            sampleComboBox.activated[str].connect(self.set_sample_point)
+            
         else:
             pass   
         try:
@@ -969,27 +1001,16 @@ class MainWindow(QMainWindow):
             SubSecondGridLayout.addWidget(secondLabel, 1, 0)
             SubSecondGridLayout.addWidget(thirdLabel, 2, 0)
             SubSecondGridLayout.addWidget(thirdComboBox, 2, 1)
+            SubSecondGridLayout.addWidget(sampleLabel, 3, 0)
+            SubSecondGridLayout.addWidget(sampleComboBox, 3, 1)
+            
             self.SubSecondGroupBox.setLayout(SubSecondGridLayout)
         except Exception:
             pass
-            
-    def deviceChildWindow(self, ChildWindow):
-        
-        def __status_device():
-            #  check if the MOPS is alive or not. MOPS should respond with a CAN message
-            try:
-                cobid_TX = 0x701
-                self.wrapper.writeCanMessage(cobid_TX, [0, 0, 0, 0, 0, 0, 0, 0], flag=0, timeout=200)
-                # receive the message
-                cobid_RX, data, _, _, _ = self.read_can_message(print_sdo=False)
-                if cobid_RX == cobid_TX and (data[0] == 0x85 or data[0] == 0x05):
-                   self.logger.info("%s device is in an active state" % (self.__deviceName))
-                else: 
-                    self.logger.error("%s device is not active" % (self.__deviceName))
-            except Exception:
-                self.error_message(text="Make sure that the CAN interface is connected")
-        
-        __status_device()
+                
+    def deviceChildWindow(self, ChildWindow):    
+        _channel = self.get_channel()
+        self.wrapper.confirmMops(channel=_channel)
         
         #  Open the window
         ChildWindow.setObjectName("DeviceWindow")
@@ -1039,7 +1060,7 @@ class MainWindow(QMainWindow):
         startButton.setIcon(QIcon('graphicsUtils/icons/icon_start.png'))
         startButton.setStatusTip('Send CAN message')  # show when move mouse to the icon
         startButton.clicked.connect(__set_bus)
-        startButton.clicked.connect(self.send_sdo_can)
+        startButton.clicked.connect(self.send_sdo_can_thread)
 
         def __reset_device():
             # self.set_cobid(0x0)
@@ -1150,7 +1171,7 @@ class MainWindow(QMainWindow):
                 
         HBox.addWidget(send_button)
         HBox.addWidget(stop_button)
-        # HBox.addWidget(trend_button)
+        #HBox.addWidget(trend_button)
         
         mainLayout.addWidget(self.FirstGroupBox , 0, 0, 3, 3)
         mainLayout.addWidget(self.ThirdGroupBox, 0, 3, 2, 5)
@@ -1167,56 +1188,51 @@ class MainWindow(QMainWindow):
         _adc_channels_reg = self.get_adc_channels_reg()
         _dictionary = self.__dictionary_items
         _adc_indices = list(self.__adc_index)
-        
         for i in np.arange(len(_adc_indices)):
             _subIndexItems = list(analysis_utils.get_subindex_yaml(dictionary=_dictionary, index=_adc_indices[i], subindex="subindex_items"))
             labelChannel = [_subIndexItems[k] for k in np.arange(len(_subIndexItems) * len(_adc_indices))]
             self.ChannelBox = [_subIndexItems[k] for k in np.arange(len(_subIndexItems) * len(_adc_indices))]
-            self.trendingBox = [_subIndexItems[k] for k in np.arange(len(_subIndexItems) * len(_adc_indices))]
+            self.trendingBox = [False for k in np.arange(len(_subIndexItems) * len(_adc_indices))]
             self.trendingBotton = [_subIndexItems[k] for k in np.arange(len(_subIndexItems) * len(_adc_indices))]
-            _start_a = 1  # to ignore the first subindex
-            a = 0
-            for s in np.arange(_start_a, len(_subIndexItems)): 
-                #self.x[s] = list(range(2))  # 10 time points
-                #self.y[s] = [0 for _ in range(2)]  # 10 data points
-                subindex_description_item = analysis_utils.get_subindex_description_yaml(dictionary=_dictionary, index=_adc_indices[i], subindex=_subIndexItems[s])
-                labelChannel[s] = QLabel("Channel", self)
-                labelChannel[s].setText("Ch" + str(s) + ":")
+            _start_a = 3  # to start from channel 3
+            for subindex in np.arange(_start_a, len(_subIndexItems)+_start_a-1):
+                s = subindex-_start_a
+                s_correction = subindex-2
+                labelChannel[s] = QLabel("", self)
                 self.ChannelBox[s] = QLineEdit("", self)
                 self.ChannelBox[s].setStyleSheet("background-color: white; border: 1px inset black;")
                 self.ChannelBox[s].setReadOnly(True)
-                labelChannel[s].setStatusTip('ADC channel %s [index = %s & subIndex = %s]' % (str(_subIndexItems[s]), _adc_indices[i], _subIndexItems[s]))  # show when move mouse to the icon
+                subindex_description_item = analysis_utils.get_subindex_description_yaml(dictionary=_dictionary, index=_adc_indices[i], subindex=_subIndexItems[s_correction])
+                labelChannel[s].setStatusTip('ADC channel %s [index = %s & subIndex = %s]'%(subindex_description_item[25:29], _adc_indices[i], _subIndexItems[s_correction]))  # show when move mouse to the icon
+                labelChannel[s].setText(subindex_description_item[25:29] + ":")
                 icon = QLabel(self)
-                if _adc_channels_reg[str(s)] == "V": 
+                if _adc_channels_reg[str(subindex)] == "V": 
                     icon_dir = 'graphicsUtils/icons/icon_voltage.png'
                 else: 
                     icon_dir = 'graphicsUtils/icons/icon_thermometer.png'
                 pixmap = QPixmap(icon_dir)
                 icon.setPixmap(pixmap.scaled(20, 20))
-                self.trendingBotton[s] = QPushButton(str(s))
-                self.trendingBotton[s].setObjectName(str(s))
+                self.trendingBotton[s] = QPushButton("")
+                self.trendingBotton[s].setObjectName(str(subindex))
                 self.trendingBotton[s].setIcon(QIcon('graphicsUtils/icons/icon_trend.jpg'))
-                self.trendingBotton[s].setStatusTip('Data Trending')
+                self.trendingBotton[s].setStatusTip('Data Trending for %s'%subindex_description_item[25:29])
                 self.trendingBotton[s].clicked.connect(self.show_trendWindow)
-#                 self.trendingBox[s] = QCheckBox(str(s))
-#                 self.trendingBox[s].setStatusTip('Data Trending')
+#                 self.trendingBox[s] = QCheckBox("")
 #                 self.trendingBox[s].setChecked(False)
-#                 self.trendingBox[s].stateChanged.connect(self.stateBox)
-                grid_location = s - 1  # to relocate the boxes
-                col_len = int(len(_subIndexItems) / 2)
-                if grid_location < col_len:
-                    FirstGridLayout.addWidget(icon, grid_location, 0)
-                    #FirstGridLayout.addWidget(self.trendingBox[s], grid_location, 1)
-                    #FirstGridLayout.addWidget(self.trendingBotton[s], grid_location, 2)
-                    FirstGridLayout.addWidget(labelChannel[s], grid_location, 3)
-                    FirstGridLayout.addWidget(self.ChannelBox[s], grid_location, 4)
+                #self.trendingBox[s].stateChanged.connect(self.stateBox)
+                col_len = int(len(_subIndexItems)/2)
+                if s < col_len:
+                    FirstGridLayout.addWidget(icon, s, 0)
+                    #FirstGridLayout.addWidget(self.trendingBox[s], s, 1)
+                    FirstGridLayout.addWidget(self.trendingBotton[s], s, 2)
+                    FirstGridLayout.addWidget(labelChannel[s], s, 3)
+                    FirstGridLayout.addWidget(self.ChannelBox[s], s, 4)
                 else:
-                    FirstGridLayout.addWidget(icon, grid_location - col_len, 5)
-                    #FirstGridLayout.addWidget(self.trendingBox[s], grid_location-col_len, 6)
-                    #FirstGridLayout.addWidget(self.trendingBotton[s], grid_location - col_len, 7)
-                    FirstGridLayout.addWidget(labelChannel[s], grid_location - col_len, 8)
-                    FirstGridLayout.addWidget(self.ChannelBox[s], grid_location - col_len , 9)
-                a = a + 1          
+                    FirstGridLayout.addWidget(icon, s - col_len, 5)
+                    #FirstGridLayout.addWidget(self.trendingBox[s], s-col_len, 6)
+                    FirstGridLayout.addWidget(self.trendingBotton[s], s - col_len, 7)
+                    FirstGridLayout.addWidget(labelChannel[s], s - col_len, 8)
+                    FirstGridLayout.addWidget(self.ChannelBox[s], s - col_len , 9)         
         self.FirstGroupBox.setLayout(FirstGridLayout)
 
     def monitoringValuesWindow(self):
@@ -1265,52 +1281,24 @@ class MainWindow(QMainWindow):
                 a = a + 1
         self.ThirdGroupBox.setLayout(ThirdGridLayout)
 
-    def trend_child_window(self, childWindow=None, index=None):
-        childWindow.setObjectName("TrendingWindow")
-        childWindow.setWindowTitle("Trending Window")
+    def trend_child_window(self, childWindow=None, index = None):
+        childWindow.setObjectName("")
+        childWindow.setWindowTitle("Online data monitoring for ADC channel %s" % str(index))
         childWindow.resize(800, 500)  # w*h
         logframe = QFrame()
         logframe.setLineWidth(0.6)
         childWindow.setCentralWidget(logframe)
         trendLayout = QHBoxLayout()
-        self.WindowGroupBox = QGroupBox("")
+        self.WindowGroupBox = QGroupBox("")   
         self.initiate_trending_data()
-        self.Fig = self.initiate_trending_figure(index=int(index))
-        
-        def _initiate_trend_timer(index=None, period=1000):
-            self.trend_timer = QtCore.QTimer()
-            self.trend_timer.start(period)
-            try:
-                data = float(self.ChannelBox[int(str(index))].text())
-                self.trend_timer.timeout.connect(lambda: self.update_figure(data=data, index=index))
-            except Exception:
-                pass      
-                      
-        def _stop_trend_timer():
-            try:
-                self.trend_timer.stop() 
-            except Exception:
-                pass
-
-        # _initiate_trend_timer(index=int(str(index)))
+        self.Fig = self.initiate_trending_figure(index = index)
         self.Fig.setStyleSheet("background-color: black;"
                                         "color: black;"
                                         "border-width: 1.5px;"
                                         "border-color: black;"
                                         "margin:0.0px;"
-                                        # "border: 1px "
-                                        "solid black;")
-
-        indexLabel = QLabel("Index", self)
-        indexLabel.setText("ADC channels")
-        self.IndexListBox = QListWidget(self)
-        indexItems = self.__index_items
-        
-        # self.distribution = dataMonitoring.LiveMonitoringDistribution(data = data)
-        # trendLayout.addWidget(self.distribution)
-        #trendLayout.addWidget(indexLabel)
+                                        "solid black;")        
         trendLayout.addWidget(self.Fig)
-        
         self.WindowGroupBox.setLayout(trendLayout)
         logframe.setLayout(trendLayout) 
         
@@ -1322,26 +1310,31 @@ class MainWindow(QMainWindow):
             self.y[i] = list(range(2))
            
     def initiate_trending_figure(self, index=None,n_channels = 33):
+        s = int(index)-3
+        for i in np.arange(len(self.trendingBox)):
+            self.trendingBox[i] = False
+            
+        self.trendingBox[s] = True
         self.graphWidget = [pg.PlotWidget(background="w") for i in np.arange(n_channels)]
-        #self.graphWidget[index] = pg.PlotWidget(background="w")
+        #self.graphWidget[s] = pg.PlotWidget(background="w")
         self.data_line = [0 for i in np.arange(n_channels)]
-        #if self.trendingBox[index].isChecked():
-        self.data_line[index] = self.graphWidget[index].plot(name="Ch%i" %index)
+        #if self.trendingBox[s].isChecked():
+        self.data_line[s] = self.graphWidget[s].plot(name="Ch%i" %index)
         # Add legend
-        self.graphWidget.addLegend()  # offset=(10,10* 20))        
+        #self.graphWidget.addLegend()  # offset=(10,10* 20))        
         # Add Title
-        self.graphWidget[index].setTitle("Online data monitoring for ADC channel %s" % str(index))
+        self.graphWidget[s].setTitle("Online data monitoring for ADC channel %s" % str(index))
         # Add Axis Labels
-        self.graphWidget[index].setLabel('left', "<span style=\"color:black; font-size:15px\">CAN Data</span>")
-        self.graphWidget[index].setLabel('bottom', "<span style=\"color:black; font-size:15px\">Time [s]</span>")
+        self.graphWidget[s].setLabel('left', "<span style=\"color:black; font-size:15px\">CAN Data</span>")
+        self.graphWidget[s].setLabel('bottom', "<span style=\"color:black; font-size:15px\">Time [s]</span>")
 
         # Add grid
-        self.graphWidget[index].showGrid(x=True, y=True)
-        self.graphWidget[index].getAxis("bottom").setStyle(tickTextOffset=10)
+        self.graphWidget[s].showGrid(x=True, y=True)
+        self.graphWidget[s].getAxis("bottom").setStyle(tickTextOffset=10)
         # Set Range
-        self.graphWidget[index].setXRange(-2, 100, padding=0)
+        #self.graphWidget[s].setXRange(-2, 100, padding=0)
         # self.graphWidget.setYRange(00, 55, padding=0)
-        return self.graphWidget[index]
+        return self.graphWidget[s]
     
     def update_figure(self, data=None, index=None):
         self.data_line[index] = self.graphWidget[index].plot(self.x[index], self.y[index], pen=pg.mkPen(color=self.get_color(index), width=3), name="Ch%i" % index)
@@ -1351,17 +1344,17 @@ class MainWindow(QMainWindow):
         self.y[index].append(data)  # Add a new value.
         self.data_line[index].setData(self.x[index], self.y[index])  # Update the data.
 
-    def initiateTimer(self, period=50000): #time in msec
+    def initiateTimer(self, period=0.05): #time in msec
         self.timer = QtCore.QTimer(self)
         self.control_logger.disabled = True
         self.logger.notice("Reading ADC data...")
-        
+        self.__monitoringTime = time.time()
         # A possibility to save the data into a file
         self.logger.notice("Preparing an output file [%s.csv]..." % (lib_dir + "output_data/adc_data"))
         self.out_file_csv = analysis_utils.open_csv_file(outname="adc_data", directory=lib_dir + "output_data") 
         
         # Write header to the data
-        fieldnames = ['TimeStamp', 'Channel', "nodeId", "DLC", "ADCChannel", "ADCData" , "ADCDataConverted"]
+        fieldnames = ['Time', 'Channel', "nodeId", "DLC", "ADCChannel", "ADCData" , "ADCDataConverted"]
         writer = csv.DictWriter(self.out_file_csv, fieldnames=fieldnames)
         writer.writeheader()
         
@@ -1375,6 +1368,7 @@ class MainWindow(QMainWindow):
     def stopTimer(self):
         try:
             self.timer.stop()
+            self.control_logger.disabled = False
             self.logger.notice("Stop reading ADC data...")
         except Exception:
             pass
@@ -1391,38 +1385,37 @@ class MainWindow(QMainWindow):
             pass
         
     def read_adc_channels(self):
-        _adc_index = self.__adc_index
         _adc_channels_reg = self.get_adc_channels_reg()
         _dictionary = self.__dictionary_items
         _adc_indices = list(self.__adc_index)
-        ts = time.time()
-        a = 0
-        csv_writer = writer(self.out_file_csv)
+        #csv_writer = writer(self.out_file_csv)
         # Add contents of list as last row in the csv file
         for i in np.arange(len(_adc_indices)):
             _subIndexItems = list(analysis_utils.get_subindex_yaml(dictionary=_dictionary, index=_adc_indices[i], subindex="subindex_items"))
             self.set_index(_adc_indices[i])  # set index for later usage
             self.adc_converted = []
-            _start_a = 1  # to ignore the first subindex it is not ADC
-            for s in np.arange(_start_a, len(_subIndexItems)):
+            _start_a = 3  # to ignore the first subindex it is not ADC
+            for subindex in np.arange(_start_a, len(_subIndexItems)+_start_a-1):
+                s = subindex-_start_a
+                s_correction = subindex-2
                 self.set_subIndex(_subIndexItems[s])
-                data_point = self.send_sdo_can(print_sdo=False)
-                correction = s - 1  # to relocate the boxes
-                self.adc_converted = np.append(self.adc_converted, analysis.Analysis().adc_conversion(_adc_channels_reg[str(s)], data_point))
-                if self.adc_converted[correction] is not None:
-                    self.ChannelBox[s].setText(str(round(self.adc_converted[correction], 3)))
-                    csv_writer.writerow((str(ts),
-                                         str(self.get_channel()),
-                                         str(self.get_nodeId()),
-                                         8,
-                                         str(a),
-                                         str(data_point),
-                                         str(round(self.adc_converted[correction], 3))))
-                    #if self.trendingBox[s].isChecked():
-                    #self.update_figure(data=self.adc_converted[correction], index=s)
+                data_point = self.read_sdo_can()
+                ts = time.time()
+                elapsedtime = ts-self.__monitoringTime
+                self.adc_converted = np.append(self.adc_converted, analysis.Analysis().adc_conversion(_adc_channels_reg[str(subindex)], data_point))
+                if self.adc_converted[s] is not None:
+                    self.ChannelBox[s].setText(str(round(self.adc_converted[s], 3)))
+#                     csv_writer.writerow((str(round(elapsedtime,1)),
+#                                          str(self.get_channel()),
+#                                          str(self.get_nodeId()),
+#                                          8,
+#                                          str(subindex),
+#                                          str(data_point),
+#                                          str(round(self.adc_converted[s], 3))))
+                    if self.trendingBox[s] == True:
+                        self.update_figure(data=self.adc_converted[s], index=s)
                 else:
-                    self.ChannelBox[s].setText(str(self.adc_converted[correction]))
-                a = a + 1
+                    self.ChannelBox[s].setText(str(self.adc_converted[s]))
         return self.adc_converted
 
     def read_monitoring_values(self):
@@ -1436,7 +1429,7 @@ class MainWindow(QMainWindow):
             self.set_index(_mon_indices[i])  # set index for later usage
             for s in np.arange(0, len(_subIndexItems)):
                 self.set_subIndex(_subIndexItems[s])
-                data_point = self.send_sdo_can(print_sdo=False)
+                data_point = self.read_sdo_can()
                 self.monValueBox[a].setText(str(analysis.Analysis().convertion(data_point)))
                 a = a + 1
             
@@ -1450,9 +1443,8 @@ class MainWindow(QMainWindow):
             _subIndexItems = list(analysis_utils.get_subindex_yaml(dictionary=_dictionary, index=_conf_indices[i], subindex="subindex_items"))
             self.set_index(_conf_indices[i])  # set index for later usage
             for s in np.arange(0, len(_subIndexItems)):
-                print ("." * s, end="")
                 self.set_subIndex(_subIndexItems[s])
-                data_point = self.send_sdo_can(print_sdo=False)
+                data_point = self.read_sdo_can()
                 self.confValueBox[a].setText(str(analysis.Analysis().convertion(data_point)))
                 a = a + 1
 
@@ -1557,8 +1549,8 @@ class MainWindow(QMainWindow):
 
     def show_trendWindow(self):
         trend = QMainWindow(self)
-        sending_button = self.sender()
-        self.trend_child_window(childWindow=trend, index=sending_button.text())
+        index = self.sender().objectName()
+        self.trend_child_window(childWindow=trend, index = int(index))
         trend.show()
             
     def show_deviceWindow(self):
@@ -1680,7 +1672,10 @@ class MainWindow(QMainWindow):
     
     def set_bitrate(self, x):
         self.__bitrate = int(x)       
-
+    
+    def set_sample_point(self,x):
+        self.__sample_point = float(x)
+            
     def set_ipAddress(self, x):
         self.__ipAddress = x
                
@@ -1758,6 +1753,12 @@ class MainWindow(QMainWindow):
     def get_bitrate_items(self):
         return self.__bitrate_items
     
+    def get_sample_points(self):
+        return self.__sample_points
+    
+    def get_sample_point(self):
+        return self.__sample_point
+        
     def get_interface(self):
         """:obj:`str` : Vendor of the CAN interface. Possible values are
         ``'Kvaser'`` and ``'AnaGate'``."""

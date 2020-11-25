@@ -1,5 +1,5 @@
 ###### pip Requirements for canmops######
-###### pip install -r pip_requirements.txt ######
+###### pip install -r requirements_pip.txt ######
 aenum==2.2.1
 alive-progress==1.6.1
 astroML==0.4.1
