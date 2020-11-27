@@ -1,8 +1,9 @@
 CAN_Interfaces:
   Kvaser:
-    bitrate: null
-    channels: 1
+    bitrate: 114285
+    channels: 0
     ipAddress: None
     nodIds:
     - 1
+    samplePoint: 0.75
     timeout: 500

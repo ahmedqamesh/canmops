@@ -16,7 +16,9 @@ import logging
 import numpy as np
 from random import randint
 from graphicsUtils import menuWindow
-from controlServer import analysis, analysis_utils , canWrapper
+from controlServer.analysis import Analysis
+from controlServer.analysisUtils import AnalysisUtils
+from controlServer.canWrapper   import CanWrapper
 import csv
 from csv import writer
 import yaml
@@ -46,7 +48,7 @@ class MainWindow(QMainWindow):
         self.config_dir = "config/"
         self.logger = logging.getLogger(__name__)
         # Read configurations from a file    
-        self.__conf = analysis_utils.open_yaml_file(file=self.config_dir + "main_cfg.yml", directory=lib_dir)
+        self.__conf = AnalysisUtils().open_yaml_file(file=self.config_dir + "main_cfg.yml", directory=lib_dir)
         self.__appName = self.__conf["Application"]["app_name"] 
         self.__appVersion = self.__conf['Application']['app_version']
         self.__appIconDir = self.__conf["Application"]["app_icon_dir"]
@@ -61,7 +63,7 @@ class MainWindow(QMainWindow):
         self.__interfaceItems = list(self.__conf['CAN_Interfaces'].keys()) 
         self.__channelPorts = self.__conf["channel_ports"]
         self.__devices = self.__conf["Devices"]
-        self.__timeout = 3000
+        self.__timeout = 4000
         self.__interface = None
         self.__channel = None
         self.__ipAddress = None
@@ -371,7 +373,7 @@ class MainWindow(QMainWindow):
         def on_channelComboBox_currentIndexChanged():
             _interface = self.interfaceComboBox.currentText()
             _channel = self.channelComboBox.currentText()
-            _channels = analysis_utils.get_info_yaml(dictionary=self.__conf['CAN_Interfaces'], index=_interface, subindex="channels")
+            _channels = AnalysisUtils().get_info_yaml(dictionary=self.__conf['CAN_Interfaces'], index=_interface, subindex="channels")
             
             self.set_interface(_interface)
             self.set_channel(int(_channel))
@@ -486,7 +488,7 @@ class MainWindow(QMainWindow):
         if self.__devices[0] == "None":
             conf = self.child.open()
         else:
-            conf = analysis_utils.open_yaml_file(file=self.config_dir + self.__devices[0] + "_cfg.yml", directory=lib_dir)
+            conf = AnalysisUtils().open_yaml_file(file=self.config_dir + self.__devices[0] + "_cfg.yml", directory=lib_dir)
         
         self.__devices.append(conf["Application"]["device_name"])
         self.deviceButton.deleteLater()
@@ -514,7 +516,7 @@ class MainWindow(QMainWindow):
                     filename = os.path.join(lib_dir, self.config_dir + _interface + "_CANSettings.yml")
                     test_date = time.ctime(os.path.getmtime(filename))
                     # Load settings from CAN settings file
-                    _canSettings = analysis_utils.open_yaml_file(file=self.config_dir + _interface + "_CANSettings.yml", directory=lib_dir)
+                    _canSettings = AnalysisUtils().open_yaml_file(file=self.config_dir + _interface + "_CANSettings.yml", directory=lib_dir)
                     self.logger.notice("Loading CAN settings from the file %s produced on %s" % (filename, test_date))
                     _channels = _canSettings['CAN_Interfaces'][_interface]["channels"]
                     _ipAddress = _canSettings['CAN_Interfaces'][_interface]["ipAddress"]
@@ -534,7 +536,7 @@ class MainWindow(QMainWindow):
                     self.nodeComboBox.addItems(list(map(str, _nodIds)))
                     
                     
-                    self.wrapper = canWrapper.CanWrapper(interface=_interface, bitrate=_bitrate, samplePoint = _samplePoint, ipAddress=_ipAddress,
+                    self.wrapper = CanWrapper(interface=_interface, bitrate=_bitrate, samplePoint = _samplePoint, ipAddress=_ipAddress,
                                                                 channel=_channel)
                     if self.__deviceName == "MOPS":
                         self.wrapper.confirmMops(channel=_channel)
@@ -545,7 +547,7 @@ class MainWindow(QMainWindow):
                     _channel = self.get_channel()
                     _bitrate = self.get_bitrate()
                     _samplePoint =self.get_sample_point()
-                    self.wrapper = canWrapper.CanWrapper(interface=_interface, bitrate=_bitrate, samplePoint = _samplePoint, channel=_channel)
+                    self.wrapper = CanWrapper(interface=_interface, bitrate=_bitrate, samplePoint = _samplePoint, channel=_channel)
                 
                     if self.__deviceName == "MOPS":
                         self.wrapper.confirmMops(channel=_channel)
@@ -574,7 +576,7 @@ class MainWindow(QMainWindow):
             _bitrate = self.get_bitrate()
             _interface = self.get_interface()
             _channel = self.get_channel()
-            _channels = analysis_utils.get_info_yaml(dictionary=self.__conf['CAN_Interfaces'], index=_interface, subindex="channels")
+            _channels = AnalysisUtils().get_info_yaml(dictionary=self.__conf['CAN_Interfaces'], index=_interface, subindex="channels")
             _sample_point = self.get_sample_point()
             _nodeItems = _channels[int(_channel)]
             _timeout = 500
@@ -600,7 +602,7 @@ class MainWindow(QMainWindow):
                 yaml.dump(dict_file, yaml_file, default_flow_style=False)
             
             # Apply the settings to the main server
-            self.wrapper = canWrapper.CanWrapper(interface=_interface, bitrate=_bitrate, ipAddress=str(_ipAddress),
+            self.wrapper = CanWrapper(interface=_interface, bitrate=_bitrate, ipAddress=str(_ipAddress),
                                                 channel=int(_channel))
         except Exception:
           self.error_message(text="Please choose an interface or close the window")
@@ -886,7 +888,7 @@ class MainWindow(QMainWindow):
         interfaceComboBox.activated[str].connect(_interfaceParameters)
         SecondGridLayout.addLayout(HGridLayout, 5, 0)
         # Define Third Group
-        ThirdGroupBox = QGroupBox("Bus Status")
+        ThirdGroupBox = QGroupBox("")#"Bus Status")
         ThirdGridLayout = QGridLayout()
         
         go_button = QPushButton("Go On Bus")
@@ -1010,7 +1012,7 @@ class MainWindow(QMainWindow):
                 
     def deviceChildWindow(self, ChildWindow):    
         _channel = self.get_channel()
-        self.wrapper.confirmMops(channel=_channel)
+        self.wrapper.confirmMops(channel=int(_channel))
         
         #  Open the window
         ChildWindow.setObjectName("DeviceWindow")
@@ -1063,22 +1065,17 @@ class MainWindow(QMainWindow):
         startButton.clicked.connect(self.send_sdo_can_thread)
 
         def __reset_device():
-            # self.set_cobid(0x0)
+            self.set_cobid(0x0)
             self.set_bytes([0, 0, 0, 0, 0, 0, 0, 0]) 
             self.write_can_message()
             
         restartButton = QPushButton("")
         restartButton.setIcon(QIcon('graphicsUtils/icons/icon_reset.png'))
+        restartButton.setStatusTip('Reset the chip [The MOPS chip should reply back with a cobid 701]')  # show when move mouse to the icon
         restartButton.clicked.connect(__reset_device)
-
-        trendingButton = QPushButton("")
-        trendingButton.setIcon(QIcon('graphicsUtils/icons/icon_trend.jpg'))
-        trendingButton.setStatusTip('Data Trending')  # show when move mouse to the icon
-        trendingButton.clicked.connect(self.show_trendWindow)
         
         BottonHLayout.addWidget(startButton)
-        # BottonHLayout.addWidget(restartButton)
-        # BottonHLayout.addWidget(trendingButton)
+        BottonHLayout.addWidget(restartButton)
         
         firstVLayout = QVBoxLayout()
         firstVLayout.addWidget(icon)
@@ -1092,7 +1089,6 @@ class MainWindow(QMainWindow):
         self.indexTextBox.setReadOnly(True)       
         
         VLayout.addWidget(self.indexTextBox)
-        # VLayout.addLayout(HLayout)
         
         indexLabel = QLabel("Index", self)
         indexLabel.setText("   Index   ")
@@ -1133,8 +1129,7 @@ class MainWindow(QMainWindow):
         self.adcValuesWindow()
         self.monitoringValuesWindow()
         self.configurationValuesWindow()
-        
-        self.MenuBar.create_statusBar(ChildWindow)
+        #self.MenuBar.create_statusBar(ChildWindow)
         channelHLayout = QHBoxLayout()
         nodeHLayout = QHBoxLayout()
         nodeHLayout.addWidget(nodeLabel)
@@ -1153,7 +1148,7 @@ class MainWindow(QMainWindow):
 
         self.devicetTabs.addTab(self.tab1, "Object Dictionary")
         self.devicetTabs.addTab(self.tab2, "Device Channels") 
-            
+                
         mainLayout = QGridLayout()     
         HBox = QHBoxLayout()
         send_button = QPushButton("run ")
@@ -1178,7 +1173,6 @@ class MainWindow(QMainWindow):
         mainLayout.addWidget(self.SecondGroupBox, 2, 3, 1, 5)
         mainLayout.addLayout(HBox , 3, 0)
         self.tab2.setLayout(mainLayout)
-        # self.initiate_trending_data()
         logframe.setLayout(self.tabLayout)
         
     def adcValuesWindow(self):
@@ -1188,8 +1182,9 @@ class MainWindow(QMainWindow):
         _adc_channels_reg = self.get_adc_channels_reg()
         _dictionary = self.__dictionary_items
         _adc_indices = list(self.__adc_index)
+                
         for i in np.arange(len(_adc_indices)):
-            _subIndexItems = list(analysis_utils.get_subindex_yaml(dictionary=_dictionary, index=_adc_indices[i], subindex="subindex_items"))
+            _subIndexItems = list(AnalysisUtils().get_subindex_yaml(dictionary=_dictionary, index=_adc_indices[i], subindex="subindex_items"))
             labelChannel = [_subIndexItems[k] for k in np.arange(len(_subIndexItems) * len(_adc_indices))]
             self.ChannelBox = [_subIndexItems[k] for k in np.arange(len(_subIndexItems) * len(_adc_indices))]
             self.trendingBox = [False for k in np.arange(len(_subIndexItems) * len(_adc_indices))]
@@ -1202,7 +1197,7 @@ class MainWindow(QMainWindow):
                 self.ChannelBox[s] = QLineEdit("", self)
                 self.ChannelBox[s].setStyleSheet("background-color: white; border: 1px inset black;")
                 self.ChannelBox[s].setReadOnly(True)
-                subindex_description_item = analysis_utils.get_subindex_description_yaml(dictionary=_dictionary, index=_adc_indices[i], subindex=_subIndexItems[s_correction])
+                subindex_description_item = AnalysisUtils().get_subindex_description_yaml(dictionary=_dictionary, index=_adc_indices[i], subindex=_subIndexItems[s_correction])
                 labelChannel[s].setStatusTip('ADC channel %s [index = %s & subIndex = %s]'%(subindex_description_item[25:29], _adc_indices[i], _subIndexItems[s_correction]))  # show when move mouse to the icon
                 labelChannel[s].setText(subindex_description_item[25:29] + ":")
                 icon = QLabel(self)
@@ -1244,9 +1239,9 @@ class MainWindow(QMainWindow):
         _mon_indices = list(self.__mon_index)
         a = 0
         for i in np.arange(len(_mon_indices)):
-            _subIndexItems = list(analysis_utils.get_subindex_yaml(dictionary=_dictionary, index=_mon_indices[i], subindex="subindex_items"))
+            _subIndexItems = list(AnalysisUtils().get_subindex_yaml(dictionary=_dictionary, index=_mon_indices[i], subindex="subindex_items"))
             for s in np.arange(len(_subIndexItems)):
-                subindex_description_item = analysis_utils.get_subindex_description_yaml(dictionary=_dictionary, index=_mon_indices[i], subindex=_subIndexItems[s])
+                subindex_description_item = AnalysisUtils().get_subindex_description_yaml(dictionary=_dictionary, index=_mon_indices[i], subindex=_subIndexItems[s])
                 labelvalue[a] = QLabel()
                 labelvalue[a].setText(subindex_description_item + ":")
                 labelvalue[a].setStatusTip('%s [index = %s & subIndex = %s]' % (subindex_description_item[9:-11], _mon_indices[i], _subIndexItems[s])) 
@@ -1267,9 +1262,9 @@ class MainWindow(QMainWindow):
         _conf_indices = list(self.__conf_index)
         a = 0
         for i in np.arange(len(_conf_indices)):
-            _subIndexItems = list(analysis_utils.get_subindex_yaml(dictionary=_dictionary, index=_conf_indices[i], subindex="subindex_items"))
+            _subIndexItems = list(AnalysisUtils().get_subindex_yaml(dictionary=_dictionary, index=_conf_indices[i], subindex="subindex_items"))
             for s in np.arange(len(_subIndexItems)):
-                subindex_description_item = analysis_utils.get_subindex_description_yaml(dictionary=_dictionary, index=_conf_indices[i], subindex=_subIndexItems[s])
+                subindex_description_item = AnalysisUtils().get_subindex_description_yaml(dictionary=_dictionary, index=_conf_indices[i], subindex=_subIndexItems[s])
                 labelvalue[a] = QLabel()
                 labelvalue[a].setText(subindex_description_item + ":")
                 self.confValueBox[a] = QLineEdit("")
@@ -1282,6 +1277,7 @@ class MainWindow(QMainWindow):
         self.ThirdGroupBox.setLayout(ThirdGridLayout)
 
     def trend_child_window(self, childWindow=None, index = None):
+        self.TrendGroupBox = QGroupBox("")   
         childWindow.setObjectName("")
         childWindow.setWindowTitle("Online data monitoring for ADC channel %s" % str(index))
         childWindow.resize(800, 500)  # w*h
@@ -1289,17 +1285,10 @@ class MainWindow(QMainWindow):
         logframe.setLineWidth(0.6)
         childWindow.setCentralWidget(logframe)
         trendLayout = QHBoxLayout()
-        self.WindowGroupBox = QGroupBox("")   
         self.initiate_trending_data()
-        self.Fig = self.initiate_trending_figure(index = index)
-        self.Fig.setStyleSheet("background-color: black;"
-                                        "color: black;"
-                                        "border-width: 1.5px;"
-                                        "border-color: black;"
-                                        "margin:0.0px;"
-                                        "solid black;")        
+        self.Fig = self.initiate_trending_figure(index = index)  
         trendLayout.addWidget(self.Fig)
-        self.WindowGroupBox.setLayout(trendLayout)
+        self.TrendGroupBox.setLayout(trendLayout)
         logframe.setLayout(trendLayout) 
         
     def initiate_trending_data(self,n_channels = 33):
@@ -1311,33 +1300,39 @@ class MainWindow(QMainWindow):
            
     def initiate_trending_figure(self, index=None,n_channels = 33):
         s = int(index)-3
+        # Allow only one box per trend
         for i in np.arange(len(self.trendingBox)):
             self.trendingBox[i] = False
-            
         self.trendingBox[s] = True
-        self.graphWidget = [pg.PlotWidget(background="w") for i in np.arange(n_channels)]
-        #self.graphWidget[s] = pg.PlotWidget(background="w")
+        #self.graphWidget = [pg.PlotWidget(background="w") for i in np.arange(n_channels)]
+        self.graphWidget = pg.PlotWidget(background="w")
         self.data_line = [0 for i in np.arange(n_channels)]
-        #if self.trendingBox[s].isChecked():
-        self.data_line[s] = self.graphWidget[s].plot(name="Ch%i" %index)
+        self.data_line[s] = self.graphWidget.plot(name="Ch%i" %index)
         # Add legend
         #self.graphWidget.addLegend()  # offset=(10,10* 20))        
         # Add Title
-        self.graphWidget[s].setTitle("Online data monitoring for ADC channel %s" % str(index))
+        self.graphWidget.setTitle("Online data monitoring for ADC channel %s" % str(index))
         # Add Axis Labels
-        self.graphWidget[s].setLabel('left', "<span style=\"color:black; font-size:15px\">CAN Data</span>")
-        self.graphWidget[s].setLabel('bottom', "<span style=\"color:black; font-size:15px\">Time [s]</span>")
+        self.graphWidget.setLabel('left', "<span style=\"color:black; font-size:15px\">CAN Data</span>")
+        self.graphWidget.setLabel('bottom', "<span style=\"color:black; font-size:15px\">Time [s]</span>")
 
         # Add grid
-        self.graphWidget[s].showGrid(x=True, y=True)
-        self.graphWidget[s].getAxis("bottom").setStyle(tickTextOffset=10)
+        self.graphWidget.showGrid(x=True, y=True)
+        self.graphWidget.getAxis("bottom").setStyle(tickTextOffset=10)
         # Set Range
-        #self.graphWidget[s].setXRange(-2, 100, padding=0)
-        # self.graphWidget.setYRange(00, 55, padding=0)
-        return self.graphWidget[s]
+        #self.graphWidget.setXRange(-2, 100, padding=0)
+        # self.graphWidget.setYRange(00, 55, padding=0) 
+        self.graphWidget.setStyleSheet("background-color: black;"
+                                "color: black;"
+                                "border-width: 1.5px;"
+                                "border-color: black;"
+                                "margin:0.0px;"
+                                "solid black;")      
+                
+        return self.graphWidget
     
     def update_figure(self, data=None, index=None):
-        self.data_line[index] = self.graphWidget[index].plot(self.x[index], self.y[index], pen=pg.mkPen(color=self.get_color(index), width=3), name="Ch%i" % index)
+        self.data_line[index] = self.graphWidget.plot(self.x[index], self.y[index], pen=pg.mkPen(color=self.get_color(index), width=3), name="Ch%i" % index)
         self.x[index] = self.x[index][1:]  # Remove the first x element.
         self.x[index] = np.append(self.x[index], self.x[index][-1] + 1)  # Add a new value 1 higher than the last
         self.y[index] = self.y[index][1:]  # Remove the first   y element.
@@ -1351,10 +1346,10 @@ class MainWindow(QMainWindow):
         self.__monitoringTime = time.time()
         # A possibility to save the data into a file
         self.logger.notice("Preparing an output file [%s.csv]..." % (lib_dir + "output_data/adc_data"))
-        self.out_file_csv = analysis_utils.open_csv_file(outname="adc_data", directory=lib_dir + "output_data") 
+        self.out_file_csv = AnalysisUtils().open_csv_file(outname="adc_data", directory=lib_dir + "output_data") 
         
         # Write header to the data
-        fieldnames = ['Time', 'Channel', "nodeId", "DLC", "ADCChannel", "ADCData" , "ADCDataConverted"]
+        fieldnames = ['Time', 'Channel', "nodeId", "ADCChannel", "ADCData" , "ADCDataConverted"]
         writer = csv.DictWriter(self.out_file_csv, fieldnames=fieldnames)
         writer.writeheader()
         
@@ -1388,10 +1383,10 @@ class MainWindow(QMainWindow):
         _adc_channels_reg = self.get_adc_channels_reg()
         _dictionary = self.__dictionary_items
         _adc_indices = list(self.__adc_index)
-        #csv_writer = writer(self.out_file_csv)
+        csv_writer = writer(self.out_file_csv)
         # Add contents of list as last row in the csv file
         for i in np.arange(len(_adc_indices)):
-            _subIndexItems = list(analysis_utils.get_subindex_yaml(dictionary=_dictionary, index=_adc_indices[i], subindex="subindex_items"))
+            _subIndexItems = list(AnalysisUtils().get_subindex_yaml(dictionary=_dictionary, index=_adc_indices[i], subindex="subindex_items"))
             self.set_index(_adc_indices[i])  # set index for later usage
             self.adc_converted = []
             _start_a = 3  # to ignore the first subindex it is not ADC
@@ -1402,16 +1397,15 @@ class MainWindow(QMainWindow):
                 data_point = self.read_sdo_can()
                 ts = time.time()
                 elapsedtime = ts-self.__monitoringTime
-                self.adc_converted = np.append(self.adc_converted, analysis.Analysis().adc_conversion(_adc_channels_reg[str(subindex)], data_point))
+                self.adc_converted = np.append(self.adc_converted, Analysis().adc_conversion(_adc_channels_reg[str(subindex)], data_point))
                 if self.adc_converted[s] is not None:
                     self.ChannelBox[s].setText(str(round(self.adc_converted[s], 3)))
-#                     csv_writer.writerow((str(round(elapsedtime,1)),
-#                                          str(self.get_channel()),
-#                                          str(self.get_nodeId()),
-#                                          8,
-#                                          str(subindex),
-#                                          str(data_point),
-#                                          str(round(self.adc_converted[s], 3))))
+                    csv_writer.writerow((str(round(elapsedtime,1)),
+                                         str(self.get_channel()),
+                                         str(self.get_nodeId()),
+                                         str(subindex),
+                                         str(data_point),
+                                         str(round(self.adc_converted[s], 3))))
                     if self.trendingBox[s] == True:
                         self.update_figure(data=self.adc_converted[s], index=s)
                 else:
@@ -1425,12 +1419,12 @@ class MainWindow(QMainWindow):
         _mon_indices = list(self.__mon_index)
         a = 0
         for i in np.arange(len(_mon_indices)):
-            _subIndexItems = list(analysis_utils.get_subindex_yaml(dictionary=_dictionary, index=_mon_indices[i], subindex="subindex_items"))
+            _subIndexItems = list(AnalysisUtils().get_subindex_yaml(dictionary=_dictionary, index=_mon_indices[i], subindex="subindex_items"))
             self.set_index(_mon_indices[i])  # set index for later usage
             for s in np.arange(0, len(_subIndexItems)):
                 self.set_subIndex(_subIndexItems[s])
                 data_point = self.read_sdo_can()
-                self.monValueBox[a].setText(str(analysis.Analysis().convertion(data_point)))
+                self.monValueBox[a].setText(str(Analysis().convertion(data_point)))
                 a = a + 1
             
     def read_configuration_values(self):
@@ -1440,12 +1434,12 @@ class MainWindow(QMainWindow):
         _conf_indices = list(self.__conf_index)
         a = 0 
         for i in np.arange(len(_conf_indices)):
-            _subIndexItems = list(analysis_utils.get_subindex_yaml(dictionary=_dictionary, index=_conf_indices[i], subindex="subindex_items"))
+            _subIndexItems = list(AnalysisUtils().get_subindex_yaml(dictionary=_dictionary, index=_conf_indices[i], subindex="subindex_items"))
             self.set_index(_conf_indices[i])  # set index for later usage
             for s in np.arange(0, len(_subIndexItems)):
                 self.set_subIndex(_subIndexItems[s])
                 data_point = self.read_sdo_can()
-                self.confValueBox[a].setText(str(analysis.Analysis().convertion(data_point)))
+                self.confValueBox[a].setText(str(Analysis().convertion(data_point)))
                 a = a + 1
 
     def stateBox(self, checked):
@@ -1549,6 +1543,7 @@ class MainWindow(QMainWindow):
 
     def show_trendWindow(self):
         trend = QMainWindow(self)
+        trend.close()
         index = self.sender().objectName()
         self.trend_child_window(childWindow=trend, index = int(index))
         trend.show()
@@ -1770,7 +1765,7 @@ class MainWindow(QMainWindow):
     def get_subIndex_items(self):
         index = self.get_index()
         dictionary = self.__dictionary_items
-        subIndexItems = list(analysis_utils.get_subindex_yaml(dictionary=dictionary, index=index, subindex="subindex_items"))
+        subIndexItems = list(AnalysisUtils().get_subindex_yaml(dictionary=dictionary, index=index, subindex="subindex_items"))
         self.subIndexListBox.clear()
         for item in subIndexItems: self.subIndexListBox.addItem(item)
     
@@ -1778,7 +1773,7 @@ class MainWindow(QMainWindow):
         dictionary = self.__dictionary_items
         if self.IndexListBox.currentItem() is not None:
             index = self.IndexListBox.currentItem().text()
-            self.index_description_items = analysis_utils.get_info_yaml(dictionary=dictionary , index=index, subindex="description_items")
+            self.index_description_items = AnalysisUtils().get_info_yaml(dictionary=dictionary , index=index, subindex="description_items")
             self.indexTextBox.setText(self.index_description_items)
     
     def get_color(self, i):
@@ -1792,7 +1787,7 @@ class MainWindow(QMainWindow):
         index = self.IndexListBox.currentItem().text()
         if self.subIndexListBox.currentItem() is not None:
             subindex = self.subIndexListBox.currentItem().text()
-            self.subindex_description_items = analysis_utils.get_subindex_description_yaml(dictionary=dictionary, index=index, subindex=subindex)
+            self.subindex_description_items = AnalysisUtils().get_subindex_description_yaml(dictionary=dictionary, index=index, subindex=subindex)
             description_text = self.index_description_items + "<br>" + self.subindex_description_items
             self.indexTextBox.setText(description_text)    
 

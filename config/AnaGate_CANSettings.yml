@@ -1,9 +1,10 @@
 CAN_Interfaces:
   AnaGate:
-    bitrate: null
+    bitrate: 114285
     channels: 0
     ipAddress: 192.168.1.254
     nodIds:
     - 1
     - 2
+    samplePoint: 0.5
     timeout: 500

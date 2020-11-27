@@ -1,4 +1,3 @@
-
 #!/usr/bin/python
 # -*- coding: utf-8 -*-
 """
@@ -12,8 +11,9 @@ Note
 .. __: `OPC UA`_
 """
 # Standard library modules
-
 from __future__ import annotations
+from argparse import ArgumentParser, ArgumentDefaultsHelpFormatter
+from configparser import ConfigParser
 from typing import *
 import time
 import datetime
@@ -26,7 +26,15 @@ from PyQt5.QtWidgets import *
 # from pathlib import Path
 from threading import Thread, Event, Lock
 import numpy as np
-from controlServer import analysis, analysis_utils
+try:
+    from .analysis import Analysis
+    from .__version__ import __version__
+    from .analysisUtils import AnalysisUtils
+except (ImportError, ModuleNotFoundError):
+    from analysis import Analysis
+    from __version__ import __version__
+    from analysisUtils import AnalysisUtils
+        
 # Third party modules
 from collections import deque, Counter
 from tqdm import tqdm
@@ -38,7 +46,6 @@ import coloredlogs as cl
 import csv
 from csv import writer
 # Other files
-from controlServer import __version__
 try:
     import can
     #import socket
@@ -60,7 +67,6 @@ except:
     print (colored("Warning: AnaGate Package is not installed.......", 'red'), colored("Please ignore the warning if you are not using any AnaGate controllers.", "green"))
 
 rootdir = os.path.dirname(os.path.abspath(__file__))
-
 class CanWrapper(object):
 
 
@@ -68,8 +74,8 @@ class CanWrapper(object):
                  interface=None, channel=None,
                  bitrate=None,  samplePoint = None,
                  ipAddress=None,
+                 conf_file ="main_cfg.yml",
                  console_loglevel=logging.INFO,
-                 
                  logformat='%(asctime)s - %(levelname)s - %(message)s'):
        
         super(CanWrapper, self).__init__()  # super keyword to call its methods from a subclass:
@@ -79,19 +85,19 @@ class CanWrapper(object):
         self.logger = logging.getLogger(__name__)
         cl.install(fmt=logformat, level=console_loglevel, isatty=True, milliseconds=True)
         # Read configurations from a file
-        self.__conf = analysis_utils.open_yaml_file(file=config_dir + "main_cfg.yml", directory=rootdir[:-14])
+        self.__conf = AnalysisUtils().open_yaml_file(file=config_dir + conf_file, directory=rootdir[:-14])
         self.__bitrate_items = self.__conf['default_values']['bitrate_items']
         self.__bytes = self.__conf["default_values"]["bytes"]
         self.__subIndex = self.__conf["default_values"]["subIndex"]
         self.__cobid = self.__conf["default_values"]["cobid"]
         self.__dlc = self.__conf["default_values"]["dlc"]
         self.__channelPorts = self.__conf["channel_ports"]
-        self.__ipAddress = analysis_utils.get_info_yaml(dictionary=self.__conf['CAN_Interfaces'], index=interface, subindex="ipAddress")
-        self.__bitrate = analysis_utils.get_info_yaml(dictionary=self.__conf['CAN_Interfaces'], index=interface, subindex="bitrate")
-        self.__samplepoint = analysis_utils.get_info_yaml(dictionary=self.__conf['CAN_Interfaces'], index=interface, subindex="samplePoint")
-        self.__channels = analysis_utils.get_info_yaml(dictionary=self.__conf['CAN_Interfaces'], index=interface, subindex="channels")
-        self.__channel = list(analysis_utils.get_info_yaml(dictionary=self.__conf['CAN_Interfaces'], index=interface, subindex="channels"))[0]         
-        self.logger.notice('... Loading all the configurations from the file %s!'%(config_dir + "main_cfg.yml"))
+        self.__ipAddress = AnalysisUtils().get_info_yaml(dictionary=self.__conf['CAN_Interfaces'], index=interface, subindex="ipAddress")
+        self.__bitrate = AnalysisUtils().get_info_yaml(dictionary=self.__conf['CAN_Interfaces'], index=interface, subindex="bitrate")
+        self.__samplepoint = AnalysisUtils().get_info_yaml(dictionary=self.__conf['CAN_Interfaces'], index=interface, subindex="samplePoint")
+        self.__channels = AnalysisUtils().get_info_yaml(dictionary=self.__conf['CAN_Interfaces'], index=interface, subindex="channels")
+        self.__channel = list(AnalysisUtils().get_info_yaml(dictionary=self.__conf['CAN_Interfaces'], index=interface, subindex="channels"))[0]         
+        self.logger.notice('... Loading all the configurations from the file %s!'%(config_dir + conf_file))
         # Initialize default arguments
         """:obj:`str` : Internal attribute for the interface"""
         self.__interface = interface
@@ -112,7 +118,6 @@ class CanWrapper(object):
         """:obj:`int` : Internal attribute for the channel index"""
         if channel is not None:
             self.__channel = channel
-       
         """Internal attribute for the |CAN| channel"""
         self.__ch = None        
         self.set_channelConnection(interface=self.__interface)
@@ -236,24 +241,25 @@ class CanWrapper(object):
         self.__canMsgThread.start()
 
         
-    def read_adc_channels(self,file, directory ,nodeId, out_file_csv):
+    def read_adc_channels(self,file, directory ,nodeId,out_file_csv,n_readings):
         """Start actual CANopen communication
         This function contains an endless loop in which it is looped over all
         ADC channels. Each value is read using
         :meth:`send_sdo_can_thread` and written to its corresponding
         """     
-        dev = analysis_utils.open_yaml_file(file=file, directory=directory)
+        dev = AnalysisUtils().open_yaml_file(file=file, directory=directory)
+
         dictionary_items = dev["Application"]["index_items"]
         _adc_channels_reg = dev["adc_channels_reg"]["adc_channels"]
         _adc_index = list(dev["adc_channels_reg"]["adc_index"])[0]
         _channelItems = [int(channel) for channel in list(_adc_channels_reg)]
         # Write header to the data
-        fieldnames = ['Time', 'Channel', "nodeId", "DLC", "ADCChannel", "ADCData" , "ADCDataConverted"]
+        fieldnames = ['Time', 'Channel', "nodeId", "ADCChannel", "ADCData" , "ADCDataConverted"]
         writer = csv.DictWriter(out_file_csv, fieldnames=fieldnames)
         writer.writeheader()    
-        csv_writer = writer(out_file_csv)
+        csv_writer = csv.writer(out_file_csv)#, delimiter=',', quotechar='"', quoting=csv.QUOTE_MINIMAL)          
         monitoringTime = time.time()
-        while True:                                             
+        for point in np.arange(0,n_readings):                                          
             # Read ADC channels
             pbar = tqdm(total=len(_channelItems)+1 , desc="ADC channels", iterable=True)
             for channel in np.arange(_channelItems[0],_channelItems[-1]+1,1):
@@ -262,17 +268,15 @@ class CanWrapper(object):
                 ts = time.time()
                 elapsedtime = ts-monitoringTime
                 if data_point is not None:
-                    adc_converted = analysis.Analysis().adc_conversion(_adc_channels_reg[str(channel)], data_point)
-                    
-#                     writer.writerow((str(round(elapsedtime,1)),
-#                                      str(self.get_channel()),
-#                                      str(nodeId),
-#                                      8,
-#                                      str(subindex),
-#                                      str(data_point),
-#                                      str(round(adc_converted, 3))))         
+                    adc_converted = Analysis().adc_conversion(_adc_channels_reg[str(channel)], data_point)
+                    adc_converted = round(adc_converted, 3)
+                    csv_writer.writerow((str(round(elapsedtime,1)),
+                                         str(self.get_channel()),
+                                         str(nodeId),
+                                         str(subindex),
+                                         str(data_point),
+                                         str(adc_converted)))
                     self.logger.info(f'Got data for channel {channel}: = {adc_converted}')
-                time.sleep(0.25)
                 pbar.update(1)
             pbar.close()
 
@@ -611,7 +615,7 @@ class CanWrapper(object):
             self.__ch.write(cobid, data, flag)
         
         else:
-            msg = can.Message(arbitration_id=cobid, data=data, is_extended_id=False)
+            msg = can.Message(arbitration_id=cobid, data=data, is_extended_id=False,is_error_frame=False)
 
             try:
                 self.__ch.send(msg,timeout)
@@ -654,7 +658,7 @@ class CanWrapper(object):
                     if readcan is None:
                         self.__pill2kill.set()
                         #raise can.CanError
-                    cobid, data, dlc, flag, t = readcan.arbitration_id, readcan.data, readcan.dlc, readcan.is_extended_id, readcan.timestamp
+                    cobid, data, dlc, flag, t , error_frame = readcan.arbitration_id, readcan.data, readcan.dlc, readcan.is_extended_id, readcan.timestamp, readcan.is_error_frame
                 with self.__lock:
                     self.__canMsgQueue.appendleft((cobid, data, dlc, flag, t))
                 self.dumpMessage(cobid, data, dlc, flag, t)
@@ -662,7 +666,8 @@ class CanWrapper(object):
             except: #(canlib.CanNoMsg, analib.CanNoMsg,can.CanError):
                 pass
 
-    def read_can_message(self,timeout =1.0):         
+    def read_can_message(self,timeout =1.0):
+        
         if self.__interface == 'Kvaser':
             frame = self.__ch.read()
             cobid, data, dlc, flag, t = (frame.id, frame.data,
@@ -846,6 +851,18 @@ class CanWrapper(object):
     def get_bytes(self):
         return self.__bytes 
 
+    def __enter__(self):
+        return self
+
+    def __exit__(self, exception_type, exception_value, traceback):
+        if exception_type is KeyboardInterrupt:
+            self.logger.warning('Received Ctrl+C event (KeyboardInterrupt).')
+        else:
+            self.logger.exception(exception_value)
+        self.stop()
+        logging.shutdown()
+        return True
+    
     @property
     def od(self):
         """:class:`~dcsControllerServer.objectDictionary.objectDictionary` :
@@ -937,39 +954,16 @@ def main():
     """Wrapper function for using the server as a command line tool
 
     The command line tool accepts arguments for configuring the server which
-    are tranferred to the :class:`DCSControllerServer` class.
+    are tranferred to the :class:`CanWrapper` class.
     """
 
     # Parse arguments
-    parser = ArgumentParser(description='OPCUA CANopen server for DCS '
-                            'Controller',
+    parser = ArgumentParser(description='CANMOPS Interpreter for MOPS chip',
                             epilog='For more information contact '
-                            'sebastian.scholz@cern.ch',
+                            'ahmed.qamesh@cern.ch',
                             formatter_class=ArgumentDefaultsHelpFormatter)
-    parser.set_defaults(interface='Kvaser')
-
-    # Server configuration group
-    sGroup = parser.add_argument_group('OPC UA server configuration')
-    sGroup.add_argument('-E', '--endpoint', metavar='ENDPOINT',
-                        help='Endpoint of the OPCUA server',
-                        default='opc.tcp://localhost:4840/')
-    sGroup.add_argument('-e', '--edsfile', metavar='EDSFILE',
-                        default=os.path.join(rootdir,
-                                             'DCSControllerOD.eds'),
-                        help='File path of Electronic Data Sheet (EDS)')
-    sGroup.add_argument('-x', '--xmlfile', metavar='XMLFILE',
-                        default=os.path.join(rootdir,
-                                             'dcscontrollerdesign.xml'),
-                        help='File path of OPCUA XML design file')
-    sGroup.add_argument('--config', metavar='CONFIG',
-                        default=os.path.join(rootdir,
-                                             'DCSControllerConfig.ini'),
-                        help='File path of server configuration file')
-    sGroup.add_argument('-p', '--period', metavar='PERIOD', type=int,
-                        default=500,
-                        help='Publishing interval for data subscriptions in '
-                        'milliseconds')
-
+    
+    parser.set_defaults(interface='socketcan')
     # CAN interface
     CGroup = parser.add_argument_group('CAN interface')
     iGroup = CGroup.add_mutually_exclusive_group()
@@ -981,7 +975,11 @@ def main():
     iGroup.add_argument('-A', '--anagate', action='store_const',
                         const='AnaGate', dest='interface',
                         help='Use AnaGate Ethernet CAN interface')
-
+    
+    iGroup.add_argument('-S', '--socketcan', action='store_const',
+                        const='socketcan', dest='interface',
+                        help='Use socketcan  interface')
+    
     # CAN settings group
     cGroup = parser.add_argument_group('CAN settings')
     cGroup.add_argument('-C', '--channel', metavar='CHANNEL', type=int,
@@ -994,6 +992,10 @@ def main():
                         default=125000,
                         help='CAN bitrate as integer in bit/s')
 
+    cGroup.add_argument('-sp', '--samplePoint', metavar='SAMPLEPOINT', type=float,
+                        default=0.50,
+                        help='CAN sample point in decimal')
+
     # Logging configuration
     lGroup = parser.add_argument_group('Logging settings')
     lGroup.add_argument('-c', '--console_loglevel',
@@ -1002,24 +1004,14 @@ def main():
                                  'CRITICAL'},
                         default='NOTICE',
                         help='Level of console logging')
-    lGroup.add_argument('-f', '--file_loglevel',
-                        choices={'NOTSET', 'SPAM', 'DEBUG', 'VERBOSE', 'INFO',
-                                 'NOTICE', 'SUCCESS', 'WARNING', 'ERROR',
-                                 'CRITICAL'},
-                        default='INFO',
-                        help='Level of file logging')
-    lGroup.add_argument('-d', '--logdir', metavar='LOGDIR',
-                        default=os.path.join(rootdir, 'log'),
-                        help='Directory where log files should be stored')
 
-    # Program version
-    parser.add_argument('-v', '--version', action='version',
-                        version=__version__)
     args = parser.parse_args()
     
     # Start the server
-    with CanWrapper(**vars(args)) as wrapper:
-        wrapper.start()
+    wrapper = CanWrapper(**vars(args))
+        #wrapper.start()
         
 if __name__ == "__main__":
-    pass
+    #with CanWrapper(interface="Kvaser") as wrapper:
+    #    wrapper.start()  
+    main()      
