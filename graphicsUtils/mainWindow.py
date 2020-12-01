@@ -720,22 +720,9 @@ class MainWindow(QMainWindow):
             cobid, data, dlc, flag, t = None, None, None, None, None
         return cobid, data, dlc, flag, t
     
-    def dump_can_message(self, TIMEOUT=2):
-
-        def timeout_handler():
-            try:
-                raise TimeoutException
-            except Exception:
-                pass  
-  
-        # signal.signal(signal.SIGALRM, timeout_handler)
-        # signal.alarm(TIMEOUT)    
-        # try:
+    def dump_can_message(self): 
         self.read_can_message_thread(print_sdo=False)
-        self.set_textBox_message(comunication_object="ErrorFrame", msg="ErrorFrame\n------------------------------------------------------------------------")
-        # signal.alarm(0)
-        # except Exception:
-        #    pass
+        self.set_textBox_message(comunication_object="ErrorFrame", msg="NONE\n------------------------------------------------------------------------")
 
     '''
     Define all child windows

@@ -192,9 +192,12 @@ class CanWrapper(object):
         for nodeId in _nodeIds: 
             # Send the status message
             cobid_TX = 0x701
+            cobid_RX = None
             self.write_can_message(cobid_TX, [0, 0, 0, 0, 0, 0, 0, 0], flag=0, timeout=200)
             # receive the message
-            cobid_RX, data, _, _, _ = self.read_can_message_thread()
+            readCanMessage = self.read_can_message_thread()
+            if readCanMessage is not None:
+                cobid_RX, data, _, _, _  = readCanMessage
             if cobid_RX == cobid_TX and (data[0]==0x85 or data[0]==0x05):
                 self.logger.info(f'Connection to MOPS with nodeId {nodeId} in channel {channel} has been '
                                  f'verified.')
@@ -950,11 +953,12 @@ class CanWrapper(object):
     def myDCs(self):
         """:obj:`list` : List of created UA objects"""
         return self.__myDCs                                                  
+
 def main():
     """Wrapper function for using the server as a command line tool
 
     The command line tool accepts arguments for configuring the server which
-    are tranferred to the :class:`CanWrapper` class.
+    are transferred to the :class:`CanWrapper` class.
     """
 
     # Parse arguments

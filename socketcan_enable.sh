@@ -33,7 +33,6 @@ do
 	
 	echo "Bringing the  can$i driver  up"
 	sudo -S ip link set up $CHANNEL$i
-	ifconfig $CHANNEL$i
 done
 for i in range 0 $n_buses 
 do 
