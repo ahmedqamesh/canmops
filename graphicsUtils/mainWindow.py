@@ -724,6 +724,9 @@ class MainWindow(QMainWindow):
         _cobid = self.get_cobid()
         bytes = self.get_bytes()
         bytes_hex = [hex(b)[2:] for b in bytes]
+        #_index = hex(int.from_bytes([bytes[1], bytes[2]], byteorder=sys.byteorder))
+        #_subIndex = hex(int.from_bytes([bytes[3]], byteorder=sys.byteorder))
+            
         self.set_table_content(bytes=bytes, comunication_object="SDO_RX")
         # response = f'{data.hex()}\n------------------------------------------------------------------------'
         self.set_textBox_message(comunication_object="SDO_RX", msg=str(bytes_hex), cobid = str(_cobid)+" ")
@@ -923,26 +926,23 @@ class MainWindow(QMainWindow):
         sampleLabel = QLabel("sampleLabel")
         firstComboBox = QComboBox()
         thirdTextBox = QLineEdit("125000")
-        thirdTextBox.setFixedSize(70, 25)  
-        def _set_bitrate():
-            self.set_bitrate(thirdTextBox.text())  
-            
+        thirdTextBox.setFixedSize(70, 25)              
         secondLabel.setText("SJW:")
-        secondItems = ["","1", "2", "3", "4"]
+        secondItems = ["1", "2", "3", "4"]
         secondComboBox = QComboBox()
         for item in secondItems: secondComboBox.addItem(item)
-        secondComboBox.activated[str].connect(self.set_sjw)
+        #secondComboBox.activated[str].connect(self.set_sjw)
         thirdLabel.setText("Bit Speed [bit/s]:")
         thirdItems = self.get_bitrate_items()
         thirdComboBox = QComboBox()
         for item in thirdItems: thirdComboBox.addItem(item)
-        thirdComboBox.activated[str].connect(self.set_bitrate)
+        #thirdComboBox.activated[str].connect(self.set_bitrate)
         sampleLabel.setText("Sample point")
         sampleItems = self.get_sample_points()
         sampleComboBox = QComboBox()
         sampleComboBox.setStatusTip('The location of Sample point in percentage inside each bit period')
         for item in sampleItems: sampleComboBox.addItem(item)
-        sampleComboBox.activated[str].connect(self.set_sample_point)                      
+        #sampleComboBox.activated[str].connect(self.set_sample_point)                      
         if (interface == "AnaGate"):
             firstLabel.setText("IP address:")
             self.firsttextbox = QLineEdit('192.168.1.254')
@@ -950,10 +950,16 @@ class MainWindow(QMainWindow):
             SubSecondGridLayout.addWidget(self.firsttextbox, 0, 1)
         else:
             pass                  
+        
+        def _set_bus():
+            self.set_sjw(secondComboBox.currentText())
+            self.set_bitrate(thirdTextBox.text())  
+            self.set_sample_point(sampleComboBox.currentText())
+            
         set_button = QPushButton("Set in all")
         set_button.setStatusTip('The button will apply the same settings for all CAN controllers')  # show when move mouse to the icon
         set_button.setIcon(QIcon('graphicsUtils/icons/icon_true.png'))
-        set_button.clicked.connect(_set_bitrate)
+        set_button.clicked.connect(_set_bus)
         set_button.clicked.connect(self.set_all)
         
         SubSecondGridLayout.addWidget(secondLabel, 1, 0)
@@ -1252,9 +1258,8 @@ class MainWindow(QMainWindow):
         self.x = [0]*n_channels
         self.y = [0]*n_channels
         for i in np.arange(0,n_channels):
-            self.x[i] = list(range(2))
-            self.y[i] = list(range(2))
-           
+            self.x[i] = list([0])
+            self.y[i] = list([0]) 
     def initiate_trending_figure(self, index=None,n_channels = 33):
         s = int(index)-3
         # Allow only one box per trend
@@ -1290,11 +1295,11 @@ class MainWindow(QMainWindow):
     
     def update_figure(self, data=None, index=None):
         self.data_line[index] = self.graphWidget.plot(self.x[index], self.y[index], pen=pg.mkPen(color=self.get_color(index), width=3), name="Ch%i" % index)
-        self.x[index] = self.x[index][1:]  # Remove the first x element.
+        self.x[index] = self.x[index][:]  # Remove the first x element.
         self.x[index] = np.append(self.x[index], self.x[index][-1]+1)  # Add a new value 1 higher than the last
-        self.y[index] = self.y[index][1:]  # Remove the first   y element.
+        self.y[index] = self.y[index][:]  # Remove the first   y element.
         self.y[index].append(data)  # Add a new value.
-        self.data_line[index].setData(self.x[index], self.y[index])  # Update the data.
+        self.data_line[index].setData(self.x[index][1:], self.y[index][1:])  # Update the data.
 
     def initiateTimer(self, period=0.05): #time in msec
         self.timer = QtCore.QTimer(self)

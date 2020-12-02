@@ -17,8 +17,8 @@ class MenuBar(QWidget):
         menuBar = mainwindow.menuBar()
         menuBar.setNativeMenuBar(False)  # only for MacOS
         self._fileMenu(menuBar, mainwindow)
-        self._helpMenu(menuBar, mainwindow)
         self._interfaceMenu(menuBar, mainwindow)
+        self._helpMenu(menuBar, mainwindow)
     # 1. File menu
     def _fileMenu(self, menuBar, mainwindow):
                

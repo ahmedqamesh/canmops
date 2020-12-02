@@ -136,16 +136,7 @@ class CanWrapper(object):
         self.__pill2kill = Event()
         self.__lock = Lock()
         self.__kvaserLock = Lock()
-        #self.confirmNodes()
-        #self.confirmMops(channel = self.__channel)
         self.logger.success('... Done!')
-        # Import Object Dictionary from EDS
-#         self.logger.notice('Importing Object Dictionary ...')
-#         self.logger.debug('File path for EDS not given. Looking in '
-#                               'the dicrectory of this script.')
-#         edsfile = os.path.join(rootdir, 'DCSControllerOD.eds')
-#         self.__od = objectDictionary.objectDictionary(self.logger).from_eds(self.logger, edsfile, 0)
-#         value = self.__od[0x1800][1]
     def __str__(self):
         if self.__interface == 'Kvaser':
             num_channels = canlib.getNumberOfChannels()
