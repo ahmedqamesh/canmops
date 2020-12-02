@@ -1,5 +1,6 @@
 CAN_Interfaces:
   Kvaser:
+    SJW: 4
     bitrate: 114285
     channels: 0
     ipAddress: None

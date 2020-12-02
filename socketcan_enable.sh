@@ -5,6 +5,7 @@ echo "Initializing SocketCAN...."
 BITRATE=114285
 CHANNEL="can"
 SAMPLEPOINT=0.5
+SJW=4
 echo "Setting the bus to a bitrate of $BITRATE [Sample Point $SAMPLEPOINT]"
 
 #echo "Unloading all the kernel modules if on"
@@ -29,7 +30,7 @@ do
    sudo -S ip link set down $CHANNEL$i
 	
 	echo "Configuring the SocketCAN interface to bitrate of" $BITRATE
-	sudo -S ip link set $CHANNEL$i type can bitrate $BITRATE sample-point $SAMPLEPOINT
+	sudo -S ip link set $CHANNEL$i type can bitrate $BITRATE sample-point $SAMPLEPOINT	sjw $SJW
 	
 	echo "Bringing the  can$i driver  up"
 	sudo -S ip link set up $CHANNEL$i

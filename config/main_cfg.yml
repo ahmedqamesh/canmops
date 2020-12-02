@@ -10,16 +10,16 @@ Devices:    ["MOPS"] #Configured devices
 
 default_values:
     index_items     : ["0x1000"]
-    bitrate_items   : ["    ","10000", "20000", "50000", "62500", "100000","114285","125000", "250000", "500000", "1000000"] 
-    sample_points   : ["0.25","0.50","0.75"]    
+    bitrate_items   : ["    ","10000", "20000", "50000", "62500", "100000","103750","111111","112500","113750","114285","116250","125000", "250000", "500000", "1000000"] 
+    sample_points   : ["0.25","0.50","0.75"] 
     bytes           : ["40","0","10","0","0","0","0","0"] 
     subIndex        : "0"
     cobid           : "0x601"
     dlc             : "8"
     adctrim         : 0  
      
-CAN_Interfaces:   {"AnaGate"    :{"bitrate":125000 ,"samplePoint":0.5, "ipAddress":"192.168.1.254"    ,"timeout":500    ,"channels":{1: [1,2],0:[1,2]}},# channels are defined as {bus1[node1,node2],bus2[node1,node2]}
-                   "Kvaser"     :{"bitrate":125000 ,"samplePoint":0.5, "ipAddress":"None"             ,"timeout":500    ,"channels":{0: [1]}},
-                   "socketcan"  :{"bitrate":114285 ,"samplePoint":0.5, "ipAddress":"None"             ,"timeout":500    ,"channels":{0: [1],1: [1]}}}
+CAN_Interfaces:   {"AnaGate"    :{"bitrate":125000 ,"samplePoint":0.5,"SJW":4, "ipAddress":"192.168.1.254"    ,"timeout":500    ,"channels":{1: [1,2],0:[1,2]}},# channels are defined as {bus1[node1,node2],bus2[node1,node2]}
+                   "Kvaser"     :{"bitrate":125000 ,"samplePoint":0.5,"SJW":4,"ipAddress":"None"             ,"timeout":500    ,"channels":{0: [1]}},
+                   "socketcan"  :{"bitrate":114285 ,"samplePoint":0.5,"SJW":4,"ipAddress":"None"             ,"timeout":500    ,"channels":{0: [1],1: [1]}}}
 Other:
     user    :   "Ahmed Qamesh"

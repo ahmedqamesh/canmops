@@ -179,3 +179,5 @@ adc_channels_reg:
                                "7":"V",
                                "8":"V",
                                "9":"V"} 
+Hardware:
+    resistor_ratio  "40"

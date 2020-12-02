@@ -73,6 +73,7 @@ class CanWrapper(object):
     def __init__(self,
                  interface=None, channel=None,
                  bitrate=None,  samplePoint = None,
+                 sjw = None,
                  ipAddress=None,
                  conf_file ="main_cfg.yml",
                  console_loglevel=logging.INFO,
@@ -95,6 +96,7 @@ class CanWrapper(object):
         self.__ipAddress = AnalysisUtils().get_info_yaml(dictionary=self.__conf['CAN_Interfaces'], index=interface, subindex="ipAddress")
         self.__bitrate = AnalysisUtils().get_info_yaml(dictionary=self.__conf['CAN_Interfaces'], index=interface, subindex="bitrate")
         self.__samplepoint = AnalysisUtils().get_info_yaml(dictionary=self.__conf['CAN_Interfaces'], index=interface, subindex="samplePoint")
+        self.__sjw = AnalysisUtils().get_info_yaml(dictionary=self.__conf['CAN_Interfaces'], index=interface, subindex="SJW")
         self.__channels = AnalysisUtils().get_info_yaml(dictionary=self.__conf['CAN_Interfaces'], index=interface, subindex="channels")
         self.__channel = list(AnalysisUtils().get_info_yaml(dictionary=self.__conf['CAN_Interfaces'], index=interface, subindex="channels"))[0]         
         self.logger.notice('... Loading all the configurations from the file %s!'%(config_dir + conf_file))
@@ -105,7 +107,13 @@ class CanWrapper(object):
         """:obj:`int` : Internal attribute for the bit rate"""
         if bitrate is not None:
             self.__bitrate = bitrate
-        
+
+        if samplePoint is not None:
+            self.__samplepoint = samplePoint
+            
+        if sjw is not None:
+            self.__sjw = sjw
+                                
         self.__bitrate = self._parseBitRate(self.__bitrate)   
         """:obj:`int` : Internal attribute for the IP Address"""  
         if ipAddress is not None:
@@ -383,20 +391,20 @@ class CanWrapper(object):
             if (messageValid):
                 break
             if (errorResponse):
-                return None
+                return cobid_ret, None
         else:
             self.logger.info(f'SDO read response timeout (node {nodeId}, index'
                              f' {index:04X}:{subindex:02X})')
             self.cnt['SDO read response timeout'] += 1
-            return None
+            return None, None
         # Check command byte
-        if ret[0] == (0x80 or 0x88):
+        if ret[0] == (0x80):
             abort_code = int.from_bytes(ret[4:], 'little')
             self.logger.error(f'Received SDO abort message while reading '
                               f'object {index:04X}:{subindex:02X} of node '
                               f'{nodeId} with abort code {abort_code:08X}')
             self.cnt['SDO read abort'] += 1
-            return None
+            return None, None
         # Here some Bitwise Operators are needed to perform  bit by bit operation
         # ret[0] =67 [bin(ret[0]) = 0b1000011] //from int to binary
         # (ret[0] >> 2) will divide ret[0] by 2**2 [Returns ret[0] with the bits shifted to the right by 2 places. = 0b10000]
@@ -407,7 +415,7 @@ class CanWrapper(object):
         for i in range(nDatabytes):  
             data.append(ret[4 + i])
         self.logger.info(f'Got data: {data}')
-        return int.from_bytes(data, 'little')
+        return cobid_ret, int.from_bytes(data, 'little')
 
     def return_valid_message(self,nodeId, index, subindex, cobid_ret, ret, dlc):
         messageValid =False
@@ -627,12 +635,11 @@ class CanWrapper(object):
                 self.logger.notice("Please restart CANMOPS")
             
     def hardware_config(self, channel):
-
         '''
         Pass channel string (example 'can0') to configure OS level drivers and interface.
         '''
         self.logger.info('CAN hardware OS drivers and config for %s' % channel)
-        os.system(". " + rootdir + "/socketcan_wrapper_enable.sh %i %s %i" %(self.__bitrate,str(self.__samplepoint), self.__channel))
+        os.system(". " + rootdir + "/socketcan_wrapper_enable.sh %i %s %s %i" %(self.__bitrate,str(self.__samplepoint),str(self.__sjw), self.__channel))
            
     def read_can_message_thread(self):
         """Read incoming |CAN| messages and store them in the queue
@@ -657,7 +664,7 @@ class CanWrapper(object):
                     if (cobid == 0 and dlc == 0):
                         raise analib.CanNoMsg
                 else:
-                    readcan = self.__ch.recv( timeout =1.0)
+                    readcan = self.__ch.recv()#timeout =1.0)
                     if readcan is None:
                         self.__pill2kill.set()
                         #raise can.CanError

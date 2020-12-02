@@ -120,3 +120,5 @@ adc_channels_reg:
                                "32":"V",
                                "33":"T",
                                "34":"V"} 
+Hardware:
+    resistor_ratio  : "40"

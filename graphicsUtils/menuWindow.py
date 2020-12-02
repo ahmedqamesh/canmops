@@ -18,7 +18,7 @@ class MenuBar(QWidget):
         menuBar.setNativeMenuBar(False)  # only for MacOS
         self._fileMenu(menuBar, mainwindow)
         self._helpMenu(menuBar, mainwindow)
-
+        self._interfaceMenu(menuBar, mainwindow)
     # 1. File menu
     def _fileMenu(self, menuBar, mainwindow):
                
@@ -41,6 +41,18 @@ class MenuBar(QWidget):
         about_action.triggered.connect(self.about)
         helpmenu.addAction(about_action)
         
+    # 5. Interface menu
+    def _interfaceMenu(self, menuBar, mainwindow):
+        interfaceMenu = menuBar.addMenu("&Interface")
+        SocketMenu = interfaceMenu.addMenu("&SocketCAN")
+        KvaserMenu = interfaceMenu.addMenu("&Kvaser")
+        AnagateMenu = interfaceMenu.addMenu("&AnaGate")
+        
+        Socketcan = QAction(QIcon('graphics_Utils/icons/icon_reset.png'),'Restart SocketCAN channel', mainwindow)
+        Socketcan.setStatusTip("Restart SocketCAN")
+        Socketcan.triggered.connect( self.MainWindow.restart_channel)
+        SocketMenu.addAction(Socketcan)
+        
     def create_statusBar(self, mainwindow, msg="Ready"):
         status = QStatusBar()
         status.showMessage(msg)
@@ -49,8 +61,8 @@ class MenuBar(QWidget):
     def about(self):
         QMessageBox.about(self, "About",
         """CANMoPS is a graphical user interface GUI to read the channels of MOPS chip. The package can communicate with a CAN interface and talks CANopen with the connected Controllers. Currently only CAN interfaces from AnaGate (Ethernet) and Kvaser (USB) are supported.""")
-
-
+ 
+        
 if __name__ == "__main__":
     pass
                 

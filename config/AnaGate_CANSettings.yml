@@ -1,5 +1,6 @@
 CAN_Interfaces:
   AnaGate:
+    SJW: 4
     bitrate: 114285
     channels: 0
     ipAddress: 192.168.1.254

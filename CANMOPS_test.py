@@ -23,8 +23,8 @@ def test():
     print('Writing example CAN Expedited read message ...')
    
     #Example (1): get node Id
-    VendorId = wrapper.send_sdo_can_thread(NodeIds[0], 0x1000,0,3000)
-    print(f'Device type: {VendorId:03X}')
+   # VendorId = wrapper.send_sdo_can_thread(NodeIds[0], 0x1000,0,3000)
+   # print(f'Device type: {VendorId:03X}')
           
     c_index = 0x2400
     c_subindices  = ["1","2","3","4","5","6","7","8","9","A","B","C","D","E","F",
