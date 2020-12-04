@@ -176,7 +176,7 @@ class CanWrapper(object):
             self.set_nodeList(_nodeIds)
             self.logger.info(f'Connection to channel {channel} has been ' f'verified.')
             for nodeId in _nodeIds:
-                dev_t = self.send_sdo_can_thread(nodeId, 0x1000, 0, timeout)
+                dev_t = self.read_sdo_can_thread(nodeId, 0x1000, 0, timeout)
                 if dev_t is None:
                     self.logger.error(f'Node {nodeId} in channel {channel} did not answer!')
                     # self.__nodeList.remove(nodeId)
@@ -187,14 +187,14 @@ class CanWrapper(object):
         self.logger.notice('Checking MOPS status ...')
         _nodeIds = self.__channels[channel]
         self.set_nodeList(_nodeIds)
-        self.logger.info(f'Connection to channel {channel} has been ' f'verified.')
+        self.logger.info(f'Connection to channel {channel} has been verified.')
         for nodeId in _nodeIds: 
             # Send the status message
             cobid_TX = 0x701
             cobid_RX = None
             self.write_can_message(cobid_TX, [0, 0, 0, 0, 0, 0, 0, 0], flag=0, timeout=200)
             # receive the message
-            readCanMessage = self.read_can_message_thread()
+            readCanMessage = self.read_can_message()
             if readCanMessage is not None:
                 cobid_RX, data, _, _, _  = readCanMessage
             if cobid_RX == cobid_TX and (data[0]==0x85 or data[0]==0x05):
@@ -247,7 +247,7 @@ class CanWrapper(object):
         """Start actual CANopen communication
         This function contains an endless loop in which it is looped over all
         ADC channels. Each value is read using
-        :meth:`send_sdo_can_thread` and written to its corresponding
+        :meth:`read_sdo_can_thread` and written to its corresponding
         """     
         dev = AnalysisUtils().open_yaml_file(file=file, directory=directory)
 
@@ -315,7 +315,7 @@ class CanWrapper(object):
         self.__busOn = False
         self.logger.warning('Stopping the server.')
         
-    def send_sdo_can_thread(self, nodeId, index, subindex, timeout=100, MAX_DATABYTES=8):
+    def read_sdo_can_thread(self,  nodeId =None, index=None, subindex=None, timeout=100, MAX_DATABYTES=8,SDO_RX = 0x600, SDO_TX = 0x580):
         """Read an object via |SDO|
     
         Currently expedited and segmented transfer is supported by this method.
@@ -341,8 +341,6 @@ class CanWrapper(object):
             In case of errors
         """
         self.logger.notice("Reading an object via |SDO|")
-        SDO_TX = 0x580  
-        SDO_RX = 0x600
         self.start_channelConnection(interface=self.__interface)
         if nodeId is None or index is None or subindex is None:
             self.logger.warning('SDO read protocol cancelled before it could begin.')         
@@ -452,7 +450,7 @@ class CanWrapper(object):
             self.cnt['SDO read response timeout'] += 1
             return None
         
-    def read_sdo_can(self, nodeId, index, subindex, timeout=100, MAX_DATABYTES=8):
+    def read_sdo_can(self, nodeId=None, index=None, subindex=None, timeout=100, MAX_DATABYTES=8, SDO_RX = 0x600,SDO_TX = 0x580):
         """Read an object via |SDO|
     
         Currently expedited and segmented transfer is supported by this method.
@@ -477,8 +475,6 @@ class CanWrapper(object):
         :data:`None`
             In case of errors
         """
-        SDO_TX = 0x580  
-        SDO_RX = 0x600
         if nodeId is None or index is None or subindex is None:
             self.logger.warning('SDO read protocol cancelled before it could begin.')         
             return None

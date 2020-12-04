@@ -48,10 +48,31 @@ class MenuBar(QWidget):
         KvaserMenu = interfaceMenu.addMenu("&Kvaser")
         AnagateMenu = interfaceMenu.addMenu("&AnaGate")
         
-        Socketcan = QAction(QIcon('graphics_Utils/icons/icon_reset.png'),'Restart SocketCAN channel', mainwindow)
-        Socketcan.setStatusTip("Restart SocketCAN")
-        Socketcan.triggered.connect( self.MainWindow.restart_channel)
-        SocketMenu.addAction(Socketcan)
+        RestartSocketcan = QAction(QIcon('graphics_Utils/icons/icon_reset.png'),'Restart SocketCAN channel', mainwindow)
+        RestartSocketcan.setStatusTip("Restart SocketCAN")
+        RestartSocketcan.triggered.connect( self.MainWindow.restart_socketchannel)
+        
+        SocketMenu.addAction(RestartSocketcan)
+        
+        def _dump_can0():
+            self.MainWindow.dump_socketchannel(can0.text())
+
+        def _dump_can1():
+            self.MainWindow.dump_socketchannel(can1.text())
+            
+        #DumpSocketcan = SocketMenu.addMenu('Dump SocketCAN')
+        
+        can0 = QAction('can0', mainwindow)
+        can0.setStatusTip("can0")
+        can0.triggered.connect(_dump_can0)
+        
+        can1 = QAction('can1', mainwindow)
+        can1.setStatusTip("can1")
+        can1.triggered.connect(_dump_can1)
+                
+        #DumpSocketcan.addAction(can0)
+        #DumpSocketcan.addAction(can1)
+        
         
     def create_statusBar(self, mainwindow, msg="Ready"):
         status = QStatusBar()

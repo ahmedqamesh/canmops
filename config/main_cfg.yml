@@ -3,7 +3,7 @@ Application:
     app_name             :   'CANMOPS'
     app_version          :   "v1.2"
     app_icon_dir         :   "graphicsUtils/icons/icon_mops.png"   
-    can_settings         : True     # Allow to load all the default settings from the last update [saved in $HOME/config/]
+    can_settings         : False     # Allow to load all the default settings from the last update [saved in $HOME/config/]
 channel_ports:      {"0", "1"}
 
 Devices:    ["MOPS"] #Configured devices

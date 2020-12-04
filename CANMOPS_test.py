@@ -23,14 +23,14 @@ def test():
     print('Writing example CAN Expedited read message ...')
    
     #Example (1): get node Id
-   # VendorId = wrapper.send_sdo_can_thread(NodeIds[0], 0x1000,0,3000)
+   # VendorId = wrapper.read_sdo_can_thread(NodeIds[0], 0x1000,0,3000)
    # print(f'Device type: {VendorId:03X}')
           
     c_index = 0x2400
     c_subindices  = ["1","2","3","4","5","6","7","8","9","A","B","C","D","E","F",
                     "10","11","12","13","14","15","16","17","18","19","1A","1B","1C","1D","1E","1F","20"]
     out_file_csv = AnalysisUtils().open_csv_file(outname="adc_data", directory=rootdir + "/output_data")
-    wrapper.read_adc_channels(file ="MOPS_cfg.yml", directory=rootdir+"/config", nodeId = NodeIds[0], out_file_csv = out_file_csv, n_readings = 20)
+    wrapper.read_adc_channels(file ="MOPS_cfg.yml", directory=rootdir+"/config", nodeId = NodeIds[0], out_file_csv = out_file_csv, n_readings = 2)
 #     while True:
 #         values = []
 #         for c_subindex in c_subindices: # Each i represents one channel

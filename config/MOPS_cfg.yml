@@ -1,6 +1,6 @@
 Application:
     device_name             :   'MOPS'
-    device_version          :   "v1.0"
+    device_version          :   "v1.2"
     icon_dir                :   "graphicsUtils/icons/icon_mops.png"
     nodeIds                 :   {"1", "8"}
     index_items             :   {  
@@ -121,4 +121,4 @@ adc_channels_reg:
                                "33":"T",
                                "34":"V"} 
 Hardware:
-    resistor_ratio  : "40"
+    resistor_ratio  : "40"  #Resistor ratio needed to be edited by the user
