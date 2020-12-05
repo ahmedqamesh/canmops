@@ -31,19 +31,6 @@ def test():
                     "10","11","12","13","14","15","16","17","18","19","1A","1B","1C","1D","1E","1F","20"]
     out_file_csv = AnalysisUtils().open_csv_file(outname="adc_data", directory=rootdir + "/output_data")
     wrapper.read_adc_channels(file ="MOPS_cfg.yml", directory=rootdir+"/config", nodeId = NodeIds[0], out_file_csv = out_file_csv, n_readings = 2)
-#     while True:
-#         values = []
-#         for c_subindex in c_subindices: # Each i represents one channel
-#              value = wrapper.read_sdo_can(NodeIds[0], c_index,int(c_subindex,16),1000)
-#              time.sleep(0.5)
-#              values = np.append(values, value)
-#         for c_subindex in c_subindices:
-#             id = c_subindices.index(c_subindex)
-#             channel = int(c_subindex, 16)
-#             if values[id] is not None:
-#                  print("Channel %i = %0.3f "%(channel,values[id]))
-#             else:
-#                 print("Channel %i = %s "%(channel,"None"))
     wrapper.stop()        
 
 

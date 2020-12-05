@@ -57,7 +57,7 @@ class MainWindow(QMainWindow):
         self.__interfaceItems = list(self.__conf['CAN_Interfaces'].keys()) 
         self.__channelPorts = self.__conf["channel_ports"]
         self.__devices = self.__conf["Devices"]
-        self.__timeout = 4000
+        self.__timeout = 2000
         self.__period = 0.05
         self.__interface = None
         self.__channel = None
@@ -65,7 +65,6 @@ class MainWindow(QMainWindow):
         self.__bitrate = None
         self.__sample_point =None
         self.index_description_items = None
-        self.__response = None
         self.wrapper = None
         
     def Ui_ApplicationWindow(self):
@@ -575,7 +574,7 @@ class MainWindow(QMainWindow):
                     self.wrapper = CanWrapper(interface=_interface, bitrate=_bitrate, samplePoint = _samplePoint, sjw = _sjw, ipAddress=_ipAddress,
                                                                 channel=_channel)
                     if self.__deviceName == "MOPS":
-                        self.wrapper.confirmMops(channel=_channel)
+                        self.wrapper.confirm_Mops(channel=_channel)
                     else:
                         pass
                     
@@ -587,7 +586,7 @@ class MainWindow(QMainWindow):
                     
                 
                     if self.__deviceName == "MOPS":
-                        self.wrapper.confirmMops(channel=_channel)
+                        self.wrapper.confirm_Mops(channel=_channel)
                     else:
                         pass 
             except:
@@ -680,7 +679,39 @@ class MainWindow(QMainWindow):
     '''
     Define all child windows
     '''        
-               
+              
+    def dump_child_window(self, ChildWindow):
+        ChildWindow.setObjectName("Bus Messages")
+        ChildWindow.setWindowTitle("Bus Messages")
+        ChildWindow.setGeometry(915, 490, 600, 400)
+        mainLayout = QGridLayout()
+        # Define a frame for that group
+        
+        plotframe = QFrame()
+        plotframe.setLineWidth(0.6)
+        ChildWindow.setCentralWidget(plotframe)
+        # Define dumpGroupBox
+        dumpGroupBox = QGroupBox()
+        self.dumptextBox = QTextEdit()
+        self.dumptextBox.setReadOnly(True)
+        textOutputWindowLayout = QGridLayout()
+        textOutputWindowLayout.addWidget(self.dumptextBox, 0, 0)
+        dumpGroupBox.setLayout(textOutputWindowLayout)
+        
+        #dump can messages
+        self.initiate_dump_can_timer(5000)
+        
+        buttonBox = QHBoxLayout()
+        close_button = QPushButton("close")
+        close_button.setIcon(QIcon('graphicsUtils/icons/icon_close.jpg'))
+        close_button.clicked.connect(ChildWindow.close)
+        buttonBox.addWidget(close_button)
+                 
+        mainLayout.addWidget(dumpGroupBox , 0, 0)
+        mainLayout.addLayout(buttonBox , 2, 0)
+        plotframe.setLayout(mainLayout) 
+        QtCore.QMetaObject.connectSlotsByName(ChildWindow)
+        
     def can_message_child_window(self, ChildWindow):
         ChildWindow.setObjectName("CAN Message")
         ChildWindow.setWindowTitle("CAN Message")
@@ -724,17 +755,27 @@ class MainWindow(QMainWindow):
                 SecondGridLayout.addWidget(self.ByteTextbox[i], i - 4, 5)
         SecondGroupBox.setLayout(SecondGridLayout) 
         
-        def __set_message():
-            self.set_cobid(cobidtextbox.text())
+        def __apply_CANMessageSettings():
+            _cobid = cobidtextbox.text() 
             textboxValue = [self.ByteTextbox[i] for i in np.arange(len(self.ByteTextbox))]
+            
             for i in np.arange(len(self.ByteTextbox)):
                 textboxValue[i] = self.ByteTextbox[i].text()
-            self.set_bytes([int(b, 16) for b in textboxValue])
+            bytes_int = [int(b, 16) for b in textboxValue]
+            _index = hex(int.from_bytes([bytes_int[1], bytes_int[2]], byteorder=sys.byteorder))
+            _subIndex = hex(int.from_bytes([bytes_int[3]], byteorder=sys.byteorder))
+            
+            self.set_cobid(_cobid)
+            self.set_bytes(bytes_int)
+            self.set_subIndex(_subIndex)
+            self.set_index(_index)
+            #self.read_sdo_can_thread()
+        
             
         buttonBox = QHBoxLayout()
         send_button = QPushButton("Send")
         send_button.setIcon(QIcon('graphicsUtils/icons/icon_true.png'))
-        send_button.clicked.connect(__set_message)
+        send_button.clicked.connect(__apply_CANMessageSettings)
         send_button.clicked.connect(self.write_can_message)
         
         close_button = QPushButton("close")
@@ -850,18 +891,15 @@ class MainWindow(QMainWindow):
         secondItems = ["1", "2", "3", "4"]
         secondComboBox = QComboBox()
         for item in secondItems: secondComboBox.addItem(item)
-        #secondComboBox.activated[str].connect(self.set_sjw)
         thirdLabel.setText("Bit Speed [bit/s]:")
         thirdItems = self.get_bitrate_items()
         thirdComboBox = QComboBox()
         for item in thirdItems: thirdComboBox.addItem(item)
-        #thirdComboBox.activated[str].connect(self.set_bitrate)
         sampleLabel.setText("Sample point")
         sampleItems = self.get_sample_points()
         sampleComboBox = QComboBox()
         sampleComboBox.setStatusTip('The location of Sample point in percentage inside each bit period')
-        for item in sampleItems: sampleComboBox.addItem(item)
-        #sampleComboBox.activated[str].connect(self.set_sample_point)                      
+        for item in sampleItems: sampleComboBox.addItem(item)                   
         if (interface == "AnaGate"):
             firstLabel.setText("IP address:")
             self.firsttextbox = QLineEdit('192.168.1.254')
@@ -896,131 +934,170 @@ class MainWindow(QMainWindow):
     Define can communication messages
     '''
     def read_sdo_can(self):
+        """Read an object via |SDO| with message validity check
+        1. Request the SDO message parameters [e.g.  Index, subindex and _nodeId]
+        2. Communicate with the read_sdo_can function in the CANWrapper to send SDO message
+        3. Print the result if print_sdo is True
+        The function is called by the following functions: 
+           a) read_adc_channels
+           b)  read_monitoring_values    
+           c) read_configuration_values
+        """
         try:
             _index = int(self.get_index(), 16)
             _subIndex = int(self.get_subIndex(), 16)
             _nodeId = self.get_nodeId()
             _nodeId = int(_nodeId[0])
             _interface = self.get_interface()
-            self.__response = self.wrapper.read_sdo_can(_nodeId, _index, _subIndex, self.__timeout)
-            return self.__response
+            data_ret = self.wrapper.read_sdo_can(_nodeId, _index, _subIndex, self.__timeout)
+            return data_ret
         except Exception:
             self.error_message(text="Make sure that the CAN interface is connected")
+            return None
                            
     def read_sdo_can_thread(self, trending=False, print_sdo=True):
+        """Read an object via |SDO| in a thread
+        1. Request the SDO message parameters [e.g.  Index, subindex and _nodeId]
+        2. Communicate with the read_sdo_can_thread function in the CANWrapper to send SDO message
+        3. Print the result if print_sdo is True
+        The function is called by the following functions: 
+           a) send_random_can
+           b) device_child_window
+           c) default_message_window 
+           d) can_message_child_window
+        """
         try:
             _index = int(self.get_index(), 16)
             _subIndex = int(self.get_subIndex(), 16)
             _nodeId = self.get_nodeId()
             _nodeId = int(_nodeId[0])
-            _interface = self.get_interface()
-            cobid_ret, self.__data = self.wrapper.read_sdo_can_thread(_nodeId, _index, _subIndex, self.__timeout)
+            _cobid = self.get_cobid()
+            cobid_ret, data_ret = self.wrapper.read_sdo_can_thread(nodeId= _nodeId, index=_index, subindex=_subIndex, timeout=self.__timeout,cobid=int(_cobid,16))
             if print_sdo == True:
-                self.control_logger.disabled = False
-                self.print_sdo_can(index=_index, subIndex=_subIndex, response_from_node=self.__data, cobid_TX = cobid_ret)
-            return self.__response
+                #self.control_logger.disabled = False
+                self.print_sdo_can(index=_index, subIndex=_subIndex, response_from_node=data_ret, cobid_TX = cobid_ret, cobid_RX = int(_cobid,16))
         except Exception:
             self.error_message(text="Make sure that the CAN interface is connected")
 
-     
-    def print_sdo_can(self , index=None, subIndex=None, response_from_node=None, cobid_TX = None):
-       #get NodeId and CobId
-        _nodeId = self.get_nodeId()
-        _nodeId = int(_nodeId[0])
-        SDO_TX = 0x580
-        SDO_RX = 0x600
-        _cobid_RX = SDO_RX+_nodeId
+    def print_sdo_can(self , index=None, subIndex=None, response_from_node=None, cobid_TX = None, cobid_RX = None):
         # printing the read message with cobid = SDO_RX + nodeId
         MAX_DATABYTES = 8
         msg = [0 for i in range(MAX_DATABYTES)]
         msg[0] = 0x40  # Defines a read (reads data only from the node) dictionary object in CANOPN standard
         msg[1], msg[2] = index.to_bytes(2, 'little')
         msg[3] = subIndex
-        self.set_textBox_message(comunication_object="SDO_RX", msg=str([hex(m)[2:] for m in msg]),cobid = str(hex(_cobid_RX)+" "))
+        #  fill the Bytes/bits table
         self.set_table_content(bytes=msg, comunication_object="SDO_RX")
+        # printing RX     
+        self.set_textBox_message(comunication_object="SDO_RX", msg=str([hex(m)[2:] for m in msg]),cobid = str(hex(cobid_RX)+" "))
         # print decoded response
         if response_from_node is not None:
             # printing response 
             b1, b2, b3, b4 = response_from_node.to_bytes(4, 'little')
             TX_response = [0x43] + msg[1:4] + [b1, b2, b3, b4]
-            self.set_textBox_message(comunication_object="SDO_TX", msg=str([hex(m)[2:] for m in TX_response]), cobid = str(hex(cobid_TX)+" "))
-            # fill the Bytes/bits table
-            decoded_response = f'{response_from_node:03X}\n-----------------------------------------------------------------------'
-            # printing TX           
+            # fill the Bytes/bits table       
             self.set_table_content(bytes=TX_response, comunication_object="SDO_TX")
+            # printing TX   
+            self.set_textBox_message(comunication_object="SDO_TX", msg=str([hex(m)[2:] for m in TX_response]), cobid = str(hex(cobid_TX)+" "))
+            # print decoded response
+            decoded_response = f'{response_from_node:03X}\n-----------------------------------------------------------------------'
+            self.set_textBox_message(comunication_object="SDO_TX", msg=decoded_response,cobid =str(hex(cobid_TX)+": ADC value = "))
         else:
-            try:
-                self.set_textBox_message(comunication_object="SDO_TX", msg="", cobid = str(hex(cobid_TX)+"  "))
-            except Exception:
-                pass
-            decoded_response = f'\n------------------------------------------------------------------------'
-        self.set_textBox_message(comunication_object="newline", msg=decoded_response,cobid =None)
+            TX_response = "No Response Message"
+            self.set_textBox_message(comunication_object="ErrorFrame", msg=TX_response,cobid = str("NONE"+"  "))
+            decoded_response = f'------------------------------------------------------------------------'
+            self.set_textBox_message(comunication_object="newline", msg=decoded_response,cobid =None)
 
     def send_random_can(self): 
+        """
+        The function will send random messages to the bus with random index and random subindex 
+        The function is called by the following functions: 
+           a)  RandomDumpMessage_action button
+           b)  initiate_random_timer
+        """
         _index = np.random.randint(1000, 2500)
         _subIndex = np.random.randint(0, 5)
-        MAX_DATABYTES = 8
-        msg = [0 for i in range(MAX_DATABYTES)]
-        msg[0] = 0x40
-        msg[1], msg[2] = _index.to_bytes(2, 'little')
-        msg[3] = _subIndex
-        self.set_table_content(bytes=msg, comunication_object="SDO_RX")        
-        
-        def __apply_CANMessageSettings():
-            self.set_nodeId(self.nodeComboBox.currentText())
-            self.set_index(str(_index))
-            self.set_subIndex(str(_subIndex))
         _nodeId = int(self.nodeComboBox.currentText())
-        SDO_RX = 0x600
-        _cobid = SDO_RX+_nodeId
-        self.set_textBox_message(comunication_object="SDO_RX", msg=str([hex(m)[2:] for m in msg]), cobid = str(hex(_cobid)+" "))
-        __apply_CANMessageSettings()
+        _cobid = self.mainCobIdTextBox.text()
         
+        self.set_nodeId(self.nodeComboBox.currentText())
+        self.set_index(str(_index))
+        self.set_subIndex(str(_subIndex))
+        self.set_cobid(_cobid)
+        
+        # clear cells
         self.TXProgressBar.setValue(0)
-        self.TXTable.clearContents()  # clear cells
-        self.hexTXTable.clearContents()  # clear cells
-        self.decTXTable.clearContents()  # clear cells
-        self.read_sdo_can_thread(print_sdo=False)  
-                        
+        self.TXTable.clearContents()  
+        self.hexTXTable.clearContents()
+        self.decTXTable.clearContents()
+        
+        #send SDO can
+        self.read_sdo_can_thread(print_sdo=True)  
+ 
+    def dump_can_message(self): 
+        """
+        The function is to be used later for CANdump [Qamesh]
+        """
+        readCanMessage = self.wrapper.read_can_message_thread()
+        self.dumptextBox.append(readCanMessage)
+        #self.read_can_message_thread(print_sdo=False)
+                               
     def write_can_message(self):
+        """
+        The function will send a standard CAN message and receive it using the function read_can_message_thread 
+        1. Request the SDO message parameters [e.g.  _cobid, Index, subindex and bytes]
+        2. Print the TX message in the textBox and the Bytes table
+        3. Communicate with the write_can_message function in the CANWrapper to send the CAN message
+        4. Communicate with the read_can_message_thread function to read the CAN message
+        The function is called by the following functions: 
+           a)  __restart_device
+           b)  __reset_device
+           c)  can_message_child_window
+        """
+        
         _cobid = self.get_cobid()
-        bytes = self.get_bytes()
-        bytes_hex = [hex(b)[2:] for b in bytes]
-        #_index = hex(int.from_bytes([bytes[1], bytes[2]], byteorder=sys.byteorder))
-        #_subIndex = hex(int.from_bytes([bytes[3]], byteorder=sys.byteorder))
-            
-        self.set_table_content(bytes=bytes, comunication_object="SDO_RX")
-        # response = f'{data.hex()}\n------------------------------------------------------------------------'
-        self.set_textBox_message(comunication_object="SDO_RX", msg=str(bytes_hex), cobid = str(_cobid)+" ")
-               
+        _bytes = self.get_bytes()
+        _index = hex(int.from_bytes([_bytes[1], _bytes[2]], byteorder=sys.byteorder))
+        _subIndex = hex(int.from_bytes([_bytes[3]], byteorder=sys.byteorder))
+        #fill the Bytes table     
+        self.set_table_content(bytes=_bytes, comunication_object="SDO_RX")
+        #fill the textBox     
+        self.set_textBox_message(comunication_object="SDO_RX", msg=str([hex(b)[2:] for b in _bytes]), cobid = str(_cobid)+" ")    
         try: 
             # Send the can Message
-            self.wrapper.write_can_message(int(_cobid,16), bytes, flag=0, timeout=200)
+            self.wrapper.write_can_message(int(_cobid,16), _bytes, flag=0, timeout=self.__timeout)
             # receive the message
             self.read_can_message_thread()
-            self.set_textBox_message(comunication_object="newline", msg="-----------------------------------------------------------------------", cobid = None) 
         except Exception:
             self.error_message(text="Make sure that the CAN interface is connected")
             
     def read_can_message_thread(self, print_sdo=True):
+
         readCanMessage = self.wrapper.read_can_message_thread()
         if readCanMessage is not None:
-           _cobid, data, dlc, flag, t = readCanMessage
-           outtdata = int.from_bytes(data, byteorder=sys.byteorder)
-           b1, b2, b3, b4, b5, b6, b7, b8 = outtdata.to_bytes(8, 'little') 
-           self.logger.info(f'Got data: [{b5:02x},  {b6:02x},  {b7:02x}, {b8:02x}]')
-           outtdata = [b1, b2, b3, b4, b5, b6, b7, b8]
+           cobid_ret, data_ret , dlc, flag, t = readCanMessage
+           data_ret_int = int.from_bytes(data_ret, byteorder=sys.byteorder)
+           # get the data in Bytes
+           b1, b2, b3, b4, b5, b6, b7, b8 = data_ret_int.to_bytes(8, 'little') 
+           self.logger.info(f'Got data: [{b5:02x},  {b6:02x},  {b7:02x}, {b8:02x}]') 
+           # make an array of the bytes data
+           data_ret_bytes = [b1, b2, b3, b4, b5, b6, b7, b8]
+           # get the hex form of each byte
+           data_ret_hex = [hex(b)[2:] for b in data_ret_bytes]
            if print_sdo == True:
-               self.set_table_content(bytes=data, comunication_object="SDO_TX")
-               self.set_textBox_message(comunication_object="SDO_TX", msg=str([hex(b)[2:] for b in outtdata]),cobid = str(hex(_cobid)+" "))
+               #fill the Bytes table     
+               self.set_table_content(bytes=data_ret, comunication_object="SDO_TX")
+               #fill the textBox
+               self.set_textBox_message(comunication_object="SDO_TX", msg=str(data_ret_hex),cobid = str(hex(cobid_ret)+" "))
         else:
-            _cobid, data, dlc, flag, t = None, None, None, None, None
-        return _cobid, data, dlc, flag, t
+            cobid_ret, data_ret, dlc, flag, t = None, None, None, None, None
+            TX_response = "No Response Message"
+            self.set_textBox_message(comunication_object="ErrorFrame", msg=TX_response,cobid = str("NONE"+"  "))
+        #fill the textBox
+        decoded_response = f'------------------------------------------------------------------------'
+        self.set_textBox_message(comunication_object="newline", msg=decoded_response, cobid = None) 
+        return cobid_ret, data_ret, dlc, flag, t
     
-    def dump_can_message(self): 
-        self.read_can_message_thread(print_sdo=False)
-        self.set_textBox_message(comunication_object="ErrorFrame", msg="NONE\n------------------------------------------------------------------------")
-
 
     def device_child_window(self, ChildWindow):    
         '''
@@ -1030,15 +1107,13 @@ class MainWindow(QMainWindow):
         _channel = self.get_channel()
         n_channels = 33
         try:
-            self.wrapper.confirmMops(channel=int(_channel))
+            self.wrapper.confirm_Mops(channel=int(_channel))
         except Exception:
             pass
         #  Open the window
         ChildWindow.setObjectName("DeviceWindow")
         ChildWindow.setWindowTitle("Device Window [ " + self.__deviceName + "]")
         ChildWindow.setWindowIcon(QtGui.QIcon(self.__appIconDir))
-        # ChildWindow.adjustSize()
-        #ChildWindow.resize(750, 600)  # w*h
         ChildWindow.setGeometry(1175, 10, 200, 500)
         logframe = QFrame()
         logframe.setLineWidth(0.6)
@@ -1067,12 +1142,20 @@ class MainWindow(QMainWindow):
             self.set_nodeId(deviceNodeComboBox.currentText())
             self.set_cobid(CobIdTextBox.text())
                    
-        def __reset_device():
-            self.set_cobid(0x0)
+        def __restart_device():
+            _cobeid = hex(0x0)
+            self.set_cobid(_cobeid)
             self.set_bytes([0, 0, 0, 0, 0, 0, 0, 0]) 
-            self.logger.info("Restarting the device")
+            self.logger.info("Restarting the %s device with a cobid message %s"%(self.get_deviceName(), str(_cobeid)))
             self.write_can_message()
-        
+
+        def __reset_device():
+            _cobeid = hex(0x701)
+            self.set_cobid(_cobeid)
+            self.set_bytes([0, 0, 0, 0, 0, 0, 0, 0]) 
+            self.logger.info("Resetting the %s device with a cobid message %s"%(self.get_deviceName(), str(_cobeid)))
+            self.write_can_message()
+                    
         def __get_subIndex_description():        
             dictionary = self.__dictionary_items
             index = self.IndexListBox.currentItem().text()
@@ -1111,20 +1194,26 @@ class MainWindow(QMainWindow):
         startButton.setStatusTip('Send CAN message')  # show when move mouse to the icon
         startButton.clicked.connect(__set_bus)
         startButton.clicked.connect(self.read_sdo_can_thread)
-               
+
+        resetButton = QPushButton()
+        resetButton.setIcon(QIcon('graphicsUtils/icons/icon_reset.png'))
+        resetButton.setStatusTip('Reset the chip [The %s chip should reply back with a cobid 0x701]'%self.get_deviceName())
+        resetButton.clicked.connect(__reset_device)
+                       
         restartButton = QPushButton()
-        restartButton.setIcon(QIcon('graphicsUtils/icons/icon_reset.png'))
-        restartButton.setStatusTip('Reset the chip [The MOPS chip should reply back with a cobid 701]')
-        restartButton.clicked.connect(__reset_device)
+        restartButton.setIcon(QIcon('graphicsUtils/icons/icon_restart.png'))
+        restartButton.setStatusTip('Restart the chip [The %s chip should reply back with a cobid 0x00]'%self.get_deviceName())
+        restartButton.clicked.connect(__restart_device)
         
         BottonHLayout.addWidget(startButton)
+        BottonHLayout.addWidget(resetButton)
         BottonHLayout.addWidget(restartButton)
         
         firstVLayout = QVBoxLayout()
         firstVLayout.addWidget(icon)
         firstVLayout.addWidget(device_title)
         firstVLayout.addLayout(BottonHLayout)
-        firstVLayout.addSpacing(350)
+        firstVLayout.addSpacing(300)
         VLayout = QVBoxLayout()
         self.indexTextBox = QTextEdit()
         self.indexTextBox.setStyleSheet("background-color: white; border: 2px inset black; min-height: 150px; min-width: 400px;")
@@ -1223,7 +1312,7 @@ class MainWindow(QMainWindow):
         mainLayout.addLayout(HBox , 3, 0)
         mainLayout.addLayout(progressHLayout, 3, 3)
         self.tab2.setLayout(mainLayout)
-        
+        self.MenuBar.create_statusBar(ChildWindow)
         logframe.setLayout(self.tabLayout)
          
     def adc_values_window(self):
@@ -1343,7 +1432,7 @@ class MainWindow(QMainWindow):
         trendGroupBox = QGroupBox("")   
         childWindow.setObjectName("")
         childWindow.setWindowTitle("Online data monitoring for ADC channel %s" % str(subindex))
-        childWindow.resize(600, 500)  # w*h
+        childWindow.resize(600, 300)  # w*h
         logframe = QFrame()
         logframe.setLineWidth(0.6)
         childWindow.setCentralWidget(logframe)
@@ -1378,7 +1467,7 @@ class MainWindow(QMainWindow):
     '''        
     def initiate_adc_timer(self, period=0.5):
         '''
-        The function will will update the GUI with the ADC data ach period in ms.
+        The function will  update the GUI with the ADC data ach period in ms.
         '''  
         self.timer = QtCore.QTimer(self)
         self.control_logger.disabled = True
@@ -1402,7 +1491,7 @@ class MainWindow(QMainWindow):
 
     def stop_adc_timer(self):
         '''
-        The function will will stop the adc_timer.
+        The function will  stop the adc_timer.
         '''        
         try:
             self.timer.stop()
@@ -1413,21 +1502,40 @@ class MainWindow(QMainWindow):
 
     def initiate_random_timer(self, period=5000):
         '''
-        The function will will send random CAN messages to the bus each period in ms.
+        The function will  send random CAN messages to the bus each period in ms.
         '''  
         self.Randtimer = QtCore.QTimer(self)
-        self.timer.setInterval(period)
+        self.Randtimer.setInterval(period)
         self.Randtimer.timeout.connect(self.send_random_can)
         self.Randtimer.start()
 
     def stop_random_timer(self):
         '''
-        The function will will stop the random can timer.
+        The function will  stop the random can timer.
         '''   
         try:
             self.Randtimer.stop()
         except Exception:
             pass
+        
+    def initiate_dump_can_timer(self, period=5000):
+        '''
+        The function will  dump any message in the bus each period in ms.
+        '''  
+        self.Dumptimer = QtCore.QTimer(self)
+        self.Dumptimer.setInterval(period)
+        self.Dumptimer.timeout.connect(self.dump_can_message)
+        self.Dumptimer.start()
+
+    def stop_dump_can_timer(self):
+        '''
+        The function will  stop the dump timer.
+        '''   
+        try:
+            self.Dumptimer.stop()
+        except Exception:
+            pass
+           
         
     def initiate_trending_figure(self, subindex=None,n_channels = None):
         '''
@@ -1528,7 +1636,7 @@ class MainWindow(QMainWindow):
                 data_point = self.read_sdo_can()
                 self.monValueBox[a].setText(str(Analysis().convertion(data_point)))
                 a = a + 1
-            
+                   
     def read_configuration_values(self):
         '''
         The function will will send a CAN message to read configuration values using the function read_sdo_can and 
@@ -1586,7 +1694,7 @@ class MainWindow(QMainWindow):
         canDumpMessage_action = QAction(QIcon('graphicsUtils/icons/icon_dump.png'), '&CAN Dump', mainwindow)
         canDumpMessage_action.setShortcut('Ctrl+D')
         canDumpMessage_action.setStatusTip('Dump CAN messages from the bus')
-        canDumpMessage_action.triggered.connect(self.dump_can_message)
+        canDumpMessage_action.triggered.connect(self.show_dump_child_window)
 
         runRandomMessage_action = QAction(QIcon('graphicsUtils/icons/icon_right.jpg'), '&CAN Run', mainwindow)
         runRandomMessage_action.setShortcut('Ctrl+R')
@@ -1627,7 +1735,16 @@ class MainWindow(QMainWindow):
         self.MessageWindow = QMainWindow()
         self.can_message_child_window(self.MessageWindow)
         self.MessageWindow.show()
-        
+    
+    def show_dump_child_window(self):
+        if self.wrapper is not None: 
+            self.read_can_message_thread(print_sdo=False)
+        else:
+            pass
+        #self.MessageWindow = QMainWindow()
+        #self.dump_child_window(self.MessageWindow)
+        #self.MessageWindow.show()
+                        
     def show_CANSettingsWindow(self):
         MainWindow = QMainWindow()
         self.can_settings_child_window(MainWindow)
@@ -1667,7 +1784,7 @@ class MainWindow(QMainWindow):
             mode = "TX Decoded [hex] :"
         if comunication_object == "ErrorFrame": 
             color = QColor("red")
-            mode = "E:    "
+            mode = "E:  "
         if comunication_object == "newline":
             color = QColor("green")
             mode = ""        
@@ -1793,12 +1910,6 @@ class MainWindow(QMainWindow):
     
     def set_bytes(self, x):
         self.__bytes = x
-    
-    def set_data_point(self, data):
-        self.__response = data
-    
-    def get_data_point(self):
-        return self.__response
         
     def get_index_items(self):
         return self.__index_items

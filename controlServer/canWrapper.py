@@ -8,7 +8,6 @@ Note
 :Author: Ahmed Qamesh
 :Contact: ahmed.qamesh@cern.ch
 :Organization: Bergische Universität Wuppertal
-.. __: `OPC UA`_
 """
 # Standard library modules
 from __future__ import annotations
@@ -23,7 +22,6 @@ import os
 from PyQt5.QtCore    import *
 from PyQt5.QtGui     import *
 from PyQt5.QtWidgets import *
-# from pathlib import Path
 from threading import Thread, Event, Lock
 import numpy as np
 try:
@@ -46,11 +44,13 @@ import coloredlogs as cl
 import csv
 from csv import writer
 # Other files
+# Import socketcan
 try:
     import can
     #import socket
 except:
     print (colored("Warning: SocketCAN Package is not installed.......", 'red'), colored("Please ignore the warning if you are not using any socketcan drivers.", "green"))
+# Import canlib for Kvaser
 try:
     from canlib import canlib, Frame
     from canlib.canlib.exceptions import CanGeneralError
@@ -60,7 +60,7 @@ except:
     class CanGeneralError():
         pass
     print (colored("Warning: Canlib Package is not installed.......", 'red'), colored("Please ignore the warning if you are not using any CANLib packages (in case SocketCAN is used)", "green"))
-
+# Import analib for AnaGate
 try:
     import analib
 except:
@@ -68,7 +68,6 @@ except:
 
 rootdir = os.path.dirname(os.path.abspath(__file__))
 class CanWrapper(object):
-
 
     def __init__(self,
                  interface=None, channel=None,
@@ -118,7 +117,6 @@ class CanWrapper(object):
         """:obj:`int` : Internal attribute for the IP Address"""  
         if ipAddress is not None:
              self.__ipAddress = ipAddress
-            
         # Initialize library and set connection parameters
         self.__cnt = Counter()
         """:obj:`bool` : If communication is established"""
@@ -128,7 +126,7 @@ class CanWrapper(object):
             self.__channel = channel
         """Internal attribute for the |CAN| channel"""
         self.__ch = None        
-        self.set_channelConnection(interface=self.__interface)
+        self.set_channel_connection(interface=self.__interface)
         """Internal attribute for the |CAN| channel"""
         self.__busOn = True
         self.__canMsgQueue = deque([], 50) # queue with a size of 5o to queue all the messages in the bus
@@ -137,6 +135,7 @@ class CanWrapper(object):
         self.__lock = Lock()
         self.__kvaserLock = Lock()
         self.logger.success('... Done!')
+    
     def __str__(self):
         if self.__interface == 'Kvaser':
             num_channels = canlib.getNumberOfChannels()
@@ -169,7 +168,8 @@ class CanWrapper(object):
         else:
             return bitrate
 
-    def confirmNodes(self, timeout=100):
+    def confirm_nodes(self, timeout=100):
+
         self.logger.notice('Checking bus connections ...')
         for channel in self.__channels:
             _nodeIds = self.__channels[channel]
@@ -183,7 +183,9 @@ class CanWrapper(object):
                 else:
                     self.logger.info(f'Connection to node {nodeId} in channel {channel} has been '
                                      f'verified.')
-    def confirmMops(self,channel =0, timeout=100):
+                    
+    def confirm_Mops(self,channel =0, timeout=100):
+
         self.logger.notice('Checking MOPS status ...')
         _nodeIds = self.__channels[channel]
         self.set_nodeList(_nodeIds)
@@ -203,7 +205,16 @@ class CanWrapper(object):
             else:
                self.logger.error(f'Connection to MOPS with nodeId {nodeId} in channel {channel} failed')
                                 
-    def set_channelConnection(self, interface=None):
+    def set_channel_connection(self, interface=None):
+        """
+        Set the internal attribute for the |CAN| channel
+        The function is important to initialise the channel
+        
+        Parameters
+            ----------
+            interface: String
+        """
+        
         self.logger.notice('Setting the channel to %s interface...'%interface)
         try:
             if interface == 'Kvaser':
@@ -221,7 +232,21 @@ class CanWrapper(object):
             sys.exit(1)
         self.logger.success(str(self))        
     
-    def start_channelConnection(self, interface=None):
+    def start_channel_connection(self, interface=None):
+        """
+        The function will start the channel connection when sending SDO CAN message
+        Parameters
+        ----------
+        :interface: 'String'
+    
+        Returns
+        -------
+        :_ch: obj:`int`
+
+        :_ch:`None`
+            In case of errors
+            
+        """
         self.logger.notice('Starting CAN Connection ...')
         if interface == 'Kvaser':
             self.__ch = canlib.openChannel(self.__channel, canlib.canOPEN_ACCEPT_VIRTUAL)
@@ -315,7 +340,7 @@ class CanWrapper(object):
         self.__busOn = False
         self.logger.warning('Stopping the server.')
         
-    def read_sdo_can_thread(self,  nodeId =None, index=None, subindex=None, timeout=100, MAX_DATABYTES=8,SDO_RX = 0x600, SDO_TX = 0x580):
+    def read_sdo_can_thread(self,  nodeId =None, index=None, subindex=None, timeout=100, MAX_DATABYTES=8, SDO_RX = 0x600, SDO_TX = 0x580,cobid=0x601):
         """Read an object via |SDO|
     
         Currently expedited and segmented transfer is supported by this method.
@@ -341,13 +366,12 @@ class CanWrapper(object):
             In case of errors
         """
         self.logger.notice("Reading an object via |SDO|")
-        self.start_channelConnection(interface=self.__interface)
+        self.start_channel_connection(interface=self.__interface)
         if nodeId is None or index is None or subindex is None:
             self.logger.warning('SDO read protocol cancelled before it could begin.')         
             return None
         self.cnt['SDO read total'] += 1
         self.logger.info(f'Send SDO read request to node {nodeId}.')
-        cobid = SDO_RX + nodeId
         msg = [0 for i in range(MAX_DATABYTES)]
         msg[0] = 0x40
         msg[1], msg[2] = index.to_bytes(2, 'little')
@@ -406,10 +430,8 @@ class CanWrapper(object):
         self.logger.info(f'Got data: {data}')
         return cobid_ret, int.from_bytes(data, 'little')
 
-    def return_valid_message(self,nodeId, index, subindex, cobid_ret, ret, dlc):
+    def return_valid_message(self,nodeId, index, subindex, cobid_ret, ret, dlc,SDO_RX,SDO_TX):
         messageValid =False
-        SDO_TX = 0x580  
-        SDO_RX = 0x600
         messageValid = (dlc == 8 
                 and cobid_ret == SDO_TX + nodeId
                 and ret[0] in [0x80, 0x43, 0x47, 0x4b, 0x4f, 0x42] 
@@ -440,7 +462,6 @@ class CanWrapper(object):
             data = []
             for i in range(nDatabytes):  
                 data.append(ret[4 + i])
-                #self.logger.info(f'Got data: {data}')
             return int.from_bytes(data, 'little')
         
                      
@@ -492,7 +513,7 @@ class CanWrapper(object):
         self.__readCanMessage = self.read_can_message()
         if (self.__readCanMessage):
            cobid_ret, ret, dlc, flag, t = self.__readCanMessage
-           outData = self.return_valid_message(nodeId, index, subindex, cobid_ret, ret, dlc)
+           data_ret = self.return_valid_message(nodeId, index, subindex, cobid_ret, ret, dlc,SDO_RX,SDO_TX)
            # Check command byte
            if ret[0] == (0x80):
                 abort_code = int.from_bytes(ret[4:], 'little')
@@ -502,90 +523,8 @@ class CanWrapper(object):
                 self.cnt['SDO read abort'] += 1
                 return None            
            else:
-                return outData      
+                return data_ret      
     
-    def write_sdo_can(self, nodeId, index, subindex, value, timeout=1000):
-        """Write an object via |SDO| expedited write protocol
-        This sends the request and analyses the response.
-        Parameters
-        ----------
-        nodeId : :obj:`int`
-            The id from the node to read from
-        index : :obj:`int`
-            The |OD| index to read from
-        subindex : :obj:`int`
-            Subindex. Defaults to zero for single value entries
-        value : :obj:`int`
-            The value you want to write.
-        timeout : :obj:`int`, optional
-            |SDO| timeout in milliseconds
-        Returns
-        -------
-        :obj:`bool`
-            If writing the object was successful
-        """
-        # Create the request message
-        self.logger.notice(f'Send SDO write request to node {nodeId}, object '
-                           f'{index:04X}:{subindex:X} with value {value:X}.')
-        self.cnt['SDO write total'] += 1
-        if value < self.__od[index][subindex].minimum or value > self.__od[index][subindex].maximum:
-            self.logger.error(f'Value for SDO write protocol outside value ' f'range!')
-            self.cnt['SDO write value range'] += 1
-            return False
-        SDO_TX = 0x580  
-        SDO_RX = 0x600
-        cobid = SDO_RX + nodeId
-        datasize = len(f'{value:X}') // 2 + 1
-        data = value.to_bytes(4, 'little')
-        msg = [0 for i in range(8)]
-        msg[0] = (((0b00010 << 2) | (4 - datasize)) << 2) | 0b11
-        msg[1], msg[2] = index.to_bytes(2, 'little')
-        msg[3] = subindex
-        msg[4:] = [data[i] for i in range(4)]
-        # Send the request message
-        try:
-            self.write_can_message(cobid, msg, timeout=timeout)
-        except CanGeneralError:
-            self.cnt['SDO write request timeout'] += 1
-            return False
-#         except analib.exception.DllException as ex:
-#             self.logger.exception(ex)
-#             self.cnt['SDO write request timeout'] += 1
-#             return False
-
-        # Read the response from the bus
-        t0 = time.perf_counter()
-        messageValid = False
-        while time.perf_counter() - t0 < timeout / 1000:
-            with self.lock:
-                for i, (cobid_ret, ret, dlc, flag, t) in \
-                        zip(range(len(self.__canMsgQueue)),
-                            self.__canMsgQueue):
-                    messageValid = \
-                        (dlc == 8 and cobid_ret == SDO_TX + nodeId
-                         and ret[0] in [0x80, 0b1100000] and
-                         int.from_bytes([ret[1], ret[2]], 'little') == index
-                         and ret[3] == subindex)
-                    if messageValid:
-                        del self.__canMsgQueue[i]
-                        break
-            if messageValid:
-                break
-        else:
-            self.logger.warning('SDO write timeout')
-            self.cnt['SDO write timeout'] += 1
-            return False
-        # Analyse the response
-        if ret[0] == 0x80:
-            abort_code = int.from_bytes(ret[4:], 'little')
-            self.logger.error(f'Received SDO abort message while writing '
-                              f'object {index:04X}:{subindex:02X} of node '
-                              f'{nodeId} with abort code {abort_code:08X}')
-            self.cnt['SDO write abort'] += 1
-            return False
-        else:
-            self.logger.success('SDO write protocol successful!')
-        return True
     
     def write_can_message(self, cobid, data, flag=0, timeout=None):
         """Combining writing functions for different |CAN| interfaces
@@ -651,7 +590,7 @@ class CanWrapper(object):
                     if (cobid == 0 and dlc == 0):
                         raise analib.CanNoMsg
                 else:
-                    readcan = self.__ch.recv()#timeout =1.0)
+                    readcan = self.__ch.recv(timeout =1.0)
                     if readcan is None:
                         self.__pill2kill.set()
                         #raise can.CanError
