@@ -60,7 +60,7 @@ class MenuBar(QWidget):
         def _dump_can1():
             self.MainWindow.dump_socketchannel(can1.text())
             
-        #DumpSocketcan = SocketMenu.addMenu('Dump SocketCAN')
+        DumpSocketcan = SocketMenu.addMenu('Dump SocketCAN')
         
         can0 = QAction('can0', mainwindow)
         can0.setStatusTip("can0")
@@ -70,8 +70,8 @@ class MenuBar(QWidget):
         can1.setStatusTip("can1")
         can1.triggered.connect(_dump_can1)
                 
-        #DumpSocketcan.addAction(can0)
-        #DumpSocketcan.addAction(can1)
+        DumpSocketcan.addAction(can0)
+        DumpSocketcan.addAction(can1)
         
         
     def create_statusBar(self, mainwindow, msg="Ready"):

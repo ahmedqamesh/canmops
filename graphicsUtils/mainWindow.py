@@ -673,8 +673,10 @@ class MainWindow(QMainWindow):
            self.error_message(text="Settings file doesnt exist at %s"%(lib_dir + config_dir + _interface))          
 
     def dump_socketchannel(self,channel):
-        self.logger.info("Dump %s channel"%channel)
-        os.system("candump %s -x -c"%channel)
+        self.logger.info("Dumping %s channel"%channel)
+        print_command = "echo ==================== Dumping %s bus traffic ====================\n"%channel
+        candump_command="candump %s -x -c -t A"%channel
+        os.system("gnome-terminal -e 'bash -c \""+print_command+candump_command+";bash\"'")
 
     '''
     Define all child windows
@@ -1040,7 +1042,6 @@ class MainWindow(QMainWindow):
         """
         readCanMessage = self.wrapper.read_can_message_thread()
         self.dumptextBox.append(readCanMessage)
-        #self.read_can_message_thread(print_sdo=False)
                                
     def write_can_message(self):
         """
@@ -1738,13 +1739,20 @@ class MainWindow(QMainWindow):
     
     def show_dump_child_window(self):
         if self.wrapper is not None: 
-            self.read_can_message_thread(print_sdo=False)
+            interface =self.get_interface()
+            if interface =="socketcan":
+                self.logger.info("DumpingCAN bus traffic.")
+                print_command = "echo ==================== Dumping CAN bus traffic ====================\n"
+                candump_command="candump any -x -c -t A"
+                os.system("gnome-terminal -e 'bash -c \""+print_command+candump_command+";bash\"'")
+            else:
+                self.read_can_message_thread(print_sdo=False)
         else:
             pass
         #self.MessageWindow = QMainWindow()
         #self.dump_child_window(self.MessageWindow)
         #self.MessageWindow.show()
-                        
+                  
     def show_CANSettingsWindow(self):
         MainWindow = QMainWindow()
         self.can_settings_child_window(MainWindow)
