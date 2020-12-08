@@ -1,19 +1,21 @@
 
 from __future__ import annotations
 import signal
-from typing import *
+
 import  time
 import sys
-from sys import stdout
+import pandas as pd
 import os
+import logging
+import numpy as np
+from typing import *
+from sys import stdout
 from matplotlib.backends.qt_compat import QtCore, QtWidgets
 import pyqtgraph as pg
 from PyQt5 import *
 from PyQt5.QtCore    import *
 from PyQt5.QtGui     import *
 from PyQt5.QtWidgets import *
-import logging
-import numpy as np
 from random import randint
 from graphicsUtils import menuWindow
 from controlServer.analysis import Analysis
@@ -57,6 +59,7 @@ class MainWindow(QMainWindow):
         self.__interfaceItems = list(self.__conf['CAN_Interfaces'].keys()) 
         self.__channelPorts = self.__conf["channel_ports"]
         self.__devices = self.__conf["Devices"]
+         
         self.__timeout = 2000
         self.__period = 0.05
         self.__interface = None
@@ -504,8 +507,12 @@ class MainWindow(QMainWindow):
         self.deviceButton.deleteLater()
         self.configureDeviceBoxLayout.removeWidget(self.deviceButton)
         self.deviceButton = QPushButton("")
-        deviceName, version, icon_dir, nodeIds, dictionary_items, adc_channels_reg, _ , _ = self.configure_devices(conf)
-                
+        deviceName, version, icon_dir, nodeIds, dictionary_items, adc_channels_reg, _ , _, chipId = self.configure_devices(conf)
+        # Load ADC calibration constants
+        #adc_calibration = pd.read_csv(config_dir + "adc_calibration.csv", delimiter=",", header=0)
+        #condition = (adc_calibration["chip"] == chipId)
+        #chip_parameters = adc_calibration[condition]
+        #print(chip_parameters["calib_a"],chip_parameters["calib_b"] )
         self.set_deviceName(deviceName)
         self.set_version(version)
         self.set_icon_dir(icon_dir)
@@ -523,6 +530,7 @@ class MainWindow(QMainWindow):
         self.__deviceName = dev["Application"]["device_name"] 
         self.__version = dev['Application']['device_version']
         self.__appIconDir = dev["Application"]["icon_dir"]
+        self.__chipId = dev["Application"]["chipId"]
         self.__nodeIds = dev["Application"]["nodeIds"]
         self.__dictionary_items = dev["Application"]["index_items"]
         self.__index_items = list(self.__dictionary_items.keys())
@@ -531,7 +539,8 @@ class MainWindow(QMainWindow):
         self.__mon_index = dev["adc_channels_reg"]["mon_index"] 
         self.__conf_index = dev["adc_channels_reg"]["conf_index"] 
         self.__resistor_ratio = dev["Hardware"]["resistor_ratio"]
-        return  self.__deviceName, self.__version, self.__appIconDir, self.__nodeIds, self.__dictionary_items, self.__adc_channels_reg, self.__adc_index, self.__resistor_ratio
+        
+        return  self.__deviceName, self.__version, self.__appIconDir, self.__nodeIds, self.__dictionary_items, self.__adc_channels_reg, self.__adc_index, self.__resistor_ratio, self.__chipId
     
         
     def connect_server(self):
@@ -1611,7 +1620,7 @@ class MainWindow(QMainWindow):
                                          str(data_point[s]),
                                          str(round(adc_converted[s], 3))))
                     if self.trendingBox[s] == True:
-                        if len(self.x[s]) >=5000:   #solve some memory issues due to the large length of self.x[s] and self.y[s] the arrays       
+                        if len(self.x[s]) >=1200:   #solve some memory issues due to the large length of self.x[s] and self.y[s] the arrays       
                             self.x[s] = list([0])
                             self.y[s] = list([0])
                             self.graphWidget[s].clear()
