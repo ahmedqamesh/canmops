@@ -726,7 +726,7 @@ class MainWindow(QMainWindow):
     def can_message_child_window(self, ChildWindow):
         ChildWindow.setObjectName("CAN Message")
         ChildWindow.setWindowTitle("CAN Message")
-        ChildWindow.setGeometry(915, 490, 250, 100)
+        ChildWindow.setGeometry(915, 490, 250, 315)
         mainLayout = QGridLayout()
         __channelList = self.__channelPorts
         _cobeid = self.get_cobid()
@@ -1124,7 +1124,7 @@ class MainWindow(QMainWindow):
         ChildWindow.setObjectName("DeviceWindow")
         ChildWindow.setWindowTitle("Device Window [ " + self.__deviceName + "]")
         ChildWindow.setWindowIcon(QtGui.QIcon(self.__appIconDir))
-        ChildWindow.setGeometry(1175, 10, 200, 500)
+        ChildWindow.setGeometry(1175, 10, 200, 770)
         logframe = QFrame()
         logframe.setLineWidth(0.6)
         ChildWindow.setCentralWidget(logframe)
@@ -1269,6 +1269,7 @@ class MainWindow(QMainWindow):
         self.adc_values_window()
         self.monitoring_values_window()
         self.configuration_values_window()
+        
         # initiate a PlotWidget [data holder] for all ADC channels for later trending
         self.initiate_trending_figure(n_channels = n_channels)
                         
@@ -1459,7 +1460,10 @@ class MainWindow(QMainWindow):
         
         def __disable_figure():
             self.trendingBox[s] = False  
-
+            self.x[s] = list([0])
+            self.y[s] = list([0])
+            self.graphWidget[s].clear()
+            
         Fig = self.graphWidget[s]
         
         close_button = QPushButton("close")
@@ -1479,7 +1483,7 @@ class MainWindow(QMainWindow):
         '''
         The function will  update the GUI with the ADC data ach period in ms.
         '''  
-        self.timer = QtCore.QTimer(self)
+        self.ADCtimer = QtCore.QTimer(self)
         self.control_logger.disabled = True
         self.logger.notice("Reading ADC data...")
         self.__monitoringTime = time.time()
@@ -1492,20 +1496,20 @@ class MainWindow(QMainWindow):
         writer = csv.DictWriter(self.out_file_csv, fieldnames=fieldnames)
         writer.writeheader()            
         
-        self.timer.setInterval(period)
-        self.timer.timeout.connect(self.read_adc_channels)
-        self.timer.timeout.connect(self.read_monitoring_values)
-        self.timer.timeout.connect(self.read_configuration_values)
-        self.timer.timeout.connect(self.update_progressBar)
-        self.timer.start()
+        self.ADCtimer.setInterval(period)
+        self.ADCtimer.timeout.connect(self.read_adc_channels)
+        self.ADCtimer.timeout.connect(self.read_monitoring_values)
+        self.ADCtimer.timeout.connect(self.read_configuration_values)
+        self.ADCtimer.timeout.connect(self.update_progressBar)
+        self.ADCtimer.start()
 
-    def stop_adc_timer(self):
+    def stop_adc_timer(self,s):
         '''
         The function will  stop the adc_timer.
         '''        
         try:
-            self.timer.stop()
-            self.control_logger.disabled = False
+            self.ADCtimer.stop()
+            self.control_logger.disabled = False   
             self.logger.notice("Stop reading ADC data...")
         except Exception:
             pass
@@ -1620,7 +1624,7 @@ class MainWindow(QMainWindow):
                                          str(data_point[s]),
                                          str(round(adc_converted[s], 3))))
                     if self.trendingBox[s] == True:
-                        if len(self.x[s]) >=1200:   #solve some memory issues due to the large length of self.x[s] and self.y[s] the arrays       
+                        if len(self.x[s]) >=800:   #solve some memory issues due to the large length of self.x[s] and self.y[s] the arrays       
                             self.x[s] = list([0])
                             self.y[s] = list([0])
                             self.graphWidget[s].clear()
