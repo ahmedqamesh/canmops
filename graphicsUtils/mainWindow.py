@@ -966,7 +966,7 @@ class MainWindow(QMainWindow):
             data_RX = self.wrapper.read_sdo_can(_nodeId, _index, _subIndex, self.__timeout)
             return data_RX
         except Exception:
-            self.error_message(text="Make sure that the CAN interface is connected")
+            #self.error_message(text="Make sure that the CAN interface is connected")# This message annoys Rizwan
             return None
                            
     def read_sdo_can_thread(self, trending=False, print_sdo=True):
