@@ -3,10 +3,11 @@ Application:
     app_name             :   'CANMOPS'
     app_version          :   "v1.2"
     app_icon_dir         :   "graphicsUtils/icons/icon_mops.png"   
-    can_settings         : False     # Allow to load all the default settings from the last update [saved in $HOME/config/]
-channel_ports:      {"0", "1"}
+    can_settings         : True     # Allow to load all the default settings from the last update [saved in $HOME/config/]
 
-Devices:    ["MOPS"] #Configured devices
+channel_ports:      {"0", "1"} # please add here all the possible channel ports that are needed for the buses
+
+Devices:    ["MOPS"] #Configured devices ["None"] is no device allowed
 
 default_values:
     index_items     : ["0x1000"]

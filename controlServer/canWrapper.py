@@ -24,6 +24,7 @@ from PyQt5.QtGui     import *
 from PyQt5.QtWidgets import *
 from threading import Thread, Event, Lock
 import numpy as np
+from pip._internal.cli.cmdoptions import pre
 try:
     from .analysis import Analysis
     from .__version__ import __version__
@@ -340,7 +341,7 @@ class CanWrapper(object):
         self.__busOn = False
         self.logger.warning('Stopping the server.')
         
-    def read_sdo_can_thread(self,  nodeId =None, index=None, subindex=None, timeout=100, MAX_DATABYTES=8, SDO_RX = 0x600, SDO_TX = 0x580,cobid=0x601):
+    def read_sdo_can_thread(self,  nodeId =None, index=None, subindex=None, timeout=100, MAX_DATABYTES=8, SDO_TX = 0x600, SDO_RX = 0x580,cobid=0x601):
         """Read an object via |SDO|
     
         Currently expedited and segmented transfer is supported by this method.
@@ -391,7 +392,7 @@ class CanWrapper(object):
                 # check the message validity [nodid, msg size,...]
                 for i, (cobid_ret, ret, dlc, flag, t) in zip(range(len(self.__canMsgQueue)), self.__canMsgQueue):
                     messageValid = (dlc == 8 
-                                    and cobid_ret == SDO_TX + nodeId
+                                    and cobid_ret == SDO_RX + nodeId
                                     and ret[0] in [0x80, 0x43, 0x47, 0x4b, 0x4f, 0x42] 
                                     and int.from_bytes([ret[1], ret[2]], 'little') == index
                                     and ret[3] == subindex)
@@ -430,35 +431,36 @@ class CanWrapper(object):
         self.logger.info(f'Got data: {data}')
         return cobid_ret, int.from_bytes(data, 'little')
 
-    def return_valid_message(self,nodeId, index, subindex, cobid_ret, ret, dlc,SDO_RX,SDO_TX):
+    def return_valid_message(self,nodeId, index, subindex, cobid_ret, data_ret, dlc,SDO_TX,SDO_RX):
         messageValid =False
         messageValid = (dlc == 8 
-                and cobid_ret == SDO_TX + nodeId
-                and ret[0] in [0x80, 0x43, 0x47, 0x4b, 0x4f, 0x42] 
-                and int.from_bytes([ret[1], ret[2]], 'little') == index
-                and ret[3] == subindex)       
-        errorResponse = (dlc == 8 and cobid_ret == 0x88 and ret[0] in [0x00]) # SocketCAN error message
-        errorReset = (dlc == 8 and cobid_ret == 0x700+nodeId and ret[0] in [0x05,0x08]) 
+                and cobid_ret == SDO_RX + nodeId
+                and data_ret[0] in [0x80, 0x43, 0x47, 0x4b, 0x4f, 0x42] 
+                and int.from_bytes([data_ret[1], data_ret[2]], 'little') == index
+                and data_ret[3] == subindex)       
+        errorResponse = (dlc == 8 and cobid_ret == 0x88 and data_ret[0] in [0x00]) # SocketCAN error message
+        errorReset = (dlc == 8 and cobid_ret == 0x700+nodeId and data_ret[0] in [0x05,0x08]) 
+        
         if (errorReset):
-            cobid_ret, ret, dlc, flag, t = self.read_can_message()
+            cobid_ret, data_ret, dlc, flag, t = self.read_can_message()
             messageValid = (dlc == 8 
-                    and cobid_ret == SDO_TX + nodeId
-                    and ret[0] in [0x80, 0x43, 0x47, 0x4b, 0x4f, 0x42] 
-                    and int.from_bytes([ret[1], ret[2]], 'little') == index
-                    and ret[3] == subindex)
+                    and cobid_ret == SDO_RX + nodeId
+                    and data_ret[0] in [0x80, 0x43, 0x47, 0x4b, 0x4f, 0x42] 
+                    and int.from_bytes([data_ret[1], data_ret[2]], 'little') == index
+                    and data_ret[3] == subindex)
         
         if (errorResponse):
-            cobid_ret, ret, dlc, flag, t = self.read_can_message(timeout = 1.0)
-            errorReset = (dlc == 8 and cobid_ret == 0x700+nodeId and ret[0] in [0x05,0x08]) 
+            cobid_ret, data_ret, dlc, flag, t = self.read_can_message(timeout = 1.0)
+            errorReset = (dlc == 8 and cobid_ret == 0x700+nodeId and data_ret[0] in [0x05,0x08]) 
             if (errorReset):
-                cobid_ret, ret, dlc, flag, t = self.read_can_message(timeout = 1.0)
+                cobid_ret, data_ret, dlc, flag, t = self.read_can_message(timeout = 1.0)
                 messageValid = (dlc == 8 
                         and cobid_ret == SDO_TX + nodeId
-                        and ret[0] in [0x80, 0x43, 0x47, 0x4b, 0x4f, 0x42] 
-                        and int.from_bytes([ret[1], ret[2]], 'little') == index
-                        and ret[3] == subindex)
+                        and data_ret[0] in [0x80, 0x43, 0x47, 0x4b, 0x4f, 0x42] 
+                        and int.from_bytes([data_ret[1], data_ret[2]], 'little') == index
+                        and data_ret[3] == subindex)
         if messageValid:
-            nDatabytes = 4 - ((ret[0] >> 2) & 0b11) if ret[0] != 0x42 else 4
+            nDatabytes = 4 - ((data_ret[0] >> 2) & 0b11) if data_ret[0] != 0x42 else 4
             data = []
             for i in range(nDatabytes):  
                 data.append(ret[4 + i])
@@ -471,7 +473,7 @@ class CanWrapper(object):
             self.cnt['SDO read response timeout'] += 1
             return None
         
-    def read_sdo_can(self, nodeId=None, index=None, subindex=None, timeout=100, MAX_DATABYTES=8, SDO_RX = 0x600,SDO_TX = 0x580):
+    def read_sdo_can(self, nodeId=None, index=None, subindex=None, timeout=100, MAX_DATABYTES=8, SDO_TX = 0x600,SDO_RX = 0x580):
         """Read an object via |SDO|
     
         Currently expedited and segmented transfer is supported by this method.
@@ -510,13 +512,13 @@ class CanWrapper(object):
         except CanGeneralError:
             self.cnt['SDO read request timeout'] += 1
             return None
-        self.__readCanMessage = self.read_can_message()
-        if (self.__readCanMessage):
-           cobid_ret, ret, dlc, flag, t = self.__readCanMessage
-           data_ret = self.return_valid_message(nodeId, index, subindex, cobid_ret, ret, dlc,SDO_RX,SDO_TX)
+        _readCanMessage = self.read_can_message()
+        if (_readCanMessage):
+           cobid_ret, ret, dlc, flag, t = _readCanMessage
+           data_ret = self.return_valid_message(nodeId, index, subindex, cobid_ret, ret, dlc,SDO_TX,SDO_RX)
            # Check command byte
            if ret[0] == (0x80):
-                abort_code = int.from_bytes(ret[4:], 'little')
+                abort_code = int.from_bytes(data_ret[4:], 'little')
                 self.logger.error(f'Received SDO abort message while reading '
                                   f'object {index:04X}:{subindex:02X} of node '
                                   f'{nodeId} with abort code {abort_code:08X}')
@@ -609,10 +611,12 @@ class CanWrapper(object):
             cobid, data, dlc, flag, t = (frame.id, frame.data,
                                          frame.dlc, frame.flags,
                                          frame.timestamp)
+            return cobid, data, dlc, flag, t
             if frame is None or (cobid == 0 and dlc == 0):
                 raise canlib.CanNoMsg
         elif self.__interface == 'AnaGate':
             cobid, data, dlc, flag, t = self.__ch.getMessage()
+            return cobid, data, dlc, flag, t
             if (cobid == 0 and dlc == 0):
                 raise analib.CanNoMsg
         else:
@@ -620,9 +624,10 @@ class CanWrapper(object):
             if readcan is not None:
                 #raise can.CanError
                 cobid, data, dlc, flag, t = readcan.arbitration_id, readcan.data, readcan.dlc, readcan.is_extended_id, readcan.timestamp
+                return cobid, data, dlc, flag, t
             else:
-                cobid, data, dlc, flag, t = None,None, None, None, None
-        return cobid, data, dlc, flag, t
+                return None#cobid, data, dlc, flag, t = None,None, None, None, None
+        
                    
     # The following functions are to read the can messages
     def _anagateCbFunc(self):

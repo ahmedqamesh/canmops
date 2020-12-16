@@ -264,7 +264,7 @@ class MainWindow(QMainWindow):
         '''
         The function defines the GroupBox output window for the CAN messages
         '''  
-        self.textGroupBox = QGroupBox("Output Window")
+        self.textGroupBox = QGroupBox("   Output Window")
         plotframe = QFrame()
         plotframe.setStyleSheet("QWidget { background-color: #eeeeec; }")
         plotframe.setLineWidth(0.8)
@@ -446,22 +446,25 @@ class MainWindow(QMainWindow):
         setTableWidth()
         setTableLength()
                 
+
         gridLayout = QGridLayout()
-        gridLayout.addLayout(RXLayout, 0 , 1)        
-        gridLayout.addWidget(RXbitLabel, 1, 1)
-        gridLayout.addWidget(RXgraphicsview, 2, 0)
-        gridLayout.addWidget(self.RXTable, 2, 1)
-        gridLayout.addWidget(self.hexRXTable, 2, 2)
-        gridLayout.addWidget(self.decRXTable, 2, 3)
+
+        gridLayout.addLayout(TXLayout, 0 , 1)
+        gridLayout.addWidget(TXbitLabel, 1, 2)
+        gridLayout.addWidget(TXgraphicsview, 2, 0)
+        gridLayout.addWidget(self.TXTable, 2, 1)
+        gridLayout.addWidget(self.hexTXTable, 2, 2)
+        gridLayout.addWidget(self.decTXTable, 2, 3)
         
         gridLayout.addWidget(line, 2, 4, 2, 4)
+                
+        gridLayout.addLayout(RXLayout, 0 ,6)        
+        gridLayout.addWidget(RXbitLabel, 1, 6)
+        gridLayout.addWidget(RXgraphicsview, 2,5)
+        gridLayout.addWidget(self.RXTable, 2, 6)
+        gridLayout.addWidget(self.hexRXTable, 2, 7)
+        gridLayout.addWidget(self.decRXTable, 2, 8)
         
-        gridLayout.addLayout(TXLayout, 0 , 6)
-        gridLayout.addWidget(TXbitLabel, 1, 6)
-        gridLayout.addWidget(TXgraphicsview, 2, 5)
-        gridLayout.addWidget(self.TXTable, 2, 6)
-        gridLayout.addWidget(self.hexTXTable, 2, 7)
-        gridLayout.addWidget(self.decTXTable, 2, 8)
         plotframe.setLayout(gridLayout)
         self.monitorGroupBox.setLayout(gridLayout)
                 
@@ -960,8 +963,8 @@ class MainWindow(QMainWindow):
             _nodeId = self.get_nodeId()
             _nodeId = int(_nodeId[0])
             _interface = self.get_interface()
-            data_ret = self.wrapper.read_sdo_can(_nodeId, _index, _subIndex, self.__timeout)
-            return data_ret
+            data_RX = self.wrapper.read_sdo_can(_nodeId, _index, _subIndex, self.__timeout)
+            return data_RX
         except Exception:
             self.error_message(text="Make sure that the CAN interface is connected")
             return None
@@ -982,11 +985,11 @@ class MainWindow(QMainWindow):
             _subIndex = int(self.get_subIndex(), 16)
             _nodeId = self.get_nodeId()
             _nodeId = int(_nodeId[0])
-            _cobid = self.get_cobid()
-            cobid_ret, data_ret = self.wrapper.read_sdo_can_thread(nodeId= _nodeId, index=_index, subindex=_subIndex, timeout=self.__timeout,cobid=int(_cobid,16))
+            _cobid_TX = self.get_cobid()
+            _cobid_RX, data_RX = self.wrapper.read_sdo_can_thread(nodeId= _nodeId, index=_index, subindex=_subIndex, timeout=self.__timeout,cobid=int(_cobid_TX,16))
             if print_sdo == True:
                 #self.control_logger.disabled = False
-                self.print_sdo_can(index=_index, subIndex=_subIndex, response_from_node=data_ret, cobid_TX = cobid_ret, cobid_RX = int(_cobid,16))
+                self.print_sdo_can(index=_index, subIndex=_subIndex, response_from_node=data_RX, cobid_TX = int(_cobid_TX,16), cobid_RX = _cobid_RX )
         except Exception:
             self.error_message(text="Make sure that the CAN interface is connected")
 
@@ -998,21 +1001,21 @@ class MainWindow(QMainWindow):
         msg[1], msg[2] = index.to_bytes(2, 'little')
         msg[3] = subIndex
         #  fill the Bytes/bits table
-        self.set_table_content(bytes=msg, comunication_object="SDO_RX")
+        self.set_table_content(bytes=msg, comunication_object="SDO_TX")
         # printing RX     
-        self.set_textBox_message(comunication_object="SDO_RX", msg=str([hex(m)[2:] for m in msg]),cobid = str(hex(cobid_RX)+" "))
+        self.set_textBox_message(comunication_object="SDO_TX", msg=str([hex(m)[2:] for m in msg]),cobid = str(hex(cobid_TX)+" "))
         # print decoded response
         if response_from_node is not None:
             # printing response 
             b1, b2, b3, b4 = response_from_node.to_bytes(4, 'little')
-            TX_response = [0x43] + msg[1:4] + [b1, b2, b3, b4]
+            RX_response = [0x43] + msg[1:4] + [b1, b2, b3, b4]
             # fill the Bytes/bits table       
-            self.set_table_content(bytes=TX_response, comunication_object="SDO_TX")
+            self.set_table_content(bytes=RX_response, comunication_object="SDO_RX")
             # printing TX   
-            self.set_textBox_message(comunication_object="SDO_TX", msg=str([hex(m)[2:] for m in TX_response]), cobid = str(hex(cobid_TX)+" "))
+            self.set_textBox_message(comunication_object="SDO_RX", msg=str([hex(m)[2:] for m in RX_response]), cobid = str(hex(cobid_RX)+" "))
             # print decoded response
             decoded_response = f'{response_from_node:03X}\n-----------------------------------------------------------------------'
-            self.set_textBox_message(comunication_object="SDO_TX", msg=decoded_response,cobid =str(hex(cobid_TX)+": ADC value = "))
+            self.set_textBox_message(comunication_object="Decoded", msg=decoded_response,cobid =str(hex(cobid_RX)+": ADC value = "))
         else:
             TX_response = "No Response Message"
             self.set_textBox_message(comunication_object="ErrorFrame", msg=TX_response,cobid = str("NONE"+"  "))
@@ -1029,12 +1032,12 @@ class MainWindow(QMainWindow):
         _index = np.random.randint(1000, 2500)
         _subIndex = np.random.randint(0, 5)
         _nodeId = int(self.nodeComboBox.currentText())
-        _cobid = self.mainCobIdTextBox.text()
+        _cobid_TX = self.mainCobIdTextBox.text()
         
         self.set_nodeId(self.nodeComboBox.currentText())
         self.set_index(str(_index))
         self.set_subIndex(str(_subIndex))
-        self.set_cobid(_cobid)
+        self.set_cobid(_cobid_TX)
         
         # clear cells
         self.TXProgressBar.setValue(0)
@@ -1065,17 +1068,17 @@ class MainWindow(QMainWindow):
            c)  can_message_child_window
         """
         
-        _cobid = self.get_cobid()
+        _cobid_TX = self.get_cobid()
         _bytes = self.get_bytes()
         _index = hex(int.from_bytes([_bytes[1], _bytes[2]], byteorder=sys.byteorder))
         _subIndex = hex(int.from_bytes([_bytes[3]], byteorder=sys.byteorder))
         #fill the Bytes table     
-        self.set_table_content(bytes=_bytes, comunication_object="SDO_RX")
+        self.set_table_content(bytes=_bytes, comunication_object="SDO_TX")
         #fill the textBox     
-        self.set_textBox_message(comunication_object="SDO_RX", msg=str([hex(b)[2:] for b in _bytes]), cobid = str(_cobid)+" ")    
+        self.set_textBox_message(comunication_object="SDO_TX", msg=str([hex(b)[2:] for b in _bytes]), cobid = str(_cobid_TX)+" ")    
         try: 
             # Send the can Message
-            self.wrapper.write_can_message(int(_cobid,16), _bytes, flag=0, timeout=self.__timeout)
+            self.wrapper.write_can_message(int(_cobid_TX,16), _bytes, flag=0, timeout=self.__timeout)
             # receive the message
             self.read_can_message_thread()
         except Exception:
@@ -1096,13 +1099,13 @@ class MainWindow(QMainWindow):
            data_ret_hex = [hex(b)[2:] for b in data_ret_bytes]
            if print_sdo == True:
                #fill the Bytes table     
-               self.set_table_content(bytes=data_ret, comunication_object="SDO_TX")
+               self.set_table_content(bytes=data_ret, comunication_object="SDO_RX")
                #fill the textBox
-               self.set_textBox_message(comunication_object="SDO_TX", msg=str(data_ret_hex),cobid = str(hex(cobid_ret)+" "))
+               self.set_textBox_message(comunication_object="SDO_RX", msg=str(data_ret_hex),cobid = str(hex(cobid_ret)+" "))
         else:
             cobid_ret, data_ret, dlc, flag, t = None, None, None, None, None
-            TX_response = "No Response Message"
-            self.set_textBox_message(comunication_object="ErrorFrame", msg=TX_response,cobid = str("NONE"+"  "))
+            RX_response = "No Response Message"
+            self.set_textBox_message(comunication_object="ErrorFrame", msg=RX_response,cobid = str("NONE"+"  "))
         #fill the textBox
         decoded_response = f'------------------------------------------------------------------------'
         self.set_textBox_message(comunication_object="newline", msg=decoded_response, cobid = None) 
@@ -1484,7 +1487,13 @@ class MainWindow(QMainWindow):
         The function will  update the GUI with the ADC data ach period in ms.
         '''  
         self.ADCtimer = QtCore.QTimer(self)
-        self.control_logger.disabled = True
+        
+        try:
+            # Disable the logger when reading ADC values [The exception statement is made to avoid user mistakes]
+            self.control_logger.disabled = True
+        except Exception:
+            pass
+        
         self.logger.notice("Reading ADC data...")
         self.__monitoringTime = time.time()
         # A possibility to save the data into a file
@@ -1609,6 +1618,7 @@ class MainWindow(QMainWindow):
                 s = subindex-_start_a
                 s_correction = subindex-2
                 self.set_subIndex(_subIndexItems[s])
+                #read SDO CAN messages
                 data_point[s] = self.read_sdo_can()
                 ts = time.time()
                 elapsedtime = ts-self.__monitoringTime
@@ -1802,7 +1812,7 @@ class MainWindow(QMainWindow):
             mode = "TX [hex] :"
         if comunication_object == "Decoded": 
             color = QColor("green")
-            mode = "TX Decoded [hex] :"
+            mode = "RX [____] :"
         if comunication_object == "ErrorFrame": 
             color = QColor("red")
             mode = "E:  "
@@ -1820,12 +1830,12 @@ class MainWindow(QMainWindow):
          
     def set_table_content(self, bytes=None, comunication_object=None):
         self.update_progressBar(comunication_object=comunication_object)
-        n_bytes = 8 - 1
+        n_bytes = 8 - 1            
         if comunication_object == "SDO_RX":
+            # for byte in bytes:
             self.RXTable.clearContents()  # clear cells
             self.hexRXTable.clearContents()  # clear cells
-            self.decRXTable.clearContents()  # clear cells
-            # for byte in bytes:
+            self.decRXTable.clearContents()  # clear cells  
             for byte in np.arange(len(bytes)):
                 self.hexRXTable.setItem(0, byte, QTableWidgetItem(str(hex(bytes[byte]))))
                 self.decRXTable.setItem(0, byte, QTableWidgetItem(str(bytes[byte])))

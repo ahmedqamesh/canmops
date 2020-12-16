@@ -17,8 +17,10 @@ class MenuBar(QWidget):
         menuBar = mainwindow.menuBar()
         menuBar.setNativeMenuBar(False)  # only for MacOS
         self._fileMenu(menuBar, mainwindow)
+        self._viewMenu(menuBar, mainwindow)
         self._interfaceMenu(menuBar, mainwindow)
         self._helpMenu(menuBar, mainwindow)
+        
     # 1. File menu
     def _fileMenu(self, menuBar, mainwindow):
                
@@ -28,10 +30,19 @@ class MenuBar(QWidget):
         exit_action.setStatusTip('Exit program')
         # exit_action.triggered.connect(self.stop)
         exit_action.triggered.connect(qApp.quit)
-
-
         fileMenu.addAction(exit_action)
-           
+    
+    # 1. View menu
+    def _viewMenu(self, menuBar, mainwindow):
+               
+        viewMenu = menuBar.addMenu('&View')
+        view_action = QAction(QIcon('graphicsUtils/icons/icon_view.png'), '&View', mainwindow)
+        view_action.setShortcut('Ctrl+V')
+        view_action.setStatusTip('Exit program')
+        # exit_action.triggered.connect(self.stop)
+        #view_action.triggered.connect(qApp.quit)
+        viewMenu.addAction(view_action)
+        
     # 4. Help menu
     def _helpMenu(self, menuBar, mainwindow):
         helpmenu = menuBar.addMenu("&Help")

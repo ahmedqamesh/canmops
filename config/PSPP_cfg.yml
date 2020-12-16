@@ -1,3 +1,4 @@
+#The file includes only the default values for the registered device
 Application:
     device_name             :   'PSPP'
     device_version          :   "v3.0"
