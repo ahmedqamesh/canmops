@@ -59,20 +59,52 @@ class MenuBar(QWidget):
         KvaserMenu = interfaceMenu.addMenu("&Kvaser")
         AnagateMenu = interfaceMenu.addMenu("&AnaGate")
         
-        RestartSocketcan = QAction(QIcon('graphics_Utils/icons/icon_reset.png'),'Restart SocketCAN channel', mainwindow)
-        RestartSocketcan.setStatusTip("Restart SocketCAN")
-        RestartSocketcan.triggered.connect( self.MainWindow.restart_socketchannel)
+        # Set the bus
+        def _set_socketchannel():
+            _arg = "socketcan"
+            _interface = "virtual"
+            self.MainWindow.restart_socketchannel(arg = _arg, interface = _interface)
         
-        SocketMenu.addAction(RestartSocketcan)
+        def _Set_virtual_socketchannel():
+            _arg = "virtual"
+            _interface = "virtual"
+            self.MainWindow.restart_socketchannel(arg = _arg, interface = _interface)
+                    
+        SetSocketcan = SocketMenu.addMenu('Set CAN Bus')
         
+        SetNativeInterface = QAction(QIcon('graphics_Utils/icons/icon_start.png'),'Set SocketCAN channel', mainwindow)
+        SetNativeInterface.setStatusTip("Set SocketCAN")
+        SetNativeInterface.triggered.connect(_set_socketchannel)
+
+        SetVirtualSocketcan = QAction(QIcon('graphics_Utils/icons/icon_start.png'),'Set Virtual channel', mainwindow)
+        SetVirtualSocketcan.setStatusTip("Set Virtual channel")
+        SetVirtualSocketcan.triggered.connect(_Set_virtual_socketchannel)
+                
+        SetSocketcan.addAction(SetNativeInterface)
+        SetSocketcan.addAction(SetVirtualSocketcan)
+        
+        # Restart the bus
+        def _restart_socketchannel():
+            _arg = "restart"
+            self.MainWindow.restart_socketchannel(arg = _arg)
+            
+        RestartSocketcan = QAction(QIcon('graphics_Utils/icons/icon_reset.png'),'Restart CAN channel', mainwindow)
+        RestartSocketcan.setStatusTip("Restart CAN channel")
+        RestartSocketcan.triggered.connect(_restart_socketchannel)
+        #SocketMenu.addAction(RestartSocketcan)# to be used later 
+        
+        #Dump Messages in the Bus
         def _dump_can0():
             self.MainWindow.dump_socketchannel(can0.text())
 
         def _dump_can1():
             self.MainWindow.dump_socketchannel(can1.text())
+        
+        def _dump_vcan0():
+            self.MainWindow.dump_socketchannel(vcan0.text())
+            
             
         DumpSocketcan = SocketMenu.addMenu('Dump SocketCAN')
-        
         can0 = QAction('can0', mainwindow)
         can0.setStatusTip("can0")
         can0.triggered.connect(_dump_can0)
@@ -81,8 +113,13 @@ class MenuBar(QWidget):
         can1.setStatusTip("can1")
         can1.triggered.connect(_dump_can1)
                 
+        vcan0 = QAction('vcan0', mainwindow)
+        vcan0.setStatusTip("vcan0")
+        vcan0.triggered.connect(_dump_vcan0)
+        
         DumpSocketcan.addAction(can0)
         DumpSocketcan.addAction(can1)
+        #DumpSocketcan.addAction(vcan0)
         
         
     def create_statusBar(self, mainwindow, msg="Ready"):

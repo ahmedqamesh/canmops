@@ -25,6 +25,7 @@ from PyQt5.QtWidgets import *
 from threading import Thread, Event, Lock
 import numpy as np
 from pip._internal.cli.cmdoptions import pre
+from lxml.html.builder import PRE
 try:
     from .analysis import Analysis
     from .__version__ import __version__
@@ -225,6 +226,9 @@ class CanWrapper(object):
                 self.__ch.busOn()
             elif interface == 'AnaGate':
                 self.__ch = analib.Channel(ipAddress=self.__ipAddress, port=self.__channel, baudrate=self.__bitrate)
+            elif interface == 'virtual':
+                channel = "vcan" + str(self.__channel)
+                self.__ch = can.interface.Bus(bustype="socketcan", channel=channel)                   
             else:
                 channel = "can" + str(self.__channel)
                 self.__ch = can.interface.Bus(bustype=interface, channel=channel, bitrate=self.__bitrate)     
@@ -335,8 +339,6 @@ class CanWrapper(object):
             else:
                 self.__ch.shutdown()
                 channel = "can" + str(self.__channel)
-                #os.system(". " + rootdir + "/socketcan_enable.sh")
-                #os.system("sudo -S ip link set down %s"%channel)
                 
         self.__busOn = False
         self.logger.warning('Stopping the server.')
@@ -463,7 +465,7 @@ class CanWrapper(object):
             nDatabytes = 4 - ((data_ret[0] >> 2) & 0b11) if data_ret[0] != 0x42 else 4
             data = []
             for i in range(nDatabytes):  
-                data.append(ret[4 + i])
+                data.append(data_ret[4 + i])
             return int.from_bytes(data, 'little')
         
                      
@@ -502,7 +504,7 @@ class CanWrapper(object):
             self.logger.warning('SDO read protocol cancelled before it could begin.')         
             return None
         self.cnt['SDO read total'] += 1
-        cobid = SDO_RX + nodeId
+        cobid = SDO_TX + nodeId
         msg = [0 for i in range(MAX_DATABYTES)]
         msg[0] = 0x40
         msg[1], msg[2] = index.to_bytes(2, 'little')
@@ -559,15 +561,21 @@ class CanWrapper(object):
             try:
                 self.__ch.send(msg,timeout)
             except can.CanError:
-                self.hardware_config("can" + str(self.__channel))
+                self.hardware_config(str(self.__channel),self.__interface)
                 self.logger.notice("Please restart CANMOPS")
             
-    def hardware_config(self, channel):
+    def hardware_config(self, channel,interface):
         '''
         Pass channel string (example 'can0') to configure OS level drivers and interface.
         '''
-        self.logger.info('CAN hardware OS drivers and config for %s' % channel)
-        os.system(". " + rootdir + "/socketcan_wrapper_enable.sh %i %s %s %i" %(self.__bitrate,str(self.__samplepoint),str(self.__sjw), self.__channel))
+        if interface == "socketcan":
+            _bus_type = "can"
+        else:
+            _bus_type = "vcan"
+        _can_channel = _bus_type +  channel
+        self.logger.info('CAN hardware OS drivers and config for %s' %_can_channel)
+        os.system(". " + rootdir + "/socketcan_wrapper_enable.sh %i %s %s %s %s" %(self.__bitrate,str(self.__samplepoint),str(self.__sjw), _can_channel,_bus_type))
+
            
     def read_can_message_thread(self):
         """Read incoming |CAN| messages and store them in the queue
@@ -604,8 +612,7 @@ class CanWrapper(object):
             except: #(canlib.CanNoMsg, analib.CanNoMsg,can.CanError):
                 pass
 
-    def read_can_message(self,timeout =1.0):
-        
+    def read_can_message(self):
         if self.__interface == 'Kvaser':
             frame = self.__ch.read()
             cobid, data, dlc, flag, t = (frame.id, frame.data,
@@ -620,13 +627,13 @@ class CanWrapper(object):
             if (cobid == 0 and dlc == 0):
                 raise analib.CanNoMsg
         else:
-            readcan = self.__ch.recv( timeout =timeout)
+            readcan = self.__ch.recv( timeout =1.0)
             if readcan is not None:
                 #raise can.CanError
-                cobid, data, dlc, flag, t = readcan.arbitration_id, readcan.data, readcan.dlc, readcan.is_extended_id, readcan.timestamp
+                cobid, data, dlc, flag, t , error_frame = readcan.arbitration_id, readcan.data, readcan.dlc, readcan.is_extended_id, readcan.timestamp, readcan.is_error_frame
                 return cobid, data, dlc, flag, t
             else:
-                return None#cobid, data, dlc, flag, t = None,None, None, None, None
+                return None
         
                    
     # The following functions are to read the can messages

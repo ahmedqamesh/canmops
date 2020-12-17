@@ -229,7 +229,7 @@ class MainWindow(QMainWindow):
         self.mainSubIndextextbox = QLineEdit(self.__subIndex)
         self.mainSubIndextextbox.setFixedSize(70, 25)
         
-        def __apply_CANMessageSettings():
+        def __set_bus():
             try:
                 self.set_index(self.mainIndexTextBox.text())
                 self.set_subIndex(self.mainSubIndextextbox.text())
@@ -241,7 +241,7 @@ class MainWindow(QMainWindow):
         self.startButton = QPushButton("")
         self.startButton.setIcon(QIcon('graphicsUtils/icons/icon_start.png'))
         self.startButton.setStatusTip('Send CAN message')
-        self.startButton.clicked.connect(__apply_CANMessageSettings)
+        self.startButton.clicked.connect(__set_bus)
         self.startButton.clicked.connect(self.read_sdo_can_thread)                 
         defaultMessageWindowLayout.addWidget(nodeLabel, 3, 0)
         defaultMessageWindowLayout.addWidget(self.nodeComboBox, 4, 0)   
@@ -601,12 +601,13 @@ class MainWindow(QMainWindow):
                         self.wrapper.confirm_Mops(channel=_channel)
                     else:
                         pass 
+                self.control_logger = self.wrapper.logger
             except:
                 self.connectButton.setChecked(False)
         else:
            self.stop_server()
            self.stop_random_timer()
-        self.control_logger = self.wrapper.logger
+        
         
     
     def stop_server(self):
@@ -660,32 +661,37 @@ class MainWindow(QMainWindow):
             self.wrapper = CanWrapper(interface=_interface, bitrate=_bitrate, ipAddress=str(_ipAddress),
                                                 channel=int(_channel),sjw = int(_sjw))
             # restart the channel
-            self.wrapper.hardware_config(channel = int(_channel))
+            self.wrapper.hardware_config(channel = str(_channel))
         except Exception:
           self.error_message(text="Please choose an interface or close the window")
  
-    def restart_socketchannel(self):
+    def restart_socketchannel(self,arg = None, interface =None):
         '''
         The function will restart the SocketCAN 
-        '''   
-        _interface = "socketcan"
-        try: 
-            filename = lib_dir + config_dir + _interface + "_CANSettings.yml"
-            filename = os.path.join(lib_dir, config_dir + _interface + "_CANSettings.yml")
+        '''
+        interface == arg
+        if interface is not None: 
+            filename = lib_dir + config_dir + interface + "_CANSettings.yml"
+            filename = os.path.join(lib_dir, config_dir + interface + "_CANSettings.yml")
             test_date = time.ctime(os.path.getmtime(filename))
             # Load settings from CAN settings file
-            _canSettings = AnalysisUtils().open_yaml_file(file=config_dir + _interface + "_CANSettings.yml", directory=lib_dir)
-            _channel = _canSettings['CAN_Interfaces'][_interface]["channels"]
-            _bitrate = _canSettings['CAN_Interfaces'][_interface]["bitrate"]
-            _samplePoint = _canSettings['CAN_Interfaces'][_interface]["samplePoint"]
-            _sjw = _canSettings['CAN_Interfaces'][_interface]["SJW"]
-                    
-            os.system(". " + rootdir[:-14] + "/controlServer/socketcan_wrapper_enable.sh %i %s %s %i" %(_bitrate,_samplePoint,_sjw,_channel))
-        except Exception:
-           self.error_message(text="Settings file doesnt exist at %s"%(lib_dir + config_dir + _interface))          
-
+            _canSettings = AnalysisUtils().open_yaml_file(file=config_dir + interface + "_CANSettings.yml", directory=lib_dir)
+            _channel = _canSettings['CAN_Interfaces'][interface]["channels"]
+            _bitrate = _canSettings['CAN_Interfaces'][interface]["bitrate"]
+            _samplePoint = _canSettings['CAN_Interfaces'][interface]["samplePoint"]
+            _sjw = _canSettings['CAN_Interfaces'][interface]["SJW"]
+            if arg == "socketcan":
+                _bus_type = "can"
+            else:
+                _bus_type = "vcan"             
+            _can_channel = _bus_type +  str(_channel)
+            os.system(". " + rootdir[:-14] + "/controlServer/socketcan_wrapper_enable.sh %i %s %s %s %s" %(_bitrate,_samplePoint,_sjw,_can_channel,_bus_type))
+        else:
+            #This is An automatic bus-off recovery if too many errors occurred on the CAN bus
+            _bus_type = "restart"            
+            os.system(". " + rootdir[:-14] + "/controlServer/socketcan_wrapper_enable.sh %s %s %s %s %s" %("_bitrate","_samplePoint","_sjw","_can_channel",_bus_type))
     def dump_socketchannel(self,channel):
-        self.logger.info("Dumping %s channel"%channel)
+        self.logger.info("Dumping socketCan channels")
         print_command = "echo ==================== Dumping %s bus traffic ====================\n"%channel
         candump_command="candump %s -x -c -t A"%channel
         os.system("gnome-terminal -e 'bash -c \""+print_command+candump_command+";bash\"'")
@@ -966,7 +972,9 @@ class MainWindow(QMainWindow):
             data_RX = self.wrapper.read_sdo_can(_nodeId, _index, _subIndex, self.__timeout)
             return data_RX
         except Exception:
-            #self.error_message(text="Make sure that the CAN interface is connected")# This message annoys Rizwan
+            self.logger.error(f'Received SDO abort message while reading '
+                              f'object {_index:04X}:{_subIndex:02X} of node'
+                              f'{_nodeId}')
             return None
                            
     def read_sdo_can_thread(self, trending=False, print_sdo=True):
@@ -1763,7 +1771,7 @@ class MainWindow(QMainWindow):
     def show_dump_child_window(self):
         if self.wrapper is not None: 
             interface =self.get_interface()
-            if interface =="socketcan":
+            if interface =="socketcan" or interface =="virtual":
                 self.logger.info("DumpingCAN bus traffic.")
                 print_command = "echo ==================== Dumping CAN bus traffic ====================\n"
                 candump_command="candump any -x -c -t A"
@@ -1812,7 +1820,7 @@ class MainWindow(QMainWindow):
             mode = "TX [hex] :"
         if comunication_object == "Decoded": 
             color = QColor("green")
-            mode = "RX [____] :"
+            mode = "RX [dec] :"
         if comunication_object == "ErrorFrame": 
             color = QColor("red")
             mode = "E:  "

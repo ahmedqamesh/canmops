@@ -1,5 +1,5 @@
 CAN_Interfaces:
-  socketcan:
+  virtual:
     SJW: 4
     bitrate: 103243
     channels: 0
