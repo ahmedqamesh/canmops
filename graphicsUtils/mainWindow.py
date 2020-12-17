@@ -660,8 +660,8 @@ class MainWindow(QMainWindow):
             # Apply the settings to the main server
             self.wrapper = CanWrapper(interface=_interface, bitrate=_bitrate, ipAddress=str(_ipAddress),
                                                 channel=int(_channel),sjw = int(_sjw))
-            # restart the channel
-            self.wrapper.hardware_config(channel = str(_channel))
+            # Set the channel
+            self.wrapper.hardware_config(channel = str(_channel),interface = _interface)
         except Exception:
           self.error_message(text="Please choose an interface or close the window")
  

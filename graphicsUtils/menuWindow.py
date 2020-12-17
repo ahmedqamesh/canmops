@@ -81,7 +81,7 @@ class MenuBar(QWidget):
         SetVirtualSocketcan.triggered.connect(_Set_virtual_socketchannel)
                 
         SetSocketcan.addAction(SetNativeInterface)
-        SetSocketcan.addAction(SetVirtualSocketcan)
+        #SetSocketcan.addAction(SetVirtualSocketcan)# to be used later 
         
         # Restart the bus
         def _restart_socketchannel():

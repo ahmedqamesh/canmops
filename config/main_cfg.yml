@@ -21,7 +21,7 @@ default_values:
      
 CAN_Interfaces:   {"AnaGate"    :{"bitrate":125000 ,"samplePoint":0.5,"SJW":4, "ipAddress":"192.168.1.254"    ,"timeout":500    ,"channels":{1: [1,2],0:[1,2]}},# channels are defined as {bus1[node1,node2],bus2[node1,node2]}
                    "Kvaser"     :{"bitrate":125000 ,"samplePoint":0.5,"SJW":4,"ipAddress":"None"             ,"timeout":500    ,"channels":{0: [1]}},
-                   "socketcan"  :{"bitrate":114285 ,"samplePoint":0.5,"SJW":4,"ipAddress":"None"             ,"timeout":500    ,"channels":{0: [1],1: [1]}},
-                   "virtual"     :{"bitrate":114285 ,"samplePoint":0.5,"SJW":4,"ipAddress":"None"             ,"timeout":500    ,"channels":{0: [1],1: [1]}}}
+                   "socketcan"  :{"bitrate":114285 ,"samplePoint":0.5,"SJW":4,"ipAddress":"None"             ,"timeout":500    ,"channels":{0: [1],1: [1]}}}#,
+                   #"virtual"     :{"bitrate":114285 ,"samplePoint":0.5,"SJW":4,"ipAddress":"None"             ,"timeout":500    ,"channels":{0: [1],1: [1]}}}
 Other:
     user    :   "Ahmed Qamesh"
