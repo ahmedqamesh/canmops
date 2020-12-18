@@ -12,7 +12,7 @@ Devices:    ["MOPS"] #Configured devices ["None"] is no device allowed
 default_values:
     index_items     : ["0x1000"]
     bitrate_items   : ["    ","10000", "20000", "50000", "62500", "100000","103750","111111","112500","113750","114285","116250","125000", "250000", "500000", "1000000"] 
-    sample_points   : ["0.25","0.50","0.75"] 
+   # sample_points   : ["25","50","75"] 
     bytes           : ["40","0","10","0","0","0","0","0"] 
     subIndex        : "0"
     cobid           : "0x601"

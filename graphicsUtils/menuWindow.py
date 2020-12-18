@@ -17,7 +17,7 @@ class MenuBar(QWidget):
         menuBar = mainwindow.menuBar()
         menuBar.setNativeMenuBar(False)  # only for MacOS
         self._fileMenu(menuBar, mainwindow)
-        self._viewMenu(menuBar, mainwindow)
+        #self._viewMenu(menuBar, mainwindow)
         self._interfaceMenu(menuBar, mainwindow)
         self._helpMenu(menuBar, mainwindow)
         
@@ -122,7 +122,7 @@ class MenuBar(QWidget):
         #DumpSocketcan.addAction(vcan0)
         
         
-    def create_statusBar(self, mainwindow, msg="Ready"):
+    def create_statusBar(self, mainwindow, msg=" "):
         status = QStatusBar()
         status.showMessage(msg)
         mainwindow.setStatusBar(status)

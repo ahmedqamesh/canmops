@@ -51,7 +51,7 @@ class MainWindow(QMainWindow):
         self.__appIconDir = self.__conf["Application"]["app_icon_dir"]
         self.__canSettings = self.__conf["Application"]["can_settings"]
         self.__bitrate_items = self.__conf['default_values']['bitrate_items']
-        self.__sample_points = self.__conf['default_values']['sample_points']
+        #self.__sample_points = self.__conf['default_values']['sample_points']
         self.__bytes = self.__conf["default_values"]["bytes"]
         self.__subIndex = self.__conf["default_values"]["subIndex"]
         self.__cobid = self.__conf["default_values"]["cobid"]
@@ -620,7 +620,7 @@ class MainWindow(QMainWindow):
         except:
             pass
 
-    def set_can_settings(self): 
+    def set_bus_settings(self): 
         '''
         The function will set all the required parameters for the CAN communication
         1. get the required parameters for the CAN communication e.g. bitrate, interface, channel,.......
@@ -650,10 +650,12 @@ class MainWindow(QMainWindow):
             self.channelComboBox.addItems([str(_channel)])
             self.nodeComboBox.clear()
             self.nodeComboBox.addItems(list(map(str, _nodeItems)))
-            self.connectButton.setChecked(True)
+            
+            
             # Save the settings into a file
             dict_file = {"CAN_Interfaces": {_interface:{"bitrate":_bitrate ,"samplePoint":_sample_point,"SJW":_sjw, "ipAddress":str(_ipAddress), "timeout":_timeout, "channels":int(_channel), "nodIds":_nodeItems}}}
             self.logger.info("Saving CAN settings to the file %s" % lib_dir + config_dir + _interface + "_CANSettings.yml") 
+            
             with open(lib_dir + config_dir + _interface + "_CANSettings.yml", 'w') as yaml_file:
                 yaml.dump(dict_file, yaml_file, default_flow_style=False)
             
@@ -662,6 +664,9 @@ class MainWindow(QMainWindow):
                                                 channel=int(_channel),sjw = int(_sjw))
             # Set the channel
             self.wrapper.hardware_config(channel = str(_channel),interface = _interface)
+            
+            # the the connect button to checked
+            self.connectButton.setChecked(True)
         except Exception:
           self.error_message(text="Please choose an interface or close the window")
  
@@ -690,6 +695,7 @@ class MainWindow(QMainWindow):
             #This is An automatic bus-off recovery if too many errors occurred on the CAN bus
             _bus_type = "restart"            
             os.system(". " + rootdir[:-14] + "/controlServer/socketcan_wrapper_enable.sh %s %s %s %s %s" %("_bitrate","_samplePoint","_sjw","_can_channel",_bus_type))
+    
     def dump_socketchannel(self,channel):
         self.logger.info("Dumping socketCan channels")
         print_command = "echo ==================== Dumping %s bus traffic ====================\n"%channel
@@ -775,7 +781,7 @@ class MainWindow(QMainWindow):
                 SecondGridLayout.addWidget(self.ByteTextbox[i], i - 4, 5)
         SecondGroupBox.setLayout(SecondGridLayout) 
         
-        def __apply_CANMessageSettings():
+        def _set_bus():
             _cobid = cobidtextbox.text() 
             textboxValue = [self.ByteTextbox[i] for i in np.arange(len(self.ByteTextbox))]
             
@@ -791,11 +797,10 @@ class MainWindow(QMainWindow):
             self.set_index(_index)
             #self.read_sdo_can_thread()
         
-            
         buttonBox = QHBoxLayout()
         send_button = QPushButton("Send")
         send_button.setIcon(QIcon('graphicsUtils/icons/icon_true.png'))
-        send_button.clicked.connect(__apply_CANMessageSettings)
+        send_button.clicked.connect(_set_bus)
         send_button.clicked.connect(self.write_can_message)
         
         close_button = QPushButton("close")
@@ -894,9 +899,13 @@ class MainWindow(QMainWindow):
         mainLayout.addWidget(ThirdGroupBox, 2, 0)
         plotframe.setLayout(mainLayout) 
         self.MenuBar.create_statusBar(ChildWindow)
+        plotframe.setStatusTip("")
         QtCore.QMetaObject.connectSlotsByName(ChildWindow)                
         
     def BusParametersGroupBox(self, ChildWindow=None, interface="Others"):
+        '''
+        The window holds all the parameters needed  for the target bus, the CAN bus properties must be configured first[e.g bitrate, sample_point, SJW]
+        '''
         # Define subGroup
         self.SubSecondGroupBox = QGroupBox("Bus Parameters")
         SubSecondGridLayout = QGridLayout()
@@ -915,11 +924,9 @@ class MainWindow(QMainWindow):
         thirdItems = self.get_bitrate_items()
         thirdComboBox = QComboBox()
         for item in thirdItems: thirdComboBox.addItem(item)
-        sampleLabel.setText("Sample point")
-        sampleItems = self.get_sample_points()
-        sampleComboBox = QComboBox()
-        sampleComboBox.setStatusTip('The location of Sample point in percentage inside each bit period')
-        for item in sampleItems: sampleComboBox.addItem(item)                   
+        sampleLabel.setText("Sample point [%]:")
+        sampleTextBox = QLineEdit("50")
+        sampleTextBox.setStatusTip('The location of Sample point in percentage inside each bit period')                  
         if (interface == "AnaGate"):
             firstLabel.setText("IP address:")
             self.firsttextbox = QLineEdit('192.168.1.254')
@@ -931,13 +938,13 @@ class MainWindow(QMainWindow):
         def _set_bus():
             self.set_sjw(secondComboBox.currentText())
             self.set_bitrate(thirdTextBox.text())  
-            self.set_sample_point(sampleComboBox.currentText())
+            self.set_sample_point(sampleTextBox.text())
             
         set_button = QPushButton("Set in all")
         set_button.setStatusTip('The button will apply the same settings for all CAN controllers')  # show when move mouse to the icon
         set_button.setIcon(QIcon('graphicsUtils/icons/icon_true.png'))
         set_button.clicked.connect(_set_bus)
-        set_button.clicked.connect(self.set_can_settings)
+        set_button.clicked.connect(self.set_bus_settings)
         
         SubSecondGridLayout.addWidget(secondLabel, 1, 0)
         SubSecondGridLayout.addWidget(secondComboBox, 1, 1)
@@ -945,7 +952,7 @@ class MainWindow(QMainWindow):
         #SubSecondGridLayout.addWidget(thirdComboBox, 2, 1)
         SubSecondGridLayout.addWidget(thirdTextBox, 2, 1)
         SubSecondGridLayout.addWidget(sampleLabel, 3, 0)
-        SubSecondGridLayout.addWidget(sampleComboBox, 3, 1) 
+        SubSecondGridLayout.addWidget(sampleTextBox, 3, 1) 
         SubSecondGridLayout.addWidget(set_button, 4, 1) 
         self.SubSecondGroupBox.setLayout(SubSecondGridLayout)
                 
@@ -1933,7 +1940,7 @@ class MainWindow(QMainWindow):
         self.__sjw = int(x)
         
     def set_sample_point(self,x):
-        self.__sample_point = float(x)
+        self.__sample_point = float(x)/100
             
     def set_ipAddress(self, x):
         self.__ipAddress = x

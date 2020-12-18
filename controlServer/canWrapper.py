@@ -100,7 +100,7 @@ class CanWrapper(object):
         self.__sjw = AnalysisUtils().get_info_yaml(dictionary=self.__conf['CAN_Interfaces'], index=interface, subindex="SJW")
         self.__channels = AnalysisUtils().get_info_yaml(dictionary=self.__conf['CAN_Interfaces'], index=interface, subindex="channels")
         self.__channel = list(AnalysisUtils().get_info_yaml(dictionary=self.__conf['CAN_Interfaces'], index=interface, subindex="channels"))[0]         
-        self.logger.notice('... Loading all the configurations from the file %s!'%(config_dir + conf_file))
+        self.logger.notice('Loading all the configurations from the file %s!'%(config_dir + conf_file))
         # Initialize default arguments
         """:obj:`str` : Internal attribute for the interface"""
         self.__interface = interface
@@ -234,7 +234,7 @@ class CanWrapper(object):
                 self.__ch = can.interface.Bus(bustype=interface, channel=channel, bitrate=self.__bitrate)     
         except Exception:
             self.logger.error("TCP/IP or USB socket error in %s interface"%interface)
-            sys.exit(1)
+            #sys.exit(1)# it causes that the program is killed completely
         self.logger.success(str(self))        
     
     def start_channel_connection(self, interface=None):
