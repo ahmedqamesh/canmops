@@ -41,8 +41,6 @@ then
 	echo "Getting $4 Bus informations"
 	ip -details link show $4
 
-	echo "SocketCAN[$4] is intialized...."
-
 fi 
 
 if [ $5 == "restart" ]

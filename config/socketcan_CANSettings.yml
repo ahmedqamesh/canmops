@@ -6,5 +6,5 @@ CAN_Interfaces:
     ipAddress: None
     nodIds:
     - 1
-    samplePoint: 0.5
+    samplePoint: 0.66
     timeout: 500

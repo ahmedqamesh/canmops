@@ -562,7 +562,7 @@ class CanWrapper(object):
                 self.__ch.send(msg,timeout)
             except can.CanError:
                 self.hardware_config(str(self.__channel),self.__interface)
-                self.logger.notice("Please restart CANMOPS")
+                self.logger.error("An Error occurred, please restart the connected device")
             
     def hardware_config(self, channel,interface):
         '''
@@ -575,7 +575,7 @@ class CanWrapper(object):
         _can_channel = _bus_type +  channel
         self.logger.info('CAN hardware OS drivers and config for %s' %_can_channel)
         os.system(". " + rootdir + "/socketcan_wrapper_enable.sh %i %s %s %s %s" %(self.__bitrate,str(self.__samplepoint),str(self.__sjw), _can_channel,_bus_type))
-
+        self.logger.info('SocketCAN[ %s] is intialized....'%_can_channel)
            
     def read_can_message_thread(self):
         """Read incoming |CAN| messages and store them in the queue

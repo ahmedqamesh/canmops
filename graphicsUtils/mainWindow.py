@@ -979,7 +979,7 @@ class MainWindow(QMainWindow):
             data_RX = self.wrapper.read_sdo_can(_nodeId, _index, _subIndex, self.__timeout)
             return data_RX
         except Exception:
-            self.logger.error(f'Received SDO abort message while reading '
+            self.logger.notice(f'No Matching SDO response while reading '
                               f'object {_index:04X}:{_subIndex:02X} of node'
                               f'{_nodeId}')
             return None
