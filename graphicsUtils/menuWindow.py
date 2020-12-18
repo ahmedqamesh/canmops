@@ -62,13 +62,13 @@ class MenuBar(QWidget):
         # Set the bus
         def _set_socketchannel():
             _arg = "socketcan"
-            _interface = "virtual"
-            self.MainWindow.restart_socketchannel(arg = _arg, interface = _interface)
+            _interface = "socketcan"
+            self.MainWindow.set_socketchannel(arg = _arg, interface = _interface)
         
         def _Set_virtual_socketchannel():
             _arg = "virtual"
             _interface = "virtual"
-            self.MainWindow.restart_socketchannel(arg = _arg, interface = _interface)
+            self.MainWindow.set_socketchannel(arg = _arg, interface = _interface)
                     
         SetSocketcan = SocketMenu.addMenu('Set CAN Bus')
         
@@ -86,7 +86,7 @@ class MenuBar(QWidget):
         # Restart the bus
         def _restart_socketchannel():
             _arg = "restart"
-            self.MainWindow.restart_socketchannel(arg = _arg)
+            self.MainWindow.set_socketchannel(arg = _arg)
             
         RestartSocketcan = QAction(QIcon('graphics_Utils/icons/icon_reset.png'),'Restart CAN channel', mainwindow)
         RestartSocketcan.setStatusTip("Restart CAN channel")

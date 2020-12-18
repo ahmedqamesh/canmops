@@ -1,10 +1,9 @@
 #!/bin/bash
 # variables 
-echo "Initializing SocketCAN...."
 #check the bus type can or virtual.
 if [ $5 == "can" ]
 then
-	echo "CAN hardware OS drivers and config"
+	echo "Cofiguring drivers"
 	sudo -S modprobe can
 	sudo -S modprobe can-dev
 	sudo -S modprobe can-raw
@@ -23,8 +22,6 @@ then
 
 	echo "Getting $4 Bus informations"
 	ip -details link show $4
-
-	echo "SocketCAN[$4] is intialized...."
 
 fi
 
