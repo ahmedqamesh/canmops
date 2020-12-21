@@ -201,7 +201,7 @@ class MainWindow(QMainWindow):
         4. SubIndex
         All the options in every widget are defined in the file main_cfg.yml
         '''  
-        self.defaultMessageGroupBox = QGroupBox("Message Settings")
+        self.defaultMessageGroupBox = QGroupBox("SDO Message Settings [0x600]")
         plotframe = QFrame()
         plotframe.setStyleSheet("QWidget { background-color: #eeeeec; }")
         plotframe.setLineWidth(0.6)
