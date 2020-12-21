@@ -348,7 +348,7 @@ class CanWrapper(object):
         self.__busOn = False
         self.logger.warning('Stopping the server.')
         
-    def read_sdo_can_thread(self, nodeId=None, index=None, subindex=None, timeout=100, MAX_DATABYTES=8, SDO_TX=0x600, SDO_RX=0x580,cobid = None):
+    def read_sdo_can_thread(self, nodeId=None, index=None, subindex=None, timeout=100, MAX_DATABYTES=8, SDO_TX=None, SDO_RX=None,cobid = None):
         """Read an object via |SDO|
     
         Currently expedited and segmented transfer is supported by this method.
@@ -384,7 +384,6 @@ class CanWrapper(object):
         msg[0] = 0x40
         msg[1], msg[2] = index.to_bytes(2, 'little')
         msg[3] = subindex
-        cobid = SDO_TX+nodeId
         try:
             self.write_can_message(cobid, msg, timeout=timeout)
         except CanGeneralError:
@@ -395,6 +394,7 @@ class CanWrapper(object):
         messageValid = False
         errorResponse = False
         errorReset = False
+        resetResponse = False
         while time.perf_counter() - t0 < timeout / 1000:
             with self.__lock:
                 # check the message validity [nodid, msg size,...]
@@ -404,7 +404,7 @@ class CanWrapper(object):
                                     and ret[0] in [0x80, 0x43, 0x47, 0x4b, 0x4f, 0x42] 
                                     and int.from_bytes([ret[1], ret[2]], 'little') == index
                                     and ret[3] == subindex)
-                    # errorResponse and errorReset are meant to deal with any disturbance in the signal due to the reset of the chip 
+                    # errorResponse is meant to deal with any disturbance in the signal due to the reset of the chip 
                     errorResponse = (dlc == 8 and cobid_ret == 0x88 and ret[0] in [0x00])
                     if (messageValid or errorResponse):
                         del self.__canMsgQueue[i]
@@ -414,6 +414,7 @@ class CanWrapper(object):
                 break
             if (errorResponse):
                 return cobid_ret, None
+            
         else:
             self.logger.info(f'SDO read response timeout (node {nodeId}, index'
                              f' {index:04X}:{subindex:02X})')
