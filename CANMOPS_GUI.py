@@ -1,5 +1,6 @@
 # -*- coding: utf-8 -*-
 import sys
+
 from matplotlib.backends.qt_compat import  QtWidgets
 from graphicsUtils import  mainWindow
 if __name__=='__main__':
