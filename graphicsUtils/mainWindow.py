@@ -1137,7 +1137,7 @@ class MainWindow(QMainWindow):
         return cobid_ret, data_ret, dlc, flag, t
     
 
-    def device_child_window(self, ChildWindow):    
+    def device_child_window(self, childWindow):    
         '''
         The function will Open a special window for the device [MOPS] .
         The calling function for this is show_deviceWindow
@@ -1149,13 +1149,13 @@ class MainWindow(QMainWindow):
         except Exception:
             pass
         #  Open the window
-        ChildWindow.setObjectName("DeviceWindow")
-        ChildWindow.setWindowTitle("Device Window [ " + self.__deviceName + "]")
-        ChildWindow.setWindowIcon(QtGui.QIcon(self.__appIconDir))
-        ChildWindow.setGeometry(1175, 10, 200, 770)
+        childWindow.setObjectName("DeviceWindow")
+        childWindow.setWindowTitle("Device Window [ " + self.__deviceName + "]")
+        childWindow.setWindowIcon(QtGui.QIcon(self.__appIconDir))
+        childWindow.setGeometry(1175, 10, 200, 770)
         logframe = QFrame()
         logframe.setLineWidth(0.6)
-        ChildWindow.setCentralWidget(logframe)
+        childWindow.setCentralWidget(logframe)
         
         # Initialize tab screen
         self.tabLayout = QGridLayout()
@@ -1295,7 +1295,7 @@ class MainWindow(QMainWindow):
         close_button = QPushButton("close")
         close_button.setIcon(QIcon('graphicsUtils/icons/icon_close.jpg'))
         close_button.clicked.connect(self.stop_adc_timer)
-        close_button.clicked.connect(ChildWindow.close)
+        close_button.clicked.connect(childWindow.close)
         HLayout.addSpacing(350)
         HLayout.addWidget(close_button)
         
@@ -1357,7 +1357,7 @@ class MainWindow(QMainWindow):
         mainLayout.addLayout(HBox , 3, 0)
         mainLayout.addLayout(progressHLayout, 3, 3)
         self.tab2.setLayout(mainLayout)
-        self.MenuBar.create_statusBar(ChildWindow)
+        self.MenuBar.create_statusBar(childWindow)
         logframe.setLayout(self.tabLayout)
          
     def adc_values_window(self):
@@ -1824,10 +1824,10 @@ class MainWindow(QMainWindow):
         trend.show()
             
     def show_deviceWindow(self):
-        self.deviceWindow = QMainWindow()
+        deviceWindow = QMainWindow(self)
         try:
-            self.device_child_window(self.deviceWindow)
-            self.deviceWindow.show()
+            self.device_child_window(childWindow=deviceWindow)
+            deviceWindow.show()
         except Exception:
             self.error_message("Either the channel is not activated or the CAN interface is not connected")
  

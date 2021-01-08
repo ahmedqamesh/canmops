@@ -1,10 +1,8 @@
 CAN_Interfaces:
   socketcan:
     SJW: 4
-    bitrate: 111111
+    bitrate: 121212
     channels: 0
     ipAddress: None
-    nodIds:
-    - 1
-    samplePoint: 0.5
+    samplePoint: 0.545
     timeout: 500

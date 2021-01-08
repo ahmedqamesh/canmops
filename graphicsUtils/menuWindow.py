@@ -70,7 +70,7 @@ class MenuBar(QWidget):
             _interface = "virtual"
             self.MainWindow.set_socketchannel(arg = _arg, interface = _interface)
                     
-        SetSocketcan = SocketMenu.addMenu('Set CAN Bus')
+        #SetSocketcan = SocketMenu.addMenu('Set CAN Bus')
         
         SetNativeInterface = QAction(QIcon('graphics_Utils/icons/icon_start.png'),'Set SocketCAN', mainwindow)
         SetNativeInterface.setStatusTip("Set SocketCAN")
@@ -80,7 +80,7 @@ class MenuBar(QWidget):
         SetVirtualSocketcan.setStatusTip("Set VirtualCAN")
         SetVirtualSocketcan.triggered.connect(_Set_virtual_socketchannel)
                 
-        SetSocketcan.addAction(SetNativeInterface)
+        SocketMenu.addAction(SetNativeInterface)
         #SetSocketcan.addAction(SetVirtualSocketcan)# to be used later 
         
         # Restart the bus
