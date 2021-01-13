@@ -654,7 +654,7 @@ class MainWindow(QMainWindow):
             # Save the settings into a file
             dict_file = {"CAN_Interfaces": {_interface:{"bitrate":_bitrate ,"samplePoint":_sample_point,"SJW":_sjw, "ipAddress":str(_ipAddress), "timeout":_timeout, "channels":int(_channel)}}}
             self.logger.info("Saving CAN settings to the file %s" % lib_dir + config_dir + _interface + "_CANSettings.yml") 
-            
+            self.logger.info("Please restart your bus from the tools menu (Interface >> %s >> Set_%s_interface )to apply the new settings "%(_interface,_interface))
             with open(lib_dir + config_dir + _interface + "_CANSettings.yml", 'w') as yaml_file:
                 yaml.dump(dict_file, yaml_file, default_flow_style=False)
             
@@ -662,7 +662,7 @@ class MainWindow(QMainWindow):
             self.wrapper = CanWrapper(interface=_interface, bitrate=_bitrate, ipAddress=str(_ipAddress),
                                                 channel=int(_channel),sjw = int(_sjw))
             # Set the channel
-            self.wrapper.hardware_config(channel = str(_channel),interface = _interface)
+            self.wrapper.hardware_config(channel = str(_channel),interface = _interface,sjw = int(_sjw))
             
             # the the connect button to checked
             self.connectButton.setChecked(True)

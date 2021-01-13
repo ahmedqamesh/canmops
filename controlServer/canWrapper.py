@@ -256,7 +256,6 @@ class CanWrapper(object):
 
         :_ch:`None`
             In case of errors
-            
         """
         self.logger.notice('Starting CAN Connection ...')
         if interface == 'Kvaser':
