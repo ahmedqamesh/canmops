@@ -1175,9 +1175,16 @@ class MainWindow(QMainWindow):
         #cobidLabel.setText("CAN Identifier")
         #CobIdTextBox = QLineEdit(self.__cobid)
         #CobIdTextBox.setFixedSize(70, 25)
-            
+
         def __set_bus():
-            self.set_nodeId(self.deviceNodeComboBox.currentText())
+            self.set_nodeId(self.deviceNodeComboBox.currentText())    
+            self.set_index(self.IndexListBox.currentItem().text())
+            self.set_subIndex(self.subIndexListBox.currentItem().text())
+            SDO_TX = hex(0x600)
+            self.set_odIndex(str(SDO_TX))
+                        
+        def __set_bus_timer():
+            self.set_nodeId(self.deviceNodeComboBox.currentText())     
             SDO_TX = hex(0x600)
             self.set_odIndex(str(SDO_TX))
                    
@@ -1330,7 +1337,7 @@ class MainWindow(QMainWindow):
         HBox = QHBoxLayout()
         send_button = QPushButton("run ")
         send_button.setIcon(QIcon('graphicsUtils/icons/icon_start.png'))
-        send_button.clicked.connect(__set_bus)
+        send_button.clicked.connect(__set_bus_timer)
         send_button.clicked.connect(self.initiate_adc_timer)
 
         stop_button = QPushButton("stop ")
@@ -1809,9 +1816,9 @@ class MainWindow(QMainWindow):
         #self.MessageWindow.show()
                   
     def show_CANSettingsWindow(self):
-        MainWindow = QMainWindow()
-        self.can_settings_child_window(MainWindow)
-        MainWindow.show()
+        self.MainWindow = QMainWindow()
+        self.can_settings_child_window(self.MainWindow)
+        self.MainWindow.show()
 
     def show_trendWindow(self):
         trend = QMainWindow(self)
@@ -1824,10 +1831,10 @@ class MainWindow(QMainWindow):
         trend.show()
             
     def show_deviceWindow(self):
-        deviceWindow = QMainWindow(self)
+        self.deviceWindow = QMainWindow()
         try:
-            self.device_child_window(childWindow=deviceWindow)
-            deviceWindow.show()
+            self.device_child_window(childWindow=self.deviceWindow)
+            self.deviceWindow.show()
         except Exception:
             self.error_message("Either the channel is not activated or the CAN interface is not connected")
  
