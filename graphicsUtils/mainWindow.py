@@ -673,7 +673,6 @@ class MainWindow(QMainWindow):
         '''
         The function will restart the SocketCAN 
         '''
-        interface == arg
         if interface is not None: 
             filename = lib_dir + config_dir + interface + "_CANSettings.yml"
             filename = os.path.join(lib_dir, config_dir + interface + "_CANSettings.yml")
@@ -685,19 +684,25 @@ class MainWindow(QMainWindow):
             _samplePoint = _canSettings['CAN_Interfaces'][interface]["samplePoint"]
             _sjw = _canSettings['CAN_Interfaces'][interface]["SJW"]
             
-            if arg == "socketcan":
+            if (arg == "socketcan" and interface == "socketcan"):
                 _bus_type = "can"
-            else:
+                _can_channel = _bus_type +  str(_channel)
+                self.logger.info('CAN hardware OS drivers and config for %s' % _can_channel)
+                os.system(". " + rootdir[:-14] + "/controlServer/socketcan_wrapper_enable.sh %i %s %s %s %s" %(_bitrate,_samplePoint,_sjw,_can_channel,_bus_type))
+                self.logger.info('SocketCAN[%s] is initialized....' % _can_channel)
+                
+            if (arg == "virtual" and interface == "virtual"):
                 _bus_type = "vcan"             
-            _can_channel = _bus_type +  str(_channel)
-            
-            self.logger.info('CAN hardware OS drivers and config for %s' % _can_channel)
-            os.system(". " + rootdir[:-14] + "/controlServer/socketcan_wrapper_enable.sh %i %s %s %s %s" %(_bitrate,_samplePoint,_sjw,_can_channel,_bus_type))
-            self.logger.info('SocketCAN[%s] is initialized....' % _can_channel)
-        else:
-            #This is An automatic bus-off recovery if too many errors occurred on the CAN bus
-            _bus_type = "restart"            
-            os.system(". " + rootdir[:-14] + "/controlServer/socketcan_wrapper_enable.sh %s %s %s %s %s" %("_bitrate","_samplePoint","_sjw","_can_channel",_bus_type))
+                _can_channel = _bus_type +  str(_channel)
+                self.logger.info('CAN hardware OS drivers and config for %s' % _can_channel)
+                os.system(". " + rootdir[:-14] + "/controlServer/socketcan_wrapper_enable.sh %i %s %s %s %s" %(_bitrate,_samplePoint,_sjw,_can_channel,_bus_type))
+                self.logger.info('SocketCAN[%s] is initialized....' % _can_channel)
+                
+            if (arg == "restart" and interface == "socketcan"):
+                #This is An automatic bus-off recovery if too many errors occurred on the CAN bus
+                _bus_type = "restart" 
+                _can_channel = "can"+str(_channel)       
+                os.system(". " + rootdir[:-14] + "/controlServer/socketcan_wrapper_enable.sh %s %s %s %s %s" %("_bitrate","_samplePoint","_sjw",_can_channel,_bus_type))
     
     def dump_socketchannel(self,channel):
         self.logger.info("Dumping socketCan channels")

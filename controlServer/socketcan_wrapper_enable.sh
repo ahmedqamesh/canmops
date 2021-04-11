@@ -45,9 +45,10 @@ fi
 
 if [ $5 == "restart" ]
 #An automatic bus-off recovery if too many errors occurred on the CAN bus
-then
-	echo "\e[1;31m Restarting the Bus \e[0m"
-	sudo ip link set canX type can restart-ms 100
+then	
+	now=$(date +'%Y-%m-%d'" %T")
+	echo "\e[1;31m$now restarting $4 Bus \e[0m"
+	sudo ip link set $4 type can restart
 fi 
 
 

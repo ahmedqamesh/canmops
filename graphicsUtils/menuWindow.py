@@ -2,7 +2,7 @@ from PyQt5.QtCore    import *
 from PyQt5.QtGui     import *
 from PyQt5.QtWidgets import *
 from graphicsUtils import mainWindow
-
+import os
 
 class MenuBar(QWidget):  
     
@@ -86,7 +86,9 @@ class MenuBar(QWidget):
         # Restart the bus
         def _restart_socketchannel():
             _arg = "restart"
-            self.MainWindow.set_socketchannel(arg = _arg)
+            _interface = "socketcan"
+            os.system("sudo ip link set can0 type can restart-ms 100")
+            #self.MainWindow.set_socketchannel(arg = _arg, interface =_interface)
             
         RestartSocketcan = QAction(QIcon('graphics_Utils/icons/icon_reset.png'),'Restart CAN channel', mainwindow)
         RestartSocketcan.setStatusTip("Restart CAN channel")

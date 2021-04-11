@@ -198,7 +198,7 @@ class CanWrapper(object):
         self.logger.info(f'Connection to channel {channel} has been verified.')
         for nodeId in _nodeIds: 
             # Send the status message
-            cobid_TX = 0x701
+            cobid_TX = 0x700 + nodeId
             cobid_RX = None
             self.write_can_message(cobid_TX, [0, 0, 0, 0, 0, 0, 0, 0], flag=0, timeout=200)
             # receive the message
@@ -210,8 +210,6 @@ class CanWrapper(object):
                                  f'verified.')
             else:
                self.logger.error(f'Connection to MOPS with nodeId {nodeId} in channel {channel} failed')
-               #self.logger.error("An Error occurred, please restart the connected device")
-               #self.hardware_config(str(self.__channel), self.__interface)
                                 
     def set_channel_connection(self, interface=None):
         """
