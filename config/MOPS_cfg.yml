@@ -1,9 +1,10 @@
+#The file includes only the default values for the registered device
 Application:
     device_name             :   'MOPS'
     device_version          :   "v1.2"
     icon_dir                :   "graphicsUtils/icons/icon_mops.png"
     chipId                  :   "1"
-    nodeIds                 :   {"1", "8"}
+    nodeIds                 :   {"1", "2"}
     index_items             :   {  
                                 "0x1000" :  {"description_items" :"<html><b> Device type</b> [Default 191(hex)]</b></html>",
                                              "subindex_items"    :{     "0":"<html><b>Device type</b></html>"}}      

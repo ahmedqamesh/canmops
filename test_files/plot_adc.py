@@ -23,11 +23,11 @@ def get_color(i):
     
     return col_row[i]
  
-data = pd.read_csv(rootdir[:-11] + "/output_data/adc_data.csv", delimiter=",", header=0)
+data = pd.read_csv(rootdir[:-11] + "/output_data/adc_data_1.csv", delimiter=",", header=0)
 # I am defining two arrays for all the possible tests and operations
 operations = ['TimeStamp', 'Channel', "Id", "DLC", "ADCChannel", "ADCData" , "ADCDataConverted"]
 
-pdf_file = rootdir[:-11] + "/output_data/adc_data.pdf"
+pdf_file = rootdir[:-11] + "/output_data/adc_data_1.pdf"
 Pdf = PdfPages(pdf_file)
 # Filter the data according to a specific  operation (Which ADC channel)
 n_channels = 32

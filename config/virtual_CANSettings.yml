@@ -1,0 +1,10 @@
+CAN_Interfaces:
+  virtual:
+    SJW: 4
+    bitrate: 103243
+    channels: 0
+    ipAddress: None
+    nodIds:
+    - 1
+    samplePoint: 0.5
+    timeout: 500
