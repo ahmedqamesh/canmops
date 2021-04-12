@@ -275,19 +275,21 @@ class CanWrapper(object):
         self.__canMsgThread = Thread(target=self.read_can_message_thread)
         self.__canMsgThread.start()
         
-    def read_adc_channels(self, file, directory , nodeId, out_file_csv, n_readings):
+    def read_adc_channels(self, file, directory , nodeId,outputname,outputdir, n_readings):
         """Start actual CANopen communication
         This function contains an endless loop in which it is looped over all
         ADC channels. Each value is read using
         :meth:`read_sdo_can_thread` and written to its corresponding
         """     
         dev = AnalysisUtils().open_yaml_file(file=file, directory=directory)
-
+        # yaml file is needed to get the object dictionary items
         dictionary_items = dev["Application"]["index_items"]
         _adc_channels_reg = dev["adc_channels_reg"]["adc_channels"]
         _adc_index = list(dev["adc_channels_reg"]["adc_index"])[0]
         _channelItems = [int(channel) for channel in list(_adc_channels_reg)]
+        
         # Write header to the data
+        out_file_csv = AnalysisUtils().open_csv_file(outname=outputname, directory=outputdir)
         fieldnames = ['Time', 'Channel', "nodeId", "ADCChannel", "ADCData" , "ADCDataConverted"]
         writer = csv.DictWriter(out_file_csv, fieldnames=fieldnames)
         writer.writeheader()    
@@ -313,6 +315,7 @@ class CanWrapper(object):
                     self.logger.info(f'Got data for channel {channel}: = {adc_converted}')
                 pbar.update(1)
             pbar.close()
+        self.logger.notice("ADC data are saved to %s"%outputdir)
 
     def stop(self):
         """Close |CAN| channel and stop the |OPCUA| server
@@ -470,7 +473,10 @@ class CanWrapper(object):
             #This loop will:
             #1. read the can reset signal
             #2. read the next can message and check its validity
-            cobid_ret, data_ret, dlc, flag, t, error_frame = self.read_can_message(timeout=1.0)
+            try:
+                cobid_ret, data_ret, dlc, flag, t, error_frame = self.read_can_message(timeout=1.0)
+            except Exception:
+                self.logger.error("Cannot read messages from the bus")
             errorReset = (dlc == 8 and cobid_ret == 0x700 + nodeId and data_ret[0] in [0x05, 0x08]) 
             if (errorReset):
                 cobid_ret, data_ret, dlc, flag, t, error_frame = self.read_can_message(timeout=1.0)
@@ -576,10 +582,9 @@ class CanWrapper(object):
         
         else:
             msg = can.Message(arbitration_id=cobid, data=data, is_extended_id=False, is_error_frame=False)
-
             try:
                 self.__ch.send(msg, timeout)
-            except can.CanError:
+            except:# can.CanError:
                 self.logger.error("An Error occurred, The bus is not active")
                 #self.hardware_config(str(self.__channel), self.__interface)
                 
@@ -632,7 +637,7 @@ class CanWrapper(object):
             except:  # (canlib.CanNoMsg, analib.CanNoMsg,can.CanError):
                 pass
 
-    def read_can_message(self):
+    def read_can_message(self, timeout = 1.0):
         """Read incoming |CAN| messages without storing any Queue
         This method runs an endless loop which can only be stopped by setting
         """
@@ -654,7 +659,7 @@ class CanWrapper(object):
             if (cobid == 0 and dlc == 0):
                 raise analib.CanNoMsg
         else:
-            frame = self.__ch.recv(timeout=1.0)
+            frame = self.__ch.recv(timeout=timeout)
                 
             if frame is not None:
                 #raise can.CanError
