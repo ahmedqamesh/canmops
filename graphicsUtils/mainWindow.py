@@ -1013,6 +1013,7 @@ class MainWindow(QMainWindow):
             if print_sdo == True:
                 #self.control_logger.disabled = False
                 self.print_sdo_can(index=_index, subIndex=_subIndex, response_from_node=data_RX, cobid_TX = _cobid_TX, cobid_RX = _cobid_RX )
+            return data_RX
         except Exception:
             self.error_message(text="Make sure that the CAN interface is connected")
 
@@ -1663,7 +1664,7 @@ class MainWindow(QMainWindow):
                 s_correction = subindex-2
                 self.set_subIndex(_subIndexItems[s])
                 #read SDO CAN messages
-                data_point[s] = self.read_sdo_can()
+                data_point[s] = self.read_sdo_can()#_thread(print_sdo=False)
                 ts = time.time()
                 elapsedtime = ts-self.__monitoringTime
                 adc_converted = np.append(adc_converted, Analysis().adc_conversion(_adc_channels_reg[str(subindex)], data_point[s],int(self.__resistor_ratio)))
@@ -1678,7 +1679,7 @@ class MainWindow(QMainWindow):
                                          str(data_point[s]),
                                          str(round(adc_converted[s], 3))))
                     if self.trendingBox[s] == True:
-                        if len(self.x[s]) >=800:   #solve some memory issues due to the large length of self.x[s] and self.y[s] the arrays       
+                        if len(self.x[s]) >=500:   #solve some memory issues due to the large length of self.x[s] and self.y[s] the arrays       
                             self.x[s] = list([0])
                             self.y[s] = list([0])
                             self.graphWidget[s].clear()
@@ -1701,7 +1702,7 @@ class MainWindow(QMainWindow):
             self.set_index(_mon_indices[i])  # set index for later usage
             for s in np.arange(0, len(_subIndexItems)):
                 self.set_subIndex(_subIndexItems[s])
-                data_point = self.read_sdo_can()
+                data_point = self.read_sdo_can()#_thread(print_sdo=False)
                 self.monValueBox[a].setText(str(Analysis().convertion(data_point)))
                 a = a + 1
                    
@@ -1719,7 +1720,7 @@ class MainWindow(QMainWindow):
             self.set_index(_conf_indices[i])  # set index for later usage
             for s in np.arange(0, len(_subIndexItems)):
                 self.set_subIndex(_subIndexItems[s])
-                data_point = self.read_sdo_can()
+                data_point = self.read_sdo_can()#_thread(print_sdo=False)
                 self.confValueBox[a].setText(str(Analysis().convertion(data_point)))
                 a = a + 1
     

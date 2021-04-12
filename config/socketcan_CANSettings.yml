@@ -1,7 +1,7 @@
 CAN_Interfaces:
   socketcan:
-    SJW: 1
-    bitrate: 127271
+    SJW: 4
+    bitrate: 125000
     channels: 0
     ipAddress: None
     samplePoint: 0.5
