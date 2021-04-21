@@ -71,8 +71,7 @@ except:
     print (colored("Warning: AnaGate Package is not installed.......", 'red'), colored("Please ignore the warning if you are not using any AnaGate controllers.", "green"))
 
 rootdir = os.path.dirname(os.path.abspath(__file__))
-
-
+config_dir = "config/"
 class CanWrapper(object):
 
     def __init__(self,
@@ -85,26 +84,26 @@ class CanWrapper(object):
                  logformat='%(asctime)s - %(levelname)s - %(message)s'):
        
         super(CanWrapper, self).__init__()  # super keyword to call its methods from a subclass:
-        config_dir = "config/"
         """:obj:`~logging.Logger`: Main logger for this class"""
         verboselogs.install()
         self.logger = logging.getLogger(__name__)
-        cl.install(fmt=logformat, level=console_loglevel, isatty=True, milliseconds=True)
+        cl.install(fmt=logformat, level=console_loglevel, isatty=True, milliseconds=True) 
         # Read configurations from a file
         self.__conf = AnalysisUtils().open_yaml_file(file=config_dir + conf_file, directory=rootdir[:-14])
-        self.__bitrate_items = self.__conf['default_values']['bitrate_items']
         self.__bytes = self.__conf["default_values"]["bytes"]
         self.__subIndex = self.__conf["default_values"]["subIndex"]
-        #self.__cobid = self.__conf["default_values"]["cobid"]
         self.__dlc = self.__conf["default_values"]["dlc"]
         self.__channelPorts = self.__conf["channel_ports"]
-        self.__ipAddress = AnalysisUtils().get_info_yaml(dictionary=self.__conf['CAN_Interfaces'], index=interface, subindex="ipAddress")
-        self.__bitrate = AnalysisUtils().get_info_yaml(dictionary=self.__conf['CAN_Interfaces'], index=interface, subindex="bitrate")
-        self.__samplepoint = AnalysisUtils().get_info_yaml(dictionary=self.__conf['CAN_Interfaces'], index=interface, subindex="samplePoint")
-        self.__sjw = AnalysisUtils().get_info_yaml(dictionary=self.__conf['CAN_Interfaces'], index=interface, subindex="SJW")
-        self.__channels = AnalysisUtils().get_info_yaml(dictionary=self.__conf['CAN_Interfaces'], index=interface, subindex="channels")
-        self.__channel = list(AnalysisUtils().get_info_yaml(dictionary=self.__conf['CAN_Interfaces'], index=interface, subindex="channels"))[0]         
-        self.logger.notice('Loading all the configurations from the file %s!' % (config_dir + conf_file))
+       
+       # Read CAN settings from a file        
+        self.logger.notice('Loading all the configurations from the file %s!' % (config_dir + conf_file))   
+        self.__channels = self.__conf['CAN_Interfaces'][interface]["channels"]
+        self.__channel = list(self.__conf['CAN_Interfaces'][interface]["channels"])[0]
+        self.__ipAddress = self.__conf['CAN_Interfaces'][interface]["ipAddress"]
+        self.__bitrate = self.__conf['CAN_Interfaces'][interface]["bitrate"]
+        self.__samplePoint = self.__conf['CAN_Interfaces'][interface]["samplePoint"]
+        self.__sjw = self.__conf['CAN_Interfaces'][interface]["SJW"]  
+        
         # Initialize default arguments
         """:obj:`str` : Internal attribute for the interface"""
         self.__interface = interface
@@ -275,7 +274,7 @@ class CanWrapper(object):
         self.__canMsgThread = Thread(target=self.read_can_message_thread)
         self.__canMsgThread.start()
         
-    def read_adc_channels(self, file, directory , nodeId,outputname,outputdir, n_readings):
+    def read_adc_channels(self, file, directory , nodeId, outputname, outputdir, n_readings):
         """Start actual CANopen communication
         This function contains an endless loop in which it is looped over all
         ADC channels. Each value is read using
@@ -315,7 +314,7 @@ class CanWrapper(object):
                     self.logger.info(f'Got data for channel {channel}: = {adc_converted}')
                 pbar.update(1)
             pbar.close()
-        self.logger.notice("ADC data are saved to %s"%outputdir)
+        self.logger.notice("ADC data are saved to %s%s" % (outputdir,outputname))
 
     def stop(self):
         """Close |CAN| channel and stop the |OPCUA| server
@@ -348,7 +347,7 @@ class CanWrapper(object):
         self.__busOn = False
         self.logger.warning('Stopping the server.')
         
-    def read_sdo_can_thread(self, nodeId=None, index=None, subindex=None, timeout=100, MAX_DATABYTES=8, SDO_TX=None, SDO_RX=None,cobid = None):
+    def read_sdo_can_thread(self, nodeId=None, index=None, subindex=None, timeout=100, MAX_DATABYTES=8, SDO_TX=None, SDO_RX=None, cobid=None):
         """Read an object via |SDO|
     
         Currently expedited and segmented transfer is supported by this method.
@@ -443,10 +442,10 @@ class CanWrapper(object):
     def return_valid_message(self, nodeId, index, subindex, cobid_ret, data_ret, dlc, error_frame, SDO_TX, SDO_RX):
         # The following are the only expected response
         messageValid = False
-        errorReset = False      # check any reset signal from the chip
-        errorResponse = False   # SocketCAN error message
+        errorReset = False  # check any reset signal from the chip
+        errorResponse = False  # SocketCAN error message
         
-        errorReset  = (dlc == 8 
+        errorReset = (dlc == 8 
                       and cobid_ret == 0x700 + nodeId 
                       and data_ret[0] in [0x05, 0x08]) 
         
@@ -459,7 +458,7 @@ class CanWrapper(object):
                 and data_ret[0] in [0x80, 0x43, 0x47, 0x4b, 0x4f, 0x42] 
                 and int.from_bytes([data_ret[1], data_ret[2]], 'little') == index
                 and data_ret[3] == subindex)       
-        #Check the validity
+        # Check the validity
         if errorReset:
             cobid_ret, data_ret, dlc, flag, t, error_frame = self.read_can_message()
             messageValid = (dlc == 8 
@@ -470,9 +469,9 @@ class CanWrapper(object):
          
         if errorResponse:
             # there is a scenario where the chip reset and send an error message after
-            #This loop will:
-            #1. read the can reset signal
-            #2. read the next can message and check its validity
+            # This loop will:
+            # 1. read the can reset signal
+            # 2. read the next can message and check its validity
             try:
                 cobid_ret, data_ret, dlc, flag, t, error_frame = self.read_can_message(timeout=1.0)
             except Exception:
@@ -584,10 +583,9 @@ class CanWrapper(object):
             msg = can.Message(arbitration_id=cobid, data=data, is_extended_id=False, is_error_frame=False)
             try:
                 self.__ch.send(msg, timeout)
-            except:# can.CanError:
+            except:  # can.CanError:
                 self.logger.error("An Error occurred, The bus is not active")
-                #self.hardware_config(str(self.__channel), self.__interface)
-                
+                # self.hardware_config(str(self.__channel), self.__interface)
             
     def hardware_config(self, channel, interface, sjw):
         '''
@@ -637,7 +635,7 @@ class CanWrapper(object):
             except:  # (canlib.CanNoMsg, analib.CanNoMsg,can.CanError):
                 pass
 
-    def read_can_message(self, timeout = 1.0):
+    def read_can_message(self, timeout=1.0):
         """Read incoming |CAN| messages without storing any Queue
         This method runs an endless loop which can only be stopped by setting
         """
@@ -662,13 +660,14 @@ class CanWrapper(object):
             frame = self.__ch.recv(timeout=timeout)
                 
             if frame is not None:
-                #raise can.CanError
+                # raise can.CanError
                 cobid, data, dlc, flag, t , error_frame = (frame.arbitration_id, frame.data,
                                                            frame.dlc, frame.is_extended_id,
                                                            frame.timestamp, frame.is_error_frame)
                 return cobid, data, dlc, flag, t, error_frame
             else: 
-                return None
+                return None, None, None, None, None, None
+
     # The following functions are to read the can messages
     def _anagateCbFunc(self):
         """Wraps the callback function for AnaGate |CAN| interfaces. This is
@@ -809,9 +808,6 @@ class CanWrapper(object):
     def get_channel(self):
         """:obj:`int` : Number of the crurrently used |CAN| channel."""
         return self.__channel
-
-    def get_bitrate_items(self):
-            return self.__bitrate_items
            
     def get_channelState(self, channel):
         return channel.state
