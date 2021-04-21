@@ -52,10 +52,8 @@ class MainWindow(QMainWindow):
         self.__canSettings = self.__conf["Application"]["can_settings"]
         self.__bitrate_items = self.__conf['default_values']['bitrate_items']
         self.__ODlist = self.__conf['default_values']['OD_list']
-        #self.__sample_points = self.__conf['default_values']['sample_points']
         self.__bytes = self.__conf["default_values"]["bytes"]
         self.__subIndex = self.__conf["default_values"]["subIndex"]
-        #self.__cobid = self.__conf["default_values"]["cobid"]
         self.__dlc = self.__conf["default_values"]["dlc"]
         self.__interfaceItems = list(self.__conf['CAN_Interfaces'].keys()) 
         self.__channelPorts = self.__conf["channel_ports"]
@@ -1612,6 +1610,7 @@ class MainWindow(QMainWindow):
         '''
         # prepare a PlotWidget
         self.graphWidget = [pg.PlotWidget(background="w") for i in np.arange(n_channels)]
+        self.correct_range = 0
         for s in np.arange(n_channels): 
             # Add Title
             self.graphWidget[s].setTitle("Online data monitoring for ADC channel %s" % str(s+3))
@@ -1654,6 +1653,7 @@ class MainWindow(QMainWindow):
         _adc_indices = list(self.__adc_index)
         csv_writer = writer(self.out_file_csv)# Add contents of list as last row in the csv file
         data_point = [0]*33
+       
         for i in np.arange(len(_adc_indices)):
             _subIndexItems = list(AnalysisUtils().get_subindex_yaml(dictionary=_dictionary, index=_adc_indices[i], subindex="subindex_items"))
             self.set_index(_adc_indices[i])  # set index for later usage
@@ -1679,9 +1679,11 @@ class MainWindow(QMainWindow):
                                          str(data_point[s]),
                                          str(round(adc_converted[s], 3))))
                     if self.trendingBox[s] == True:
-                        if len(self.x[s]) >=500:   #solve some memory issues due to the large length of self.x[s] and self.y[s] the arrays       
-                            self.x[s] = list([0])
-                            self.y[s] = list([0])
+                        # Monitor a window of 80 points is enough to avoid Memory issues
+                        if len(self.x[s]) >=80:
+                            self.correct_range = self.correct_range+80
+                            self.x[s] = list([self.correct_range])
+                            self.y[s] = list([round(adc_converted[s], 3)])
                             self.graphWidget[s].clear()
                         self.update_figure(data=adc_converted[s], subindex=subindex)
                 else:

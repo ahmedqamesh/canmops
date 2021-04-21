@@ -1,8 +1,8 @@
 #!/bin/bash
 # variables
-n_buses=1
+n_buses=0
 echo "Initializing SocketCAN...."
-BITRATE=114285
+BITRATE=125000
 CHANNEL="can"
 SAMPLEPOINT=0.5
 SJW=4

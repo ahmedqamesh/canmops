@@ -6,6 +6,7 @@ import numpy as np
 from controlServer.analysisUtils import AnalysisUtils
 from controlServer.canWrapper   import CanWrapper
 rootdir = os.path.dirname(os.path.abspath(__file__)) 
+# All the can configurations of the CAN controler should be set firt from $HOME/config/main_cfg.yml
 def test():
     # Define parameters
     NodeIds = [1,8]
@@ -44,13 +45,14 @@ def test():
     else:
         print(f'Cannot read the CAN message')
 
-     #Example (3): Read all the ADC channels and Save it to a file
+     #Example (3): Read all the ADC channels and Save it to a file in the directory output_data
+     # PS. To visualise the data, Users can use the file $HOME/test_files/plot_adc.py
     wrapper.read_adc_channels(file ="MOPS_cfg.yml", #Yaml configurations
                               directory=rootdir+"/config", # direstory of the yaml file
                               nodeId = NodeIds[0], # Node Id
-                              outputname = "adc_data_test", # Data file name
+                              outputname = "adc_data_trial", # Data file name
                               outputdir = rootdir + "/output_data", # # Data directory
-                              n_readings = 20) # Number of Iterations
+                              n_readings = 100) # Number of Iterations
     wrapper.stop()        
 
 

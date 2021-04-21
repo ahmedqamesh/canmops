@@ -1,7 +1,7 @@
 # This file may be used to create an environment using:
 # $ conda create --name <env> --file <this file>
 # platform: linux-64
-#_libgcc_mutex=0.1=main
+_libgcc_mutex=0.1=main
 aenum=2.2.1=py37_0
 alive-progress=1.6.1=pypi_0
 anagate=0.1.0=pypi_0
@@ -9,6 +9,7 @@ argparse=1.2.1=pypi_0
 astroml=0.4.1=pypi_0
 astropy=4.0.1=pypi_0
 attrs=19.3.0=py_0
+autoflake=1.4=pypi_0
 backcall=0.1.0=py37_0
 basil-daq=3.0.1=pypi_0
 bitarray=1.2.1=py37h7b6447c_0
@@ -19,7 +20,7 @@ boto=2.39.0=pypi_0
 branca=0.4.1=py_0
 bzip2=1.0.8=h7b6447c_0
 ca-certificates=2020.4.5.2=hecda079_0
-canlib=1.15.483=pypi_0
+canmopswrapper=1.2.0=pypi_0
 celluloid=0.2.0=pypi_0
 certifi=2020.4.5.2=py37hc8dfbb8_0
 cffi=1.14.0=py37he30daa8_1
@@ -130,6 +131,7 @@ psutil=5.7.0=pypi_0
 ptyprocess=0.6.0=py37_0
 pycosat=0.6.3=py37h7b6447c_0
 pycparser=2.20=py_0
+pyflakes=2.2.0=pypi_0
 pygit2=0.26.4=pypi_0
 pygments=2.6.1=py_0
 pymongo=3.10.1=pypi_0
@@ -137,6 +139,7 @@ pyopenssl=19.1.0=py37_0
 pyparsing=2.4.7=py_0
 pypdf2=1.26.0=pypi_0
 pyqt=5.9.2=py37h05f1152_2
+pyqtconsole=1.2.1=pypi_0
 pyqtgraph=0.10.0=pypi_0
 pyrsistent=0.16.0=py37h7b6447c_0
 pyserial=3.4=py37_0
