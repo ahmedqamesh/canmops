@@ -134,7 +134,7 @@ class CanWrapper(object):
         self.set_channel_connection(interface=self.__interface)
         """Internal attribute for the |CAN| channel"""
         self.__busOn = True
-        self.__canMsgQueue = deque([], 50)  # queue with a size of 5o to queue all the messages in the bus
+        self.__canMsgQueue = deque([], 100)  # queue with a size of 5o to queue all the messages in the bus
         self.__gotMessage = False
         self.__pill2kill = Event()
         self.__lock = Lock()
@@ -587,7 +587,7 @@ class CanWrapper(object):
                 self.logger.error("An Error occurred, The bus is not active")
                 # self.hardware_config(str(self.__channel), self.__interface)
             
-    def hardware_config(self, channel, interface, sjw):
+    def hardware_config(self, bitrate, channel, interface, sjw,samplepoint):
         '''
         Pass channel string (example 'can0') to configure OS level drivers and interface.
         '''
@@ -597,7 +597,7 @@ class CanWrapper(object):
             _bus_type = "vcan"
         _can_channel = _bus_type + channel
         self.logger.info('CAN hardware OS drivers and config for %s' % _can_channel)
-        os.system(". " + rootdir + "/socketcan_wrapper_enable.sh %i %s %s %s %s" % (self.__bitrate, str(self.__samplepoint), sjw, _can_channel, _bus_type))
+        os.system(". " + rootdir + "/socketcan_wrapper_enable.sh %i %s %s %s %s" % (bitrate, samplepoint, sjw, _can_channel, _bus_type))
         self.logger.info('SocketCAN[%s] is initialized....' % _can_channel)
            
     def read_can_message_thread(self):
