@@ -1,7 +1,5 @@
-
 from __future__ import annotations
 import signal
-
 import  time
 import sys
 import pandas as pd
@@ -60,7 +58,6 @@ class MainWindow(QMainWindow):
         self.__devices = self.__conf["Devices"]
          
         self.__timeout = 2000
-        self.__period = 0.05
         self.__sdo_Rx = 0x580
         self.__interface = None
         self.__channel = None
@@ -216,9 +213,9 @@ class MainWindow(QMainWindow):
         self.nodeComboBox.setFixedSize(70, 25)
         
         oDLabel = QLabel()
-        oDLabel.setText("   OD index   ")
+        oDLabel.setText("   OD Index   ")
         self.ODComboBox =QComboBox()
-        self.ODComboBox.setStatusTip('Object Dictionary (OD) index')
+        self.ODComboBox.setStatusTip('Object Dictionary (OD) Index')
         self.ODComboBox.setFixedSize(70, 25)
         self.ODComboBox.addItems(self.__ODlist)
         
@@ -587,7 +584,6 @@ class MainWindow(QMainWindow):
                         self.wrapper.confirm_Mops(channel=_channel)
                     else:
                         pass
-                    
                 else:
                     _channel = self.get_channel()
                     _bitrate = self.get_bitrate()
@@ -601,6 +597,7 @@ class MainWindow(QMainWindow):
                         pass 
                 self.control_logger = self.wrapper.logger
             except:
+                self.logger.error("Cannot Connect to the CAN bus")
                 self.connectButton.setChecked(False)
         else:
            self.stop_server()
@@ -660,7 +657,7 @@ class MainWindow(QMainWindow):
             self.wrapper = CanWrapper(interface=_interface, bitrate=_bitrate, ipAddress=str(_ipAddress),
                                                 channel=int(_channel),sjw = int(_sjw))
             # Set the channel
-            self.wrapper.hardware_config(channel = str(_channel),interface = _interface,sjw = int(_sjw))
+            self.wrapper.hardware_config(bitrate =int(_bitrate) , channel = str(_channel),interface = _interface,sjw = int(_sjw), samplepoint=int(_sample_point))
             
             # the the connect button to checked
             self.connectButton.setChecked(True)
@@ -1117,7 +1114,7 @@ class MainWindow(QMainWindow):
         
         readCanMessage = self.wrapper.read_can_message_thread()
         if readCanMessage is not None:
-           cobid_ret, data_ret , dlc, flag, t = readCanMessage
+           cobid_ret, data_ret , dlc, flag, t,_ = readCanMessage
            data_ret_int = int.from_bytes(data_ret, byteorder=sys.byteorder)
            # get the data in Bytes
            b1, b2, b3, b4, b5, b6, b7, b8 = data_ret_int.to_bytes(8, 'little') 
@@ -1139,8 +1136,7 @@ class MainWindow(QMainWindow):
         decoded_response = f'------------------------------------------------------------------------'
         self.set_textBox_message(comunication_object="newline", msg=decoded_response, cobid = None) 
         return cobid_ret, data_ret, dlc, flag, t
-    
-
+           
     def device_child_window(self, childWindow):    
         '''
         The function will Open a special window for the device [MOPS] .
@@ -1180,13 +1176,17 @@ class MainWindow(QMainWindow):
         #CobIdTextBox = QLineEdit(self.__cobid)
         #CobIdTextBox.setFixedSize(70, 25)
 
+
         def __set_bus():
-            self.set_nodeId(self.deviceNodeComboBox.currentText())    
-            self.set_index(self.IndexListBox.currentItem().text())
-            self.set_subIndex(self.subIndexListBox.currentItem().text())
-            SDO_TX = hex(0x600)
-            self.set_odIndex(str(SDO_TX))
-                        
+            try:
+                self.set_nodeId(self.deviceNodeComboBox.currentText())    
+                self.set_index(self.IndexListBox.currentItem().text())
+                self.set_subIndex(self.subIndexListBox.currentItem().text())
+                SDO_TX = hex(0x600)
+                self.set_odIndex(str(SDO_TX))
+            except Exception:
+                self.error_message("Either Index or SubIndex are not defined")        
+                     
         def __set_bus_timer():
             self.set_nodeId(self.deviceNodeComboBox.currentText())     
             SDO_TX = hex(0x600)
@@ -1233,15 +1233,8 @@ class MainWindow(QMainWindow):
                 self.index_description_items = AnalysisUtils().get_info_yaml(dictionary=dictionary , index=index, subindex="description_items")
                 self.indexTextBox.setText(self.index_description_items)
                 
-        self.GridLayout = QGridLayout()    
-        icon = QLabel(self)
-        pixmap = QPixmap(self.get_icon_dir())
-        icon.setPixmap(pixmap.scaled(100, 100))
-        
-        device_title = QLabel()
-        newfont = QFont("Times", 12, QtGui.QFont.Bold)
-        device_title.setFont(newfont)
-        device_title.setText("        " + self.get_deviceName())
+        self.GridLayout = QGridLayout()
+        self.deviceGroupBox()
         BottonHLayout = QVBoxLayout()
         startButton = QPushButton("")
         startButton.setIcon(QIcon('graphicsUtils/icons/icon_start.png'))
@@ -1265,10 +1258,11 @@ class MainWindow(QMainWindow):
         BottonHLayout.addWidget(restartButton)
         
         firstVLayout = QVBoxLayout()
-        firstVLayout.addWidget(icon)
-        firstVLayout.addWidget(device_title)
+        #firstVLayout.addWidget(icon)
+        #firstVLayout.addLayout(deviceLayout)
+        firstVLayout.addWidget(self.deviceInfoGroupBox)        
         firstVLayout.addLayout(BottonHLayout)
-        firstVLayout.addSpacing(300)
+        firstVLayout.addSpacing(400)
         VLayout = QVBoxLayout()
         self.indexTextBox = QTextEdit()
         self.indexTextBox.setStyleSheet("background-color: white; border: 2px inset black; min-height: 150px; min-width: 400px;")
@@ -1313,6 +1307,7 @@ class MainWindow(QMainWindow):
         # Add Adc channels tab [These values will be updated with the timer self.initiate_adc_timer]
         self.adc_values_window()
         self.monitoring_values_window()
+        self.deviceGroupBox()
         self.configuration_values_window()
         
         # initiate a PlotWidget [data holder] for all ADC channels for later trending
@@ -1361,16 +1356,57 @@ class MainWindow(QMainWindow):
                 
         HBox.addWidget(send_button)
         HBox.addWidget(stop_button)
+        mainLayout.addWidget(self.FirstGroupBox      , 0, 0, 4, 2)
+        mainLayout.addWidget(self.deviceInfoGroupBox , 0, 3, 1, 2)
+        mainLayout.addWidget(self.ThirdGroupBox      , 1, 3, 2, 2) #0, 3, 2, 5)
+        mainLayout.addWidget(self.SecondGroupBox     , 3, 3, 1, 2)# 2, 3, 1, 5)
         
-        mainLayout.addWidget(self.FirstGroupBox , 0, 0, 3, 3)
-        mainLayout.addWidget(self.ThirdGroupBox, 0, 3, 2, 5)
-        mainLayout.addWidget(self.SecondGroupBox, 2, 3, 1, 5)
-        mainLayout.addLayout(HBox , 3, 0)
-        mainLayout.addLayout(progressHLayout, 3, 3)
+        mainLayout.addLayout(HBox , 5, 0)
+        mainLayout.addLayout(progressHLayout, 5, 1)
         self.tab2.setLayout(mainLayout)
         self.MenuBar.create_statusBar(childWindow)
         logframe.setLayout(self.tabLayout)
          
+    def deviceGroupBox(self):
+        '''
+        The window holds all the INFO needed for the connected device
+        '''
+        # Define subGroup
+        self.deviceInfoGroupBox = QGroupBox()
+        deviceInfoGridLayout = QGridLayout()
+        #Icon
+        iconLayout = QHBoxLayout()
+        icon = QLabel(self)
+        pixmap = QPixmap(self.get_icon_dir())
+        icon.setPixmap(pixmap.scaled(100, 100))
+        #iconLayout.addSpacing(30)
+        iconLayout.addWidget(icon)    
+        
+        #Device Name
+        deviceLayout = QHBoxLayout()
+        deviceTypeLabel = QLabel()
+        deviceTypeLabel.setText("Device:")
+        deviceTitleLabel = QLabel()
+        newfont = QFont("OldEnglish", 12, QtGui.QFont.Bold)
+        deviceTitleLabel.setFont(newfont)
+        deviceTitleLabel.setText(self.get_deviceName())
+        deviceLayout.addWidget(deviceTypeLabel)
+        deviceLayout.addWidget(deviceTitleLabel)    
+        #Chip ID
+        chipLayout = QHBoxLayout()
+        chipIdLabel = QLabel()
+        chipIdLabel.setText("Chip Id:")
+        chipIdTextBox = QLabel()
+        newfont = QFont("OldEnglish", 12, QtGui.QFont.Bold)
+        chipIdTextBox.setFont(newfont)
+        chipIdTextBox.setText(self.__chipId)        
+        chipLayout.addWidget(chipIdLabel)
+        chipLayout.addWidget(chipIdTextBox)
+        deviceInfoGridLayout.addLayout(iconLayout, 0, 0)
+        deviceInfoGridLayout.addLayout(deviceLayout, 1, 0)
+        deviceInfoGridLayout.addLayout(chipLayout, 2, 0) 
+        self.deviceInfoGroupBox.setLayout(deviceInfoGridLayout)
+        
     def adc_values_window(self):
         '''
         The function will create a QGroupBox for ADC Values [it is called by the function device_child_window]
@@ -1524,7 +1560,7 @@ class MainWindow(QMainWindow):
     '''
     Update blocks with data
     '''        
-    def initiate_adc_timer(self, period=0.5):
+    def initiate_adc_timer(self, period=3):
         '''
         The function will  update the GUI with the ADC data ach period in ms.
         '''  
@@ -1621,6 +1657,7 @@ class MainWindow(QMainWindow):
             # Add grid
             self.graphWidget[s].showGrid(x=True, y=True)
             self.graphWidget[s].getAxis("bottom").setStyle(tickTextOffset=15)
+            
             #set style
             self.graphWidget[s].setStyleSheet("background-color: black;"
                                     "color: black;"
@@ -1679,9 +1716,9 @@ class MainWindow(QMainWindow):
                                          str(data_point[s]),
                                          str(round(adc_converted[s], 3))))
                     if self.trendingBox[s] == True:
-                        # Monitor a window of 80 points is enough to avoid Memory issues
-                        if len(self.x[s]) >=80:
-                            self.correct_range = self.correct_range+80
+                        # Monitor a window of 100 points is enough to avoid Memory issues
+                        if len(self.x[s]) >=100:
+                            self.correct_range = self.correct_range+100
                             self.x[s] = list([self.correct_range])
                             self.y[s] = list([round(adc_converted[s], 3)])
                             self.graphWidget[s].clear()
@@ -1840,11 +1877,11 @@ class MainWindow(QMainWindow):
             
     def show_deviceWindow(self):
         self.deviceWindow = QMainWindow()
-        try:
-            self.device_child_window(childWindow=self.deviceWindow)
-            self.deviceWindow.show()
-        except Exception:
-            self.error_message("Either the channel is not activated or the CAN interface is not connected")
+       # try:
+        self.device_child_window(childWindow=self.deviceWindow)
+        self.deviceWindow.show()
+       # except Exception:
+       #     self.error_message("Either the channel is not activated or the CAN interface is not connected")
  
     '''
     Define set/get functions

@@ -3,8 +3,8 @@ Application:
     device_name             :   'MOPS'
     device_version          :   "v1.2"
     icon_dir                :   "graphicsUtils/icons/icon_mops.png"
-    chipId                  :   "1"
-    nodeIds                 :   {"1", "2"}
+    chipId                  :   "27"
+    nodeIds                 :   {"1", "2","3", "4","5", "6"}
     index_items             :   {  
                                 "0x1000" :  {"description_items" :"<html><b> Device type</b> [Default 191(hex)]</b></html>",
                                              "subindex_items"    :{     "0":"<html><b>Device type</b></html>"}}      
@@ -123,4 +123,5 @@ adc_channels_reg:
                                "33":"T",
                                "34":"V"} 
 Hardware:
+     # The voltage divider Resistor Network
     resistor_ratio  : "40"  #Resistor ratio needed to be edited by the user
