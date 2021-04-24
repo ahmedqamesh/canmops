@@ -1,7 +1,5 @@
-
 from __future__ import annotations
 import signal
-
 import  time
 import sys
 import pandas as pd
@@ -60,7 +58,6 @@ class MainWindow(QMainWindow):
         self.__devices = self.__conf["Devices"]
          
         self.__timeout = 2000
-        self.__period = 0.05
         self.__sdo_Rx = 0x580
         self.__interface = None
         self.__channel = None
@@ -216,9 +213,9 @@ class MainWindow(QMainWindow):
         self.nodeComboBox.setFixedSize(70, 25)
         
         oDLabel = QLabel()
-        oDLabel.setText("   OD index   ")
+        oDLabel.setText("   OD Index   ")
         self.ODComboBox =QComboBox()
-        self.ODComboBox.setStatusTip('Object Dictionary (OD) index')
+        self.ODComboBox.setStatusTip('Object Dictionary (OD) Index')
         self.ODComboBox.setFixedSize(70, 25)
         self.ODComboBox.addItems(self.__ODlist)
         
@@ -587,7 +584,6 @@ class MainWindow(QMainWindow):
                         self.wrapper.confirm_Mops(channel=_channel)
                     else:
                         pass
-                    
                 else:
                     _channel = self.get_channel()
                     _bitrate = self.get_bitrate()
@@ -601,6 +597,7 @@ class MainWindow(QMainWindow):
                         pass 
                 self.control_logger = self.wrapper.logger
             except:
+                self.logger.error("Cannot Connect to the CAN bus")
                 self.connectButton.setChecked(False)
         else:
            self.stop_server()
@@ -1117,7 +1114,7 @@ class MainWindow(QMainWindow):
         
         readCanMessage = self.wrapper.read_can_message_thread()
         if readCanMessage is not None:
-           cobid_ret, data_ret , dlc, flag, t = readCanMessage
+           cobid_ret, data_ret , dlc, flag, t,_ = readCanMessage
            data_ret_int = int.from_bytes(data_ret, byteorder=sys.byteorder)
            # get the data in Bytes
            b1, b2, b3, b4, b5, b6, b7, b8 = data_ret_int.to_bytes(8, 'little') 
