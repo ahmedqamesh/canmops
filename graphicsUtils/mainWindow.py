@@ -1178,12 +1178,15 @@ class MainWindow(QMainWindow):
 
 
         def __set_bus():
-            self.set_nodeId(self.deviceNodeComboBox.currentText())    
-            self.set_index(self.IndexListBox.currentItem().text())
-            self.set_subIndex(self.subIndexListBox.currentItem().text())
-            SDO_TX = hex(0x600)
-            self.set_odIndex(str(SDO_TX))
-                        
+            try:
+                self.set_nodeId(self.deviceNodeComboBox.currentText())    
+                self.set_index(self.IndexListBox.currentItem().text())
+                self.set_subIndex(self.subIndexListBox.currentItem().text())
+                SDO_TX = hex(0x600)
+                self.set_odIndex(str(SDO_TX))
+            except Exception:
+                self.error_message("Either Index or SubIndex are not defined")        
+                     
         def __set_bus_timer():
             self.set_nodeId(self.deviceNodeComboBox.currentText())     
             SDO_TX = hex(0x600)
