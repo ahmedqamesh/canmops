@@ -1,36 +1,17 @@
 #The file includes only the default values for the software
 Application:
    app_name: CANMOPS
-   app_version: v1.2
+   app_version: "v1.2"
    app_icon_dir: graphicsUtils/icons/icon_mops.png
    can_settings: True # Allow to load all the default settings from the last update [saved in $HOME/config/]
+   Devices:  [MOPS] #Configured devices ["None"] is no device allowed
+   user: "Ahmed Qamesh"
+   
 channel_ports:
-   '0': null
-   '1': null # please add here all the possible channel ports that are needed for the buses
-Devices:
-- MOPS #Configured devices ["None"] is no device allowed
+   - '0'
+   - '1' # please add here all the possible channel ports that are needed for the buses 
 default_values:
-   index_items:
-   - '0x1000'
-   bitrate_items:
-   - '    '
-   - '10000'
-   - '20000'
-   - '50000'
-   - '62500'
-   - '100000'
-   - '103750' # channels are defined as {bus1[node1,node2],bus2[node1,node2]}
-   - '111111'
-#"virtual"     :{"bitrate":114285 ,"samplePoint":0.5,"SJW":4,"ipAddress":"None"             ,"channels":{0: [1],1: [1]}}}
-   - '112500'
-   - '113750'
-   - '114285'
-   - '116250'
-   - '125000'
-   - '250000'
-   - '500000'
-   - '1000000'
-   OD_list:
+   CANID_list:
    - '0x600'
    bytes:
    - '40'
@@ -43,47 +24,39 @@ default_values:
    - '0'
    subIndex: '0'
    dlc: '8'
-   adctrim: 0
+   adctrim: "0"
+   
 CAN_Interfaces:
    AnaGate:
-      bitrate: 125000
-      samplePoint: 0.5
-      SJW: 4
-      ipAddress: 192.168.1.254
+      bitrate: "125000"
+      samplePoint: "0.5"
+      SJW: "4"
+      ipAddress: "192.168.1.254"
       channels:
-         1:
-         - 1
-         - 2
-         0:
-         - 1
-         - 2
+         "1":
+         - "1"
+         - "2"
+         "0":
+         - "1"
+         - "2"
    Kvaser:
-      bitrate: 125000
-      samplePoint: 0.5
-      SJW: 4
-      ipAddress: None
+      bitrate: "125000"
+      samplePoint: "0.5"
+      SJW: "4"
+      ipAddress: "None"
       channels:
-         0:
-         - 1
-         - 2
-         - 3
-         - 4
-         - 5
-         - 6
+         "0":
+         - "1"
+         - "2"
    socketcan:
-      bitrate: 125000
-      samplePoint: 0.5
-      SJW: 4
-      ipAddress: None
+      bitrate: "111111"
+      samplePoint: "0.5"
+      SJW: "4"
+      ipAddress: "None"
       channels:
-         0:
-         - 1
-         - 2
-         - 3
-         - 4
-         - 5
-         - 6
-         1:
-         - 1
-Others:
-   user: Ahmed Qamesh
+         "0":
+         - "1"
+         - "2"
+         "1":
+         - "1"
+   

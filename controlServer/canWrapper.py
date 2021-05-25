@@ -134,7 +134,7 @@ class CanWrapper(object):
         self.set_channel_connection(interface=self.__interface)
         """Internal attribute for the |CAN| channel"""
         self.__busOn = True
-        self.__canMsgQueue = deque([], 100)  # queue with a size of 5o to queue all the messages in the bus
+        self.__canMsgQueue = deque([], 100)  # queue with a size of 100 to queue all the messages in the bus
         self.__pill2kill = Event()
         self.__lock = Lock()
         self.__kvaserLock = Lock()
@@ -191,12 +191,12 @@ class CanWrapper(object):
     def confirm_Mops(self, channel=0, timeout=100):
 
         self.logger.notice('Checking MOPS status ...')
-        _nodeIds = self.__channels[channel]
+        _nodeIds = self.__channels[str(channel)]
         self.set_nodeList(_nodeIds)
         self.logger.info(f'Connection to channel {channel} has been verified.')
         for nodeId in _nodeIds: 
             # Send the status message
-            cobid_TX = 0x700 + nodeId
+            cobid_TX = 0x700 + int(nodeId,16)
             cobid_RX = None
             self.write_can_message(cobid_TX, [0, 0, 0, 0, 0, 0, 0, 0], flag=0, timeout=200)
             # receive the message
@@ -406,7 +406,6 @@ class CanWrapper(object):
                                     and ret[3] == subindex)
                     # errorResponse is meant to deal with any disturbance in the signal due to the reset of the chip 
                     errorResponse = (dlc == 8 and cobid_ret == 0x88 and ret[0] in [0x00])
-            
             if (messageValid or errorResponse):
                 del self.__canMsgQueue[i]
                 break  
@@ -580,8 +579,6 @@ class CanWrapper(object):
             if not self.__ch.deviceOpen:
                 self.logger.notice('Reopening AnaGate CAN interface')
             self.__ch.write(cobid, data, flag)
-            
-        
         else:
             msg = can.Message(arbitration_id=cobid, data=data, is_extended_id=False, is_error_frame=False)
             try:
@@ -612,34 +609,36 @@ class CanWrapper(object):
         designed to be used as a :class:`~threading.Thread`.
         """
         #self.__pill2kill = Event()
+        _interface = self.__interface;
         while not self.__pill2kill.is_set(): 
-            #try:
-            if self.__interface == 'Kvaser':
-                with self.__kvaserLock:#Added for urgent cases
-                    frame = self.__ch.read(100)
-                cobid, data, dlc, flag, t = (frame.id, frame.data,
-                                             frame.dlc, frame.flags,
-                                             frame.timestamp)
-                error_frame = None
-                if frame is None or (cobid == 0 and dlc == 0):
-                    raise canlib.CanNoMsg
-            
-            elif self.__interface == 'AnaGate':
-                cobid, data, dlc, flag, t = self.__ch.getMessage()
-                if (cobid == 0 and dlc == 0):
-                    raise analib.CanNoMsg
-            else:
-                readcan = self.__ch.recv(timeout=1.0)
-                if readcan is None:
-                    self.__pill2kill.set()
-                    # raise can.CanError
-                cobid, data, dlc, flag, t , error_frame = readcan.arbitration_id, readcan.data, readcan.dlc, readcan.is_extended_id, readcan.timestamp, readcan.is_error_frame
-            with self.__lock:
-                self.__canMsgQueue.appendleft((cobid, data, dlc, flag, t))
-            self.dumpMessage(cobid, data, dlc, flag, t)
-            return cobid, data, dlc, flag, t, error_frame
-            #except:  # (canlib.CanNoMsg, analib.CanNoMsg,can.CanError):
-            #    pass
+            try:
+                if _interface == 'Kvaser':
+                    with self.__kvaserLock:#Added for urgent cases
+                        frame = self.__ch.read(100)
+                    cobid, data, dlc, flag, t = (frame.id, frame.data,
+                                                 frame.dlc, frame.flags,
+                                                 frame.timestamp)
+                    error_frame = None
+                    if frame is None or (cobid == 0 and dlc == 0):
+                        raise canlib.CanNoMsg
+                
+                elif _interface == 'AnaGate':
+                    cobid, data, dlc, flag, t = self.__ch.getMessage()
+                    if (cobid == 0 and dlc == 0):
+                        raise analib.CanNoMsg
+                else:
+                    frame = self.__ch.recv(timeout=1.0)
+                    if frame is None:
+                        self.__pill2kill.set()
+                        # raise can.CanError
+                    cobid, data, dlc, flag, t , error_frame = frame.arbitration_id, frame.data, frame.dlc, frame.is_extended_id, frame.timestamp, frame.is_error_frame
+                with self.__lock:
+                    self.__canMsgQueue.appendleft((cobid, data, dlc, flag, t))
+                self.dumpMessage(cobid, data, dlc, flag, t)
+                return cobid, data, dlc, flag, t, error_frame
+            except:  # (canlib.CanNoMsg, analib.CanNoMsg,can.CanError):
+               self.__pill2kill = Event()
+               return None, None, None, None, None, None
 
     def read_can_message(self, timeout=1.0):
         """Read incoming |CAN| messages without storing any Queue
@@ -774,9 +773,7 @@ class CanWrapper(object):
         
     def set_bitrate(self, bitrate):
         if self.__interface == 'Kvaser':
-            #self.stop()
             self.__bitrate = bitrate
-            #self.start()
         else:
             self.__bitrate = bitrate 
  
