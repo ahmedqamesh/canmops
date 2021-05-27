@@ -5,15 +5,17 @@ from canlib import canlib, Frame
 # https://github.com/Kvaser/canlib-samples/blob/master/Samples/Python/canlib.py
 def set_channelConnection(channel=0,
                  openFlags=canlib.Open.ACCEPT_VIRTUAL,
-                 bitrate=canlib.canBITRATE_125K,
+                 bitrate=111111,#canlib.canBITRATE_125K,
                  outputControl=canlib.Driver.NORMAL,
-                 sjw = 4):
+                 sjw = 4,
+                 tseg1 = 5,
+                 tseg2 =6):
     ch = canlib.openChannel(channel, openFlags)
     print("Using channel: %s, EAN: %s" % (
         canlib.ChannelData(channel).device_name,
         canlib.ChannelData(channel).card_upc_no))
     ch.setBusOutputControl(outputControl)
-    ch.setBusParams(freq = bitrate,sjw =sjw)
+    ch.setBusParams(freq = bitrate,sjw =sjw,tseg1 =tseg1, tseg2 = tseg2)
     ch.busOn()
     return ch
 
@@ -21,7 +23,6 @@ def set_channelConnection(channel=0,
 def tearDownChannel(ch):
     ch.busOff()
     ch.close()
-
 
 print("canlib dll version:", canlib.dllversion())
 ch0 = set_channelConnection(channel=0)

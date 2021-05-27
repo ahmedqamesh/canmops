@@ -12,7 +12,7 @@ with open("README.md", "r") as fh:
 
 setuptools.setup(
     name="CANMOPSWrapper",
-    version="1.0.0",
+    version="1.2.0",
     author="Ahmed Qamesh",
     author_email="ahmed.qamesh@cern.ch",
     description="A CAN wrappper for MOPS messages",

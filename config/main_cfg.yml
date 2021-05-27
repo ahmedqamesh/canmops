@@ -3,13 +3,14 @@ Application:
    app_name: CANMOPS
    app_version: "v1.2"
    app_icon_dir: graphicsUtils/icons/icon_mops.png
-   can_settings: True # Allow to load all the default settings from the last update [saved in $HOME/config/]
    Devices:  [MOPS] #Configured devices ["None"] is no device allowed
    user: "Ahmed Qamesh"
    
 channel_ports:
-   - '0'
-   - '1' # please add here all the possible channel ports that are needed for the buses 
+   "0":
+    Nodes: ["1","2"]
+    
+CAN_Interfaces: ["AnaGate","Kvaser","socketcan"]   
 default_values:
    CANID_list:
    - '0x600'
@@ -25,38 +26,4 @@ default_values:
    subIndex: '0'
    dlc: '8'
    adctrim: "0"
-   
-CAN_Interfaces:
-   AnaGate:
-      bitrate: "125000"
-      samplePoint: "0.5"
-      SJW: "4"
-      ipAddress: "192.168.1.254"
-      channels:
-         "1":
-         - "1"
-         - "2"
-         "0":
-         - "1"
-         - "2"
-   Kvaser:
-      bitrate: "125000"
-      samplePoint: "0.5"
-      SJW: "4"
-      ipAddress: "None"
-      channels:
-         "0":
-         - "1"
-         - "2"
-   socketcan:
-      bitrate: "111111"
-      samplePoint: "0.5"
-      SJW: "4"
-      ipAddress: "None"
-      channels:
-         "0":
-         - "1"
-         - "2"
-         "1":
-         - "1"
    
