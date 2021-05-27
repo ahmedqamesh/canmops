@@ -57,28 +57,28 @@ try:
     from canlib import canlib, Frame
     from canlib.canlib.exceptions import CanGeneralError
     from canlib.canlib import ChannelData
-    from controlServer import CANopenConstants as coc
 except:
-
     class CanGeneralError():
         pass
-
     print (colored("Warning: Canlib Package is not installed.......", 'red'), colored("Please ignore the warning if you are not using any CANLib packages (in case SocketCAN is used)", "green"))
 # Import analib for AnaGate
 try:
     import analib
 except:
+    class CanGeneralError():
+        pass
     print (colored("Warning: AnaGate Package is not installed.......", 'red'), colored("Please ignore the warning if you are not using any AnaGate controllers.", "green"))
 
 rootdir = os.path.dirname(os.path.abspath(__file__))
 config_dir = "config/"
+lib_dir = rootdir[:-13]
 class CanWrapper(object):
 
     def __init__(self,
                  interface=None, channel=None,
                  bitrate=None, samplePoint=None,
-                 sjw=None,
-                 ipAddress=None,
+                 sjw=None,ipAddress=None,
+                 tseg1 = None, tseg2 = None,
                  conf_file="main_cfg.yml",
                  console_loglevel=logging.INFO,
                  logformat='%(asctime)s - %(levelname)s - %(message)s'):
@@ -94,16 +94,22 @@ class CanWrapper(object):
         self.__subIndex = self.__conf["default_values"]["subIndex"]
         self.__dlc = self.__conf["default_values"]["dlc"]
         self.__channelPorts = self.__conf["channel_ports"]
-       
-       # Read CAN settings from a file        
-        self.logger.notice('Loading all the configurations from the file %s!' % (config_dir + conf_file))   
-        self.__channels = self.__conf['CAN_Interfaces'][interface]["channels"]
-        self.__channel = list(self.__conf['CAN_Interfaces'][interface]["channels"])[0]
-        self.__ipAddress = self.__conf['CAN_Interfaces'][interface]["ipAddress"]
-        self.__bitrate = self.__conf['CAN_Interfaces'][interface]["bitrate"]
-        self.__samplePoint = self.__conf['CAN_Interfaces'][interface]["samplePoint"]
-        self.__sjw = self.__conf['CAN_Interfaces'][interface]["SJW"]  
-        
+        self.__channel = list(self.__conf['channel_ports'])[0]
+       # Read CAN settings from a file 
+        filename = os.path.join(lib_dir, config_dir + interface + "_CANSettings.yml")
+        test_date = time.ctime(os.path.getmtime(filename))
+        # Load settings from CAN settings file
+        _canSettings = AnalysisUtils().open_yaml_file(file=config_dir + interface + "_CANSettings.yml", directory=lib_dir)
+        if bitrate is None:
+            self.logger.notice("Loading CAN settings from the file %s produced on %s" % (filename, test_date))
+            self.__channels = _canSettings['CAN_Interfaces'][interface]["channels"]
+            self.__ipAddress = _canSettings['CAN_Interfaces'][interface]["ipAddress"]
+            self.__bitrate = _canSettings['CAN_Interfaces'][interface]["bitrate"]
+            self.__samplePoint = _canSettings['CAN_Interfaces'][interface]["samplePoint"]
+            self.__sjw = _canSettings['CAN_Interfaces'][interface]["SJW"]
+            self.__tseg1 = _canSettings['CAN_Interfaces'][interface]["tseg1"]  
+            self.__tseg2 = _canSettings['CAN_Interfaces'][interface]["tseg2"] 
+
         # Initialize default arguments
         """:obj:`str` : Internal attribute for the interface"""
         self.__interface = interface
@@ -117,8 +123,13 @@ class CanWrapper(object):
             
         if sjw is not None:
             self.__sjw = sjw
-                                
-        self.__bitrate = self._parseBitRate(self.__bitrate)   
+
+        if tseg1 is not None:
+            self.__tseg1 = tseg1
+        
+        if tseg2 is not None:
+            self.__tseg2 = tseg2
+             
         """:obj:`int` : Internal attribute for the IP Address"""  
         if ipAddress is not None:
              self.__ipAddress = ipAddress
@@ -146,58 +157,24 @@ class CanWrapper(object):
             for ch in range(0, num_channels):
                 chdata = canlib.ChannelData(ch)
                 chdataname = chdata.device_name
-                chdata_EAN = chdata.card_upc_no
-                chdata_serial = chdata.card_serial_no
-                return f'Using {chdataname}, EAN: {chdata_EAN}, Serial No.:{chdata_serial}'
+                #chdata_EAN = chdata.card_upc_no
+                #chdata_serial = chdata.card_serial_no
+                return f'Using {chdataname}, Bitrate:{self.__bitrate}'
         if self.__interface == 'AnaGate':
             ret = analib.wrapper.dllInfo()  # DLL version
             return f'{self.__ch}, Bitrate:{self.__bitrate}'
         else:
             return f'{self.__ch.channel_info}, Bitrate:{self.__bitrate}'
-        
-    def _parseBitRate(self, bitrate):
-        if self.__interface == 'Kvaser':
-            try: 
-                if bitrate not in coc.CANLIB_BITRATES:
-                    raise ValueError(f'Bitrate {bitrate} not in list of allowed '
-                                     f'values!')
-                return coc.CANLIB_BITRATES[bitrate]
-            except Exception:
-                pass
-        if self.__interface == 'AnaGate':
-            if bitrate not in analib.constants.BAUDRATES:
-                raise ValueError(f'Bitrate {bitrate} not in list of allowed '
-                                 f'values!')
-            return bitrate
-        else:
-            return bitrate
-
-    def confirm_nodes(self, timeout=100):
-
-        self.logger.notice('Checking bus connections ...')
-        for channel in self.__channels:
-            _nodeIds = self.__channels[channel]
-            self.set_nodeList(_nodeIds)
-            self.logger.info(f'Connection to channel {channel} has been ' f'verified.')
-            for nodeId in _nodeIds:
-                dev_t = self.read_sdo_can_thread(nodeId, 0x1000, 0, timeout)
-                if dev_t is None:
-                    self.logger.error(f'Node {nodeId} in channel {channel} did not answer!')
-                    # self.__nodeList.remove(nodeId)
-                else:
-                    self.logger.info(f'Connection to node {nodeId} in channel {channel} has been '
-                                     f'verified.')
                     
-    def confirm_Mops(self, channel=0, timeout=100):
-
+    def confirm_nodes(self, channel=0, timeout=100):
         self.logger.notice('Checking MOPS status ...')
-        _nodeIds = self.__channels[str(channel)]
+        _nodeIds = AnalysisUtils().get_info_yaml(dictionary=self.__conf['channel_ports'], index=str(channel), subindex="Nodes")
         self.set_nodeList(_nodeIds)
         self.logger.info(f'Connection to channel {channel} has been verified.')
         for nodeId in _nodeIds: 
             # Send the status message
             cobid_TX = 0x700 + int(nodeId,16)
-            cobid_RX = None
+            cobid_RX = 0x700 + int(nodeId,16)
             self.write_can_message(cobid_TX, [0, 0, 0, 0, 0, 0, 0, 0], flag=0, timeout=200)
             # receive the message
             readCanMessage = self.read_can_message()
@@ -221,9 +198,9 @@ class CanWrapper(object):
         self.logger.notice('Going in \'Bus On\' state ...')
         try:
             if interface == 'Kvaser':
-                self.__ch = canlib.openChannel(self.__channel, canlib.canOPEN_ACCEPT_VIRTUAL)
+                self.__ch = canlib.openChannel(int(self.__channel), canlib.canOPEN_ACCEPT_VIRTUAL)
                 self.__ch.setBusOutputControl(canlib.Driver.NORMAL)  # New from tutorial
-                self.__ch.setBusParams(freq = self.__bitrate, sjw =self.__sjw, tseg1=0, tseg2=0)
+                self.__ch.setBusParams(freq = int(self.__bitrate), sjw =int(self.__sjw), tseg1=int(self.__tseg1), tseg2=int(self.__tseg2))
                 self.__ch.busOn()
                 self.__canMsgThread = Thread(target=self.read_can_message_thread)
             elif interface == 'AnaGate':
@@ -316,8 +293,43 @@ class CanWrapper(object):
             pbar.close()
         self.logger.notice("ADC data are saved to %s%s" % (outputdir,outputname))
 
+    def restart_channel_connection(self, interface = None):
+        """Restart |CAN| channel.
+        for threaded application, busOff() must be called once for each handle. 
+        The same applies to busOn() - the physical channel will not go off bus
+        until the last handle to the channel goes off bus.   
+        
+        """  
+        if interface is None: 
+            _interface = self.__interface
+        else:
+            _interface = interface
+            
+        self.logger.warning('Resetting the CAN channel.')
+        #Stop the bus
+        with self.lock:
+            self.cnt['Residual CAN messages'] = len(self.__canMsgQueue)
+        self.__pill2kill.set()
+        if self.__busOn:
+            if _interface == 'Kvaser':
+                try:
+                    self.__canMsgThread.join()
+                except RuntimeError:
+                    pass
+                self.__ch.busOff()
+                self.__ch.close()
+            elif _interface == 'AnaGate': 
+                self.__ch.close()
+            else:
+                self.__ch.shutdown()
+                channel = "can" + str(self.__channel)              
+        self.__busOn = False
+        self.set_channel_connection(interface = _interface)
+        self.__pill2kill = Event()
+        self.logger.notice('The channel is reset') 
+        
     def stop(self):
-        """Close |CAN| channel and stop the |OPCUA| server
+        """Close |CAN| channel
         Make sure that this is called so that the connection is closed in a
         correct manner. When this class is used within a :obj:`with` statement
         this method is called automatically when the statement is exited.
@@ -343,7 +355,7 @@ class CanWrapper(object):
             else:
                 self.__ch.shutdown()
                 channel = "can" + str(self.__channel)
-                
+                        
         self.__busOn = False
         self.logger.warning('Stopping the server.')
         
@@ -587,18 +599,23 @@ class CanWrapper(object):
                 self.logger.error("An Error occurred, The bus is not active")
                 # self.hardware_config(str(self.__channel), self.__interface)
             
-    def hardware_config(self, bitrate, channel, interface, sjw,samplepoint):
+    def hardware_config(self, bitrate, channel, interface, sjw,samplepoint,tseg1,tseg2):
         '''
         Pass channel string (example 'can0') to configure OS level drivers and interface.
         '''
         if interface == "socketcan":
             _bus_type = "can"
-        else:
+            _can_channel = _bus_type + channel
+            self.logger.info('Configure CAN hardware drivers for channel %s' % _can_channel)
+            os.system(". " + rootdir + "/socketcan_wrapper_enable.sh %i %s %s %s %s" % (bitrate, samplepoint, sjw, _can_channel, _bus_type))
+        elif interface == "virtual":
             _bus_type = "vcan"
-        _can_channel = _bus_type + channel
-        self.logger.info('CAN hardware OS drivers and config for %s' % _can_channel)
-        os.system(". " + rootdir + "/socketcan_wrapper_enable.sh %i %s %s %s %s" % (bitrate, samplepoint, sjw, _can_channel, _bus_type))
-        self.logger.info('SocketCAN[%s] is initialized....' % _can_channel)
+            _can_channel = _bus_type + channel
+            self.logger.info('Configure CAN hardware drivers for channel %s' % _can_channel)
+            os.system(". " + rootdir + "/socketcan_wrapper_enable.sh %i %s %s %s %s" % (bitrate, samplepoint, sjw, _can_channel, _bus_type))
+        else:
+            _can_channel = channel
+        self.logger.info('%s[%s] Interface is initialized....' % (interface,_can_channel))
            
     def read_can_message_thread(self):
         """Read incoming |CAN| messages and store them in the queue
@@ -742,8 +759,6 @@ class CanWrapper(object):
             msgstr += '    ' * (8 - len(msg))
             st = datetime.datetime.fromtimestamp(t).strftime('%H:%M:%S')
             msgstr += str(st)
-            if self.__interface == 'Kvaser':
-                self.logger.info(coc.MSGHEADER)
             self.logger.info(msgstr)
 
     # Setter and getter functions
@@ -957,37 +972,50 @@ def main():
     
     # CAN settings group
     cGroup = parser.add_argument_group('CAN settings')
-    cGroup.add_argument('-C', '--channel', metavar='CHANNEL', type=int,
-                        help='Number of CAN channel to use', default=0)
+    cGroup.add_argument('-C', '--channel', metavar='CHANNEL',
+                        help='Number of CAN channel to use', 
+                        default=0)
+    
     cGroup.add_argument('-i', '--ipaddress', metavar='IPADDRESS',
                         default='192.168.1.254', dest='ipAddress',
                         help='IP address of the AnaGate Ethernet CAN '
                         'interface')
-    cGroup.add_argument('-b', '--bitrate', metavar='BITRATE', type=int,
+    cGroup.add_argument('-b', '--bitrate', metavar='BITRATE',
                         default=125000,
                         help='CAN bitrate as integer in bit/s')
 
-    cGroup.add_argument('-sp', '--samplePoint', metavar='SAMPLEPOINT', type=float,
-                        default=0.50,
+    cGroup.add_argument('-sp', '--samplePoint', metavar='SAMPLEPOINT',
+                        default=0.5,
                         help='CAN sample point in decimal')
 
+    cGroup.add_argument('-sjw', '--sjw', metavar='SJW',
+                        default=4,
+                        help='Synchronization Jump Width')
+    
+    cGroup.add_argument('-tseg1', '--tseg1', metavar='tseg1',
+                        default=5,
+                        help='Time Segment1')
+    
+    cGroup.add_argument('-tseg2', '--tseg2', metavar='tseg2',
+                        default=6,
+                        help='Time Segment2')
+            
+    
     # Logging configuration
     lGroup = parser.add_argument_group('Logging settings')
     lGroup.add_argument('-c', '--console_loglevel',
                         choices={'NOTSET', 'SPAM', 'DEBUG', 'VERBOSE', 'INFO',
                                  'NOTICE', 'SUCCESS', 'WARNING', 'ERROR',
                                  'CRITICAL'},
-                        default='NOTICE',
+                        default='INFO',
                         help='Level of console logging')
 
     args = parser.parse_args()
     
     # Start the server
     wrapper = CanWrapper(**vars(args))
-        # wrapper.start()
-
-        
+    wrapper.confirm_nodes()
+    wrapper.stop()     
+    
 if __name__ == "__main__":
-    # with CanWrapper(interface="Kvaser") as wrapper:
-    #    wrapper.start()  
     main()      

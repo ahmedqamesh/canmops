@@ -1,8 +1,10 @@
 CAN_Interfaces:
   Kvaser:
-    SJW: 1
-    bitrate: 109625
+    SJW: 4
+    bitrate: 111111
     channels: 0
     ipAddress: None
     samplePoint: 0.5
     timeout: 500
+    tseg1: 5
+    tseg2: 6

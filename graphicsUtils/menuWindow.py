@@ -63,32 +63,44 @@ class MenuBar(QWidget):
         def _set_socketchannel():
             _arg = "socketcan"
             _interface = "socketcan"
-            self.MainWindow.set_socketchannel(arg = _arg, interface = _interface)
+            self.MainWindow.set_canchannel(arg = _arg, interface = _interface)
         
         def _Set_virtual_socketchannel():
             _arg = "virtual"
             _interface = "virtual"
-            self.MainWindow.set_socketchannel(arg = _arg, interface = _interface)
+            self.MainWindow.set_canchannel(arg = _arg, interface = _interface)
                     
         #SetSocketcan = SocketMenu.addMenu('Set CAN Bus')
         
-        SetNativeInterface = QAction(QIcon('graphics_Utils/icons/icon_start.png'),'Set SocketCAN', mainwindow)
-        SetNativeInterface.setStatusTip("Set SocketCAN")
-        SetNativeInterface.triggered.connect(_set_socketchannel)
+        SetSocketCAN = QAction(QIcon('graphics_Utils/icons/icon_start.png'),'Set SocketCAN', mainwindow)
+        SetSocketCAN.setStatusTip("Set SocketCAN")
+        SetSocketCAN.triggered.connect(_set_socketchannel)
 
         SetVirtualSocketcan = QAction(QIcon('graphics_Utils/icons/icon_start.png'),'Set Virtual', mainwindow)
         SetVirtualSocketcan.setStatusTip("Set VirtualCAN")
         SetVirtualSocketcan.triggered.connect(_Set_virtual_socketchannel)
-                
-        SocketMenu.addAction(SetNativeInterface)
-        #SetSocketcan.addAction(SetVirtualSocketcan)# to be used later 
         
+                    
+        SocketMenu.addAction(SetSocketCAN)
+        #SetSocketcan.addAction(SetVirtualSocketcan)# to be used later 
+
+        def _restart_kvaserchannel():
+            _arg = "restart"
+            _interface = "Kvaser"
+            self.MainWindow.set_canchannel(arg = _arg, interface = _interface)
+            
+        RestartKvaser = QAction(QIcon('graphics_Utils/icons/icon_reset.png'),'Restart Kvaser Interface', mainwindow)
+        RestartKvaser.setStatusTip("Restart Kvaser interface")
+        RestartKvaser.triggered.connect(_restart_kvaserchannel)
+        
+        KvaserMenu.addAction(RestartKvaser)
+            
         # Restart the bus
         def _restart_socketchannel():
             _arg = "restart"
             _interface = "socketcan"
             os.system("sudo ip link set can0 type can restart-ms 100")
-            #self.MainWindow.set_socketchannel(arg = _arg, interface =_interface)
+            #self.MainWindow.set_canchannel(arg = _arg, interface =_interface)
             
         RestartSocketcan = QAction(QIcon('graphics_Utils/icons/icon_reset.png'),'Restart CAN channel', mainwindow)
         RestartSocketcan.setStatusTip("Restart CAN channel")

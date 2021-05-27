@@ -2,7 +2,7 @@
 from controlServer.canWrapper   import CanWrapper
 # All the can configurations of the CAN controller should be set first from $HOME/config/main_cfg.yml
 def test(interface):
-    wrapper.confirm_Mops()
+    wrapper.confirm_nodes()
     wrapper.stop()        
 
 if __name__=='__main__':
