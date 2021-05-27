@@ -11,6 +11,7 @@ channel_ports:
     Nodes: ["1","2"]
     
 CAN_Interfaces: ["AnaGate","Kvaser","socketcan"]   
+
 default_values:
    CANID_list:
    - '0x600'

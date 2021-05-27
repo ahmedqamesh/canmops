@@ -1,5 +1,4 @@
 eclipse.preferences.version=1
-encoding//controlServer/CANopenConstants.py=utf-8
 encoding//controlServer/__version__.py=utf-8
 encoding//controlServer/canWrapper.py=utf-8
 encoding//doc/conf.py=utf-8
