@@ -3,8 +3,8 @@ import sys
 import os
 import time
 import numpy as np
-from controlServer.analysisUtils import AnalysisUtils
-from controlServer.canWrapper   import CanWrapper
+from canmops.analysisUtils import AnalysisUtils
+from canmops.canWrapper   import CanWrapper
 rootdir = os.path.dirname(os.path.abspath(__file__)) 
 # All the can configurations of the CAN controller should be set first from $HOME/config/main_cfg.yml
 def test():
@@ -57,6 +57,6 @@ def test():
 
 if __name__=='__main__':
     #wrapper = canWrapper.CanWrapper(interface = "AnaGate")
-    #wrapper = CanWrapper(interface = "socketcan")
-    wrapper =  CanWrapper(interface = "Kvaser")
+    wrapper = CanWrapper(interface = "socketcan")
+    #wrapper =  CanWrapper(interface = "Kvaser")
     test()

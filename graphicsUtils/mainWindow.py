@@ -7,7 +7,6 @@ import os
 import logging
 import numpy as np
 from typing import *
-from sys import stdout
 from matplotlib.backends.qt_compat import QtCore, QtWidgets
 import pyqtgraph as pg
 from PyQt5 import *
@@ -16,32 +15,24 @@ from PyQt5.QtGui     import *
 from PyQt5.QtWidgets import *
 from random import randint
 from graphicsUtils import menuWindow
-from controlServer.analysis import Analysis
-from controlServer.analysisUtils import AnalysisUtils
-from controlServer.canWrapper   import CanWrapper
+from canmops.analysis import Analysis
+from canmops.logger import Logger 
+from canmops.analysisUtils import AnalysisUtils
+from canmops.canWrapper   import CanWrapper
 import csv
 from csv import writer
 import yaml
-# Third party modules
-import coloredlogs as cl
-import verboselogs
 rootdir = os.path.dirname(os.path.abspath(__file__)) 
 lib_dir = rootdir[:-13]
 config_dir = "config/"
 
 class MainWindow(QMainWindow):
 
-    def __init__(self, parent=None,
-                 console_loglevel=logging.INFO,
-                 logformat='%(asctime)s - %(levelname)s - %(message)s'):
-        super(MainWindow, self).__init__(parent)
+    def __init__(self, console_loglevel=logging.INFO):
+        super(MainWindow, self).__init__(None)
         """:obj:`~logging.Logger`: Main logger for this class"""
-        verboselogs.install()
-        self.logger = logging.getLogger(__name__)
-        cl.install(fmt=logformat, level=console_loglevel, isatty=True, milliseconds=True)
-         
+        self.logger = Logger().setup_main_logger(name = __name__,console_loglevel=console_loglevel)
         # Start with default settings
-        self.logger = logging.getLogger(__name__)
         # Read configurations from a file    
         self.__conf = AnalysisUtils().open_yaml_file(file=config_dir + "main_cfg.yml", directory=lib_dir)
         self.__appName = self.__conf["Application"]["app_name"] 
@@ -707,21 +698,21 @@ class MainWindow(QMainWindow):
                     _bus_type = "can"
                     _can_channel = _bus_type +  str(_channel)
                     self.logger.info('Configure CAN hardware drivers for channel %s' % _can_channel)
-                    os.system(". " + rootdir[:-14] + "/controlServer/socketcan_wrapper_enable.sh %i %s %s %s %s" %(_bitrate,_samplePoint,_sjw,_can_channel,_bus_type))
+                    os.system(". " + rootdir[:-14] + "/canmops/socketcan_wrapper_enable.sh %i %s %s %s %s" %(_bitrate,_samplePoint,_sjw,_can_channel,_bus_type))
                     self.logger.info('SocketCAN[%s] is initialized....' % _can_channel)
                     
                 if (arg == "virtual" and interface == "virtual"):
                     _bus_type = "vcan"             
                     _can_channel = _bus_type +  str(_channel)
                     self.logger.info('Configure CAN hardware drivers for channel %s' % _can_channel)
-                    os.system(". " + rootdir[:-14] + "/controlServer/socketcan_wrapper_enable.sh %i %s %s %s %s" %(_bitrate,_samplePoint,_sjw,_can_channel,_bus_type))
+                    os.system(". " + rootdir[:-14] + "/canmops/socketcan_wrapper_enable.sh %i %s %s %s %s" %(_bitrate,_samplePoint,_sjw,_can_channel,_bus_type))
                     self.logger.info('SocketCAN[%s] is initialized....' % _can_channel)
                     
                 if (arg == "restart" and interface == "socketcan"):
                     #This is An automatic bus-off recovery if too many errors occurred on the CAN bus
                     _bus_type = "restart" 
                     _can_channel = "can"+str(_channel)       
-                    os.system(". " + rootdir[:-14] + "/controlServer/socketcan_wrapper_enable.sh %s %s %s %s %s" %("_bitrate","_samplePoint","_sjw",_can_channel,_bus_type))
+                    os.system(". " + rootdir[:-14] + "/canmops/socketcan_wrapper_enable.sh %s %s %s %s %s" %("_bitrate","_samplePoint","_sjw",_can_channel,_bus_type))
                 
                 if (arg == "restart" and interface == "Kvaser"):
                     self.wrapper.restart_channel_connection(interface = "Kvaser")
@@ -1666,7 +1657,7 @@ class MainWindow(QMainWindow):
         self.ADCtimer.timeout.connect(self.update_progressBar)
         self.ADCtimer.start()
         
-    def stop_adc_timer(self,s):
+    def stop_adc_timer(self):
         '''
         The function will  stop the adc_timer.
         '''        
@@ -1791,7 +1782,7 @@ class MainWindow(QMainWindow):
                                          str(round(adc_converted[s], 3))))
                     if self.trendingBox[s] == True:
                         # Monitor a window of 100 points is enough to avoid Memory issues
-                        if len(self.x[s]) >=20:
+                        if len(self.x[s]) >=100:
                             self.correct_range = self.correct_range+100
                             self.x[s] = list([self.correct_range])
                             self.y[s] = list([round(adc_converted[s], 3)])
