@@ -35,3 +35,4 @@ In order to make sure that all the connected nodes [Mops] on the bus are healthy
 ```
 python canmops/canWrapper.py -S -b 111111 -sp 0.3 -sjw 4 -tseg1 5 -tseg2 6
 ```
+Users should replace the argument -S according to the used interface [-S for socket, -K for Kvaser and -A for Anagate].
