@@ -1082,6 +1082,8 @@ class MainWindow(QMainWindow):
         else:
             RX_response = "No Response Message"
             self.set_textBox_message(comunication_object="ErrorFrame", msg=RX_response,cobid =str("NONE"+"  "))
+            # fill the Bytes/bits table       
+            self.set_table_content(bytes=RX_response, comunication_object="ErrorFrame")
                 #fill the textBox
         decoded_response = f'------------------------------------------------------------------------'
         self.set_textBox_message(comunication_object="newline", msg=decoded_response, cobid = None)   
@@ -1993,10 +1995,15 @@ class MainWindow(QMainWindow):
                 for b in np.arange(len(slicedBits)):
                     self.RXTable.setItem(byte, n_bytes - b, QTableWidgetItem(slicedBits[b]))
                     self.RXTable.item(byte, n_bytes - b).setBackground(QColor(self.get_color(int(slicedBits[b]))))
+        if comunication_object == "ErrorFrame": 
+            self.RXTable.clearContents()  # clear cells
+            self.hexRXTable.clearContents()  # clear cells
+            self.decRXTable.clearContents()  # clear cells            
         else:
             self.TXTable.clearContents()  # clear cells
             self.hexTXTable.clearContents()  # clear cells
             self.decTXTable.clearContents()  # clear cells
+            self.RXProgressBar.setValue(0)
             # for byte in bytes:
             for byte in np.arange(len(bytes)):
                 self.hexTXTable.setItem(0, byte, QTableWidgetItem(str(hex(bytes[byte]))))

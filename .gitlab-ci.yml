@@ -47,15 +47,15 @@ test:software:
       - sudo apt-get install can-utils
       #Installing Canlib package
       - cd packages
-      - tar -xf linuxcan.tar.gz
-      - cd linuxcan
+     # - tar -xf linuxcan.tar.gz
+     # - cd linuxcan
       #- make 
       #- sudo make install #to install all drivers
       # install canlib
-      - cd canlib
-      - make 
-      - make install #to install all drivers
-      - cd ..
+      #- cd canlib
+     # - make 
+     # - make install #to install all drivers
+      #- cd ..
       # install Kvcommon
       #- cd common
       #- make 
@@ -63,8 +63,8 @@ test:software:
       #- cd ..
       #- make KV_Debug_ON=1 #To build with debug printouts:
       # install extra libraries of canlib
-      - cd ..
-      - pip install canlib-1.6.615-py2.py3-none-any.whl
+      #- cd ..
+      #- pip install canlib-1.6.615-py2.py3-none-any.whl
      # Installing AnaGate CAN interface
       #- pip install anagate-0.1.0-py3-none-any.whl
       - cd ..
