@@ -26,6 +26,11 @@ class AnalysisUtils(object):
             cfg = yaml.load(ymlfile, Loader=yaml.FullLoader)
         return cfg
     
+    def dump_yaml_file(self,directory=None , file=None, loaded = None):
+        filename = os.path.join(directory, file)
+        with open(filename, 'w') as ymlfile:
+            yaml.dump(loaded, ymlfile)
+    
     def save_to_csv(self,data=None, outname=None, directory=None):
         df = pd.DataFrame(data)
         if not os.path.exists(directory):

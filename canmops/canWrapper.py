@@ -92,9 +92,6 @@ class CanWrapper(object):
         self.logger = Logger().setup_main_logger(name = __name__,console_loglevel=console_loglevel)
         # Read configurations from a file
         self.__conf = AnalysisUtils().open_yaml_file(file=config_dir + conf_file, directory=rootdir[:-8])
-        self.__bytes = self.__conf["default_values"]["bytes"]
-        self.__subIndex = self.__conf["default_values"]["subIndex"]
-        self.__dlc = self.__conf["default_values"]["dlc"]
         self.__channelPorts = self.__conf["channel_ports"]
         self.__channel = list(self.__conf['channel_ports'])[0]
        # Read CAN settings from a file 
@@ -764,15 +761,6 @@ class CanWrapper(object):
             self.logger.info(msgstr)
 
     # Setter and getter functions
-    def set_subIndex(self, x):
-        self.__subIndex = x
-    
-    def set_dlc(self, x):
-        self.__dlc = x
-    
-    def set_bytes(self, x):
-        self.__bytes = x
-        
     def set_interface(self, x):
         self.__interface = x
 
@@ -831,15 +819,6 @@ class CanWrapper(object):
            
     def get_channelState(self, channel):
         return channel.state
-
-    def get_subIndex(self):
-        return self.__subIndex
-    
-    def get_dlc(self):
-        return self.__dlc
-
-    def get_bytes(self):
-        return self.__bytes 
 
     def __enter__(self):
         return self

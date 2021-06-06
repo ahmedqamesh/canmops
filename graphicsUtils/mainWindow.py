@@ -41,8 +41,6 @@ class MainWindow(QMainWindow):
         self.__devices = self.__conf["Application"]["Devices"]
         self.__CANID_list = self.__conf['default_values']['CANID_list']
         self.__bytes = self.__conf["default_values"]["bytes"]
-        self.__subIndex = self.__conf["default_values"]["subIndex"]
-        self.__dlc = self.__conf["default_values"]["dlc"]
         self.__interfaceItems = list(self.__conf['CAN_Interfaces']) 
         self.__channelPorts = self.__conf["channel_ports"]
         self.__timeout = 2000
@@ -54,6 +52,7 @@ class MainWindow(QMainWindow):
         self.__bitrate = None
         self.__sample_point =None
         self.index_description_items = None
+        self.__subIndex = None
         self.wrapper = None
         
     def Ui_ApplicationWindow(self):
@@ -214,7 +213,7 @@ class MainWindow(QMainWindow):
         
         subIndexLabel = QLabel()
         subIndexLabel.setText("SubIndex [hex]")
-        self.mainSubIndextextbox = QLineEdit(self.__subIndex)
+        self.mainSubIndextextbox = QLineEdit("0")
         self.mainSubIndextextbox.setFixedSize(80, 25)
         
         def __set_bus():
@@ -434,7 +433,6 @@ class MainWindow(QMainWindow):
         setTableWidth()
         setTableLength()
                 
-
         gridLayout = QGridLayout()
 
         gridLayout.addLayout(TXLayout, 0 , 1)
@@ -492,12 +490,7 @@ class MainWindow(QMainWindow):
             conf = self.child.open()
         else:
             conf = AnalysisUtils().open_yaml_file(file=config_dir + self.__devices[0] + "_cfg.yml", directory=lib_dir)
-        
         self.__devices.append(conf["Application"]["device_name"])
-        
-        self.deviceButton.deleteLater()
-        self.configureDeviceBoxLayout.removeWidget(self.deviceButton)
-        self.deviceButton = QPushButton("")
         deviceName, version, icon_dir, nodeIds, dictionary_items, adc_channels_reg, _ , _, chipId = self.configure_devices(conf)
         # Load ADC calibration constants
         #adc_calibration = pd.read_csv(config_dir + "adc_calibration.csv", delimiter=",", header=0)
@@ -510,9 +503,15 @@ class MainWindow(QMainWindow):
         self.set_nodeList(nodeIds)
         self.set_dictionary_items(dictionary_items) 
         self.set_adc_channels_reg(adc_channels_reg)               
-        self.deviceButton.setIcon(QIcon(self.get_icon_dir()))
-        self.deviceButton.clicked.connect(self.show_deviceWindow)
-        self.configureDeviceBoxLayout.addWidget(self.deviceButton)
+        try:
+            self.deviceButton.deleteLater()
+            self.configureDeviceBoxLayout.removeWidget(self.deviceButton)
+            self.deviceButton = QPushButton("")
+            self.deviceButton.setIcon(QIcon(self.get_icon_dir()))
+            self.deviceButton.clicked.connect(self.show_deviceWindow)
+            self.configureDeviceBoxLayout.addWidget(self.deviceButton)
+        except:
+            pass
          
     def configure_devices(self, dev):
         '''
@@ -1111,6 +1110,7 @@ class MainWindow(QMainWindow):
         
         # clear cells
         self.TXProgressBar.setValue(0)
+        self.RXProgressBar.setValue(0)
         self.TXTable.clearContents()  
         self.hexTXTable.clearContents()
         self.decTXTable.clearContents()
@@ -1445,7 +1445,7 @@ class MainWindow(QMainWindow):
         icon = QLabel(self)
         pixmap = QPixmap(self.get_icon_dir())
         icon.setPixmap(pixmap.scaled(100, 100))
-        #iconLayout.addSpacing(30)
+        iconLayout.addSpacing(50)
         iconLayout.addWidget(icon)    
         
         #Device Name
@@ -1928,9 +1928,9 @@ class MainWindow(QMainWindow):
         #self.MessageWindow.show()
                   
     def show_CANSettingsWindow(self):
-        self.MainWindow = QMainWindow()
-        self.can_settings_child_window(self.MainWindow)
-        self.MainWindow.show()
+        self.SettingsWindow = QMainWindow()
+        self.can_settings_child_window(self.SettingsWindow)
+        self.SettingsWindow.show()
 
     def show_trendWindow(self):
         trend = QMainWindow(self)
@@ -2003,7 +2003,6 @@ class MainWindow(QMainWindow):
             self.TXTable.clearContents()  # clear cells
             self.hexTXTable.clearContents()  # clear cells
             self.decTXTable.clearContents()  # clear cells
-            self.RXProgressBar.setValue(0)
             # for byte in bytes:
             for byte in np.arange(len(bytes)):
                 self.hexTXTable.setItem(0, byte, QTableWidgetItem(str(hex(bytes[byte]))))
@@ -2100,9 +2099,6 @@ class MainWindow(QMainWindow):
     
     def set_canId_tx(self,x):
         self.__canId_tx = x
-        
-    def set_dlc(self, x):
-        self.__dlc = x
     
     def set_bytes(self, x):
         self.__bytes = x
@@ -2151,9 +2147,6 @@ class MainWindow(QMainWindow):
     
     def get_canId_rx(self):
         return self.__canId_rx
-    
-    def get_dlc(self):
-        return self.__dlc
 
     def get_bytes(self):
         return self.__bytes 

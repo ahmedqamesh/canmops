@@ -1,15 +1,23 @@
+from matplotlib.backends.qt_compat import QtCore, QtWidgets
+from PyQt5 import *
 from PyQt5.QtCore    import *
 from PyQt5.QtGui     import *
 from PyQt5.QtWidgets import *
+import logging
 from graphicsUtils import mainWindow
+from canmops.analysisUtils import AnalysisUtils
+from canmops.logger import Logger 
 import os
-
+import numpy as np
+rootdir = os.path.dirname(os.path.abspath(__file__)) 
+config_dir = "config/"
+lib_dir = rootdir[:-13]
 class MenuBar(QWidget):  
     
     def __init__(self, parent=mainWindow):
         super(MenuBar, self).__init__(parent)
         self.MainWindow = mainWindow.MainWindow()
-
+        self.logger = Logger().setup_main_logger(name = __name__,console_loglevel=logging.INFO)
     def stop(self):
         return self.MainWindow.stop_server()
            
@@ -18,6 +26,7 @@ class MenuBar(QWidget):
         menuBar.setNativeMenuBar(False)  # only for MacOS
         self._fileMenu(menuBar, mainwindow)
         #self._viewMenu(menuBar, mainwindow)
+        self._settingsMenu(menuBar, mainwindow)
         self._interfaceMenu(menuBar, mainwindow)
         self._helpMenu(menuBar, mainwindow)
         
@@ -32,7 +41,7 @@ class MenuBar(QWidget):
         exit_action.triggered.connect(qApp.quit)
         fileMenu.addAction(exit_action)
     
-    # 1. View menu
+    # 2. View menu
     def _viewMenu(self, menuBar, mainwindow):
                
         viewMenu = menuBar.addMenu('&View')
@@ -42,7 +51,25 @@ class MenuBar(QWidget):
         # exit_action.triggered.connect(self.stop)
         #view_action.triggered.connect(qApp.quit)
         viewMenu.addAction(view_action)
+
+    
+    # 1. View menu
+    def _settingsMenu(self, menuBar, mainwindow):      
+        settingsMenu = menuBar.addMenu('&settings')
+            
+        def show__add_node():
+            self.MainWindow.update_device_box()
+            self.__device = self.MainWindow.get_deviceName()
+            conf = AnalysisUtils().open_yaml_file(file=config_dir + self.__device + "_cfg.yml" , directory=lib_dir)
+            self.NodeWindow = QMainWindow()
+            self.add_node(self.NodeWindow, conf)
+            self.NodeWindow.show()
         
+        AddNodes = QAction(QIcon('graphics_Utils/icons/icon_nodes.png'),'Device settings', mainwindow)
+        AddNodes.setStatusTip("Add Nodes to the Node menu")
+        AddNodes.triggered.connect(show__add_node)
+        settingsMenu.addAction(AddNodes)
+          
     # 4. Help menu
     def _helpMenu(self, menuBar, mainwindow):
         helpmenu = menuBar.addMenu("&Help")
@@ -147,8 +174,124 @@ class MenuBar(QWidget):
                                          "Author: Ahmed Qamesh\n"+
                                          "Contact: ahmed.qamesh@cern.ch\n"+
                                          "Organization: Bergische Universität Wuppertal")
- 
+
+    def add_node(self, childWindow, conf):
+        #check the conf file
+        NodeGroup= QGroupBox("Node Info")
+        ChipGroup= QGroupBox("Chip Info")
+        HardwareGroup= QGroupBox("Hardware Info")
+        self.__appIconDir = conf["Application"]["icon_dir"]
+        childWindow.setObjectName("Edit Node Settings")
+        childWindow.setWindowTitle("Edit Node Settings")
+        childWindow.setWindowIcon(QtGui.QIcon(self.__appIconDir))
+        childWindow.setGeometry(200, 200, 100, 100)
         
+        mainLayout = QGridLayout()
+        # Define a frame for that group
+        plotframe = QFrame()
+        plotframe.setLineWidth(0.6)
+        childWindow.setCentralWidget(plotframe)
+        
+        nodeLayout= QVBoxLayout()
+        #Inputs
+        inLayout = QVBoxLayout()  
+        nodeSpinBox = QSpinBox()
+        
+        add_button = QPushButton("Add")
+        add_button.setIcon(QIcon('graphicsUtils/icons/icon_add.png'))
+
+        clear_button = QPushButton("Clear")
+        clear_button.setIcon(QIcon('graphicsUtils/icons/icon_clear.png'))
+                    
+        inLayout.addWidget(nodeSpinBox)
+        inLayout.addWidget(add_button)
+        
+        #outputs
+        outLayout = QVBoxLayout()
+        nodeLabel = QLabel()
+        nodeLabel.setText("Added  Nodes [dec]")    
+        nodeListBox = QListWidget()
+        outLayout.addWidget(nodeLabel)
+        outLayout.addWidget(nodeListBox)
+        outLayout.addWidget(clear_button)
+       
+        #Icon
+        infoLayout = QVBoxLayout()
+        
+        iconLayout = QHBoxLayout()
+        icon = QLabel(self) 
+        pixmap = QPixmap(self.__appIconDir)
+        icon.setPixmap(pixmap.scaled(100, 100))
+        iconLayout.addSpacing(30)
+        iconLayout.addWidget(icon)    
+        
+        chipLayout = QHBoxLayout()
+        chipIdLabel = QLabel()
+        chipIdLabel.setText("Chip Id:")
+        chipIdSpinBox = QSpinBox()
+        chipLayout.addWidget(chipIdLabel)
+        chipLayout.addWidget(chipIdSpinBox)
+        chipLayout.addSpacing(60)
+
+
+        hardwareLayout = QHBoxLayout()
+        hardwareLabel = QLabel()
+        hardwareLabel.setText("Resistor ratio")
+        hardwareIdSpinBox = QSpinBox()
+        hardwareLayout.addWidget(hardwareLabel)
+        hardwareLayout.addWidget(hardwareIdSpinBox)
+        #hardwareLayout.addSpacing(60)
+        
+                    
+        infoLayout.addLayout(iconLayout)
+        infoLayout.addLayout(chipLayout)
+
+        def _add_item():
+            node = nodeSpinBox.value()
+            nodeListBox.addItem(str(int(node)))
+        
+        def _clear_item():
+            _row = nodeListBox.currentRow()
+            nodeListBox.takeItem(_row)
+        
+        def _save_items():
+            _nodes = [nodeListBox.item(x).text() for x in range(nodeListBox.count())]
+            _chipId = str(chipIdSpinBox.value())
+            _resistorRatio = str(hardwareIdSpinBox.value())
+            conf["Application"]["nodeIds"] = _nodes
+            conf["Application"]["chipId"] = _chipId
+            conf["Hardware"]["resistor_ratio"] = _resistorRatio
+            file = config_dir + self.__device + "_cfg.yml"
+            AnalysisUtils().dump_yaml_file(file=file,
+                                           loaded = conf,
+                                           directory=lib_dir)
+            self.logger.info("Saving Information to the file %s"%file)
+        add_button.clicked.connect(_add_item)
+        clear_button.clicked.connect(_clear_item)
+        
+        buttonLayout = QHBoxLayout()
+        close_button = QPushButton("Close")
+        close_button.setIcon(QIcon('graphicsUtils/icons/icon_close.png'))
+        close_button.clicked.connect(childWindow.close)
+        
+        Save_button = QPushButton("Save")
+        Save_button.setIcon(QIcon('graphicsUtils/icons/icon_true.png'))
+        Save_button.clicked.connect(_save_items)       
+        buttonLayout.addWidget(Save_button)
+        buttonLayout.addWidget(close_button)
+        
+        nodeLayout.addLayout(inLayout)
+        nodeLayout.addLayout(outLayout)
+        
+        mainLayout.addWidget(NodeGroup , 0, 0,1,1)
+        mainLayout.addWidget(ChipGroup, 0, 1,1,1)
+        mainLayout.addWidget(HardwareGroup,1,1,1,1)
+        mainLayout.addLayout(buttonLayout ,2, 1)
+        NodeGroup.setLayout(nodeLayout)
+        ChipGroup.setLayout(infoLayout)
+        HardwareGroup.setLayout(hardwareLayout)
+        plotframe.setLayout(mainLayout) 
+               
 if __name__ == "__main__":
     pass
                 
