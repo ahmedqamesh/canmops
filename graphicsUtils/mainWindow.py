@@ -1254,7 +1254,7 @@ class MainWindow(QMainWindow):
         The calling function for this is show_deviceWindow
         '''
         #to be done
-        #self.MenuBar.create_device_menuBar(childWindow)
+        self.MenuBar.create_device_menuBar(childWindow)
         _channel = self.get_channel()
         n_channels = 33
         try:
