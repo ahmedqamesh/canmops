@@ -1,27 +1,12 @@
-#The file includes only the default values for the software
 Application:
-   app_name: CANMOPS
-   app_version: "v1.2"
-   app_icon_dir: graphicsUtils/icons/icon_mops.png
-   Devices:  [MOPS] #Configured devices ["None"] is no device allowed
-   user: "Ahmed Qamesh"
-   
+  Devices:
+  - MOPS
+  app_icon_dir: graphicsUtils/icons/icon_mops.png
+  app_name: CANMOPS
+  app_version: v1.2
+  user: Ahmed Qamesh
 channel_ports:
-   "0":
-    Nodes: ["1","2"]
-    
-CAN_Interfaces: ["AnaGate","Kvaser","socketcan"]   
-
-default_values:
-   CANID_list:
-   - '0x600'
-   bytes:
-   - '40'
-   - '0'
-   - '10'
-   - '0'
-   - '0'
-   - '0'
-   - '0'
-   - '0'
-   
+  '0':
+    Nodes:
+    - '1'
+    - '2'

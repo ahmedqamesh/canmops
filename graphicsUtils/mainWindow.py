@@ -39,9 +39,9 @@ class MainWindow(QMainWindow):
         self.__appVersion = self.__conf['Application']['app_version']
         self.__appIconDir = self.__conf["Application"]["app_icon_dir"]
         self.__devices = self.__conf["Application"]["Devices"]
-        self.__CANID_list = self.__conf['default_values']['CANID_list']
-        self.__bytes = self.__conf["default_values"]["bytes"]
-        self.__interfaceItems = list(self.__conf['CAN_Interfaces']) 
+        self.__CANID_list = ['0x600'] 
+        self.__bytes = ["40","0","10","0","0","0","0","0"]
+        self.__interfaceItems = list(["AnaGate","Kvaser","socketcan"]) 
         self.__channelPorts = self.__conf["channel_ports"]
         self.__timeout = 2000
         self.__canId_rx = 0x580
@@ -856,14 +856,6 @@ class MainWindow(QMainWindow):
         ChildWindow.setCentralWidget(plotframe)
         
         # Define First Group
-       # FirstGroupBox = QGroupBox("")
-        FirstGridLayout = QGridLayout()
-        
-        clear_button = QPushButton("Clear")
-        clear_button.clicked.connect(ChildWindow.close)
-        
-        FirstGridLayout.addWidget(clear_button, 0, 0)
-       # FirstGroupBox.setLayout(FirstGridLayout)
         
         # Define the second group
         SecondGroupBox = QGroupBox("Bus Configuration")
@@ -881,6 +873,7 @@ class MainWindow(QMainWindow):
         interfaceLayout.addWidget(interfaceComboBox)
         # Another group will be here for Bus parameters
         self.BusParametersGroupBox()
+        self.NodeParameters()
         
         channelLabel = QLabel()
         channelLabel.setText("CAN Bus: ")
@@ -906,28 +899,82 @@ class MainWindow(QMainWindow):
             _channel = channelComboBox.currentText()
             self.set_channel(_channel)
             self.set_interface(_interface)
-            self.BusParametersGroupBox(ChildWindow=ChildWindow , interface=_interface)
+            self.BusParametersGroupBox(interface=_interface)
             SecondGridLayout.addWidget(self.SubSecondGroupBox, 4, 0)        
 
         interfaceComboBox.activated[str].connect(_interfaceParameters)
         # Define Third Group
-        ThirdGroupBox = QGroupBox("")
-        ThirdGridLayout = QGridLayout()
-        
+        ThirdGridLayout = QHBoxLayout()
         close_button = QPushButton("close")
         close_button.setIcon(QIcon('graphicsUtils/icons/icon_close.png'))
         close_button.clicked.connect(ChildWindow.close)
-        ThirdGridLayout.addWidget(close_button, 0, 1)
-        ThirdGroupBox.setLayout(ThirdGridLayout)
-        # mainLayout.addWidget(FirstGroupBox, 0, 0)
+        ThirdGridLayout.addSpacing(100)
+        ThirdGridLayout.addWidget(close_button)
+         
         mainLayout.addWidget(SecondGroupBox, 1, 0)
-        mainLayout.addWidget(ThirdGroupBox, 2, 0)
+        mainLayout.addWidget(self.NodeGroup, 2, 0)
+        mainLayout.addLayout(ThirdGridLayout, 3, 0)
         plotframe.setLayout(mainLayout) 
         self.MenuBar.create_statusBar(ChildWindow)
         plotframe.setStatusTip("")
         QtCore.QMetaObject.connectSlotsByName(ChildWindow)                
         
-    def BusParametersGroupBox(self, ChildWindow=None, interface="Others"):
+    
+    def NodeParameters(self):
+        self.NodeGroup= QGroupBox("Node Info")
+        nodeLayout= QVBoxLayout()
+        #Inputs
+        inLayout = QVBoxLayout()  
+        nodeSpinBox = QSpinBox()
+        
+        add_button = QPushButton("Add")
+        add_button.setIcon(QIcon('graphicsUtils/icons/icon_add.png'))
+
+        clear_button = QPushButton("Clear")
+        clear_button.setIcon(QIcon('graphicsUtils/icons/icon_clear.png'))
+        
+        save_button = QPushButton("Save")
+        save_button.setIcon(QIcon('graphicsUtils/icons/icon_true.png'))
+        
+                    
+        inLayout.addWidget(nodeSpinBox)
+        inLayout.addWidget(add_button)
+        
+        #outputs
+        outLayout = QVBoxLayout()
+        nodeLabel = QLabel()
+        nodeLabel.setText("Added  Nodes [dec]")    
+        nodeListBox = QListWidget()
+        outLayout.addWidget(nodeLabel)
+        outLayout.addWidget(nodeListBox)
+        outLayout.addWidget(clear_button)
+        outLayout.addWidget(save_button)
+        nodeLayout.addLayout(inLayout)
+        nodeLayout.addLayout(outLayout) 
+        
+        def _add_item():
+            node = nodeSpinBox.value()
+            nodeListBox.addItem(str(int(node)))
+        
+        def _clear_item():
+            _row = nodeListBox.currentRow()
+            nodeListBox.takeItem(_row)
+        
+        def _save_items():
+            _nodes = [nodeListBox.item(x).text() for x in range(nodeListBox.count())]
+            _channel = 0
+            [self.__conf["channel_ports"][i] for i in [str(_channel)] if i in self.__conf["channel_ports"]][0]["Nodes"]= _nodes
+            file = config_dir +"main_cfg.yml"
+            AnalysisUtils().dump_yaml_file(file=file,
+                                           loaded = self.__conf,
+                                           directory=lib_dir)
+            self.logger.info("Saving Information to the file %s"%file)
+        add_button.clicked.connect(_add_item)
+        clear_button.clicked.connect(_clear_item)
+        save_button.clicked.connect(_save_items)
+        self.NodeGroup.setLayout(nodeLayout)
+                
+    def BusParametersGroupBox(self, interface="Others"):
         '''
         The window holds all the parameters needed  for the target bus, the CAN bus properties must be configured first[e.g bitrate, sample_point, SJW]
         '''
@@ -1206,6 +1253,8 @@ class MainWindow(QMainWindow):
         The function will Open a special window for the device [MOPS] .
         The calling function for this is show_deviceWindow
         '''
+        #to be done
+        #self.MenuBar.create_device_menuBar(childWindow)
         _channel = self.get_channel()
         n_channels = 33
         try:
@@ -1483,7 +1532,6 @@ class MainWindow(QMainWindow):
         _adc_channels_reg = self.get_adc_channels_reg()
         _dictionary = self.__dictionary_items
         _adc_indices = list(self.__adc_index)
-                
         for i in np.arange(len(_adc_indices)):
             _subIndexItems = list(AnalysisUtils().get_subindex_yaml(dictionary=_dictionary, index=_adc_indices[i], subindex="subindex_items"))
             labelChannel = [_subIndexItems[k] for k in np.arange(len(_subIndexItems) * len(_adc_indices))]
@@ -1907,10 +1955,12 @@ class MainWindow(QMainWindow):
     '''
 
     def show_CANMessageWindow(self):
-        self.MessageWindow = QMainWindow()
-        self.can_message_child_window(self.MessageWindow)
-        self.MessageWindow.show()
-    
+        try:
+            self.MessageWindow = QMainWindow()
+            self.can_message_child_window(self.MessageWindow)
+            self.MessageWindow.show()
+        except:
+            pass
     def show_dump_child_window(self):
         if self.wrapper is not None: 
             interface =self.get_interface()
