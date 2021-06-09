@@ -107,12 +107,16 @@ class MenuBar(QWidget):
         def _set_socketchannel():
             _arg = "socketcan"
             _interface = "socketcan"
-            self.MainWindow.set_canchannel(arg = _arg, interface = _interface)
+            _default_channel = "0"
+            self.socketWindow = QMainWindow()
+            self.set_socketcan(self.socketWindow, _arg, _interface)
+            self.socketWindow.show()
         
         def _Set_virtual_socketchannel():
             _arg = "virtual"
             _interface = "virtual"
-            self.MainWindow.set_canchannel(arg = _arg, interface = _interface)
+            _default_channel = "0"
+            self.MainWindow.set_canchannel(arg = _arg, interface = _interface, default_channel =_default_channel)
                     
         #SetSocketcan = SocketMenu.addMenu('Set CAN Bus')
         
@@ -131,7 +135,7 @@ class MenuBar(QWidget):
         def _restart_kvaserchannel():
             _arg = "restart"
             _interface = "Kvaser"
-            self.MainWindow.set_canchannel(arg = _arg, interface = _interface)
+            self.MainWindow.set_canchannel(arg = _arg, interface = _interface,default_channel =_default_channel)
             
         RestartKvaser = QAction(QIcon('graphics_Utils/icons/icon_reset.png'),'Restart Kvaser Interface', mainwindow)
         RestartKvaser.setStatusTip("Restart Kvaser interface")
@@ -191,7 +195,7 @@ class MenuBar(QWidget):
                                          "Author: Ahmed Qamesh\n"+
                                          "Contact: ahmed.qamesh@cern.ch\n"+
                                          "Organization: Bergische Universität Wuppertal")
-
+                            
     def edit_adc(self, childWindow, conf):
         #check the conf file
         ADCGroup= QGroupBox("ADC details")
@@ -209,7 +213,7 @@ class MenuBar(QWidget):
         channelLabel = QLabel("")
         channelLabel.setText("ADC channel")
         adcComboBox = QComboBox()
-        adc_items =np.arange(3,32)
+        adc_items =np.arange(3,35)
         for item in adc_items: adcComboBox.addItem(str(item))
         adcLayout.addWidget(channelLabel)
         adcLayout.addWidget(adcComboBox)   
@@ -242,15 +246,15 @@ class MenuBar(QWidget):
         #outputs
         outLayout = QHBoxLayout()
         channelListBox = QListWidget()
+        fullListBox = QListWidget()
         parameterListBox = QListWidget()
         clearLayout= QHBoxLayout()  
         clear_button = QPushButton("Clear")
         clear_button.setIcon(QIcon('graphicsUtils/icons/icon_clear.png'))
         clearLayout.addSpacing(80)
         clearLayout.addWidget(clear_button)
-                
-        outLayout.addWidget(channelListBox)
-        outLayout.addWidget(parameterListBox)
+        outLayout.addWidget(fullListBox)
+        
         
         adc_mainLayout.addLayout(inLayout)
         adc_mainLayout.addLayout(outLayout)       
@@ -261,16 +265,18 @@ class MenuBar(QWidget):
             parameter_channel = parametersComboBox.currentText()
             channelListBox.addItem(adc_channel)
             parameterListBox.addItem(parameter_channel)
+            fullListBox.addItem(adc_channel+" : "+parameter_channel)
         
         def _clear_item():
             _row = channelListBox.currentRow()
-            parameter_channel = parameterListBox.currentRow()
+            _parameter_channel = parameterListBox.currentRow()
+            _full = fullListBox.currentRow()
             channelListBox.takeItem(_row)
-            parameterListBox.takeItem(parameter_channel)
-        
+            parameterListBox.takeItem(_parameter_channel)
+            fullListBox.takeItem(_full)
+            
         def _save_items():
             if (channelListBox.count() != 0 or parameterListBox.count() != 0):
-                    
                 _adc_channels = [channelListBox.item(x).text() for x in range(channelListBox.count())]
                 _parameters = [parameterListBox.item(x).text() for x in range(parameterListBox.count())]
                 for i in range(len(_adc_channels)):
@@ -301,6 +307,38 @@ class MenuBar(QWidget):
         ADCGroup.setLayout(adc_mainLayout)
         plotframe.setLayout(mainLayout) 
         
+    def set_socketcan(self,childWindow, arg, interface):
+        #check the conf file
+        SocketGroup= QGroupBox("Set SocketCAN settings")
+        childWindow.setObjectName("Set SocketCAN settings")
+        childWindow.setWindowTitle("Set SocketCAN settings")
+        #childWindow.setWindowIcon(QtGui.QIcon(self.__appIconDir))
+        childWindow.setGeometry(200, 200, 100, 100)
+        mainLayout = QGridLayout()
+        # Define a frame for that group
+        plotframe = QFrame()
+        plotframe.setLineWidth(0.6)
+        childWindow.setCentralWidget(plotframe)
+        mainLayout = QGridLayout()
+        inLayout = QHBoxLayout()  
+        _channelPorts =  range(0,8)
+        _arg = arg
+        _interface = interface
+
+        busComboBox = QComboBox()
+        for item in _channelPorts: busComboBox.addItem(str(item))
+        def _set():
+            _default_channel = busComboBox.currentText()
+            self.MainWindow.set_canchannel(arg = _arg, interface = _interface,default_channel =_default_channel )        
+        add_button = QPushButton("Set")
+        add_button.setIcon(QIcon('graphicsUtils/icons/icon_start.png'))
+        add_button.clicked.connect(_set)
+        inLayout.addWidget(busComboBox)
+        inLayout.addWidget(add_button)  
+        mainLayout.addLayout(inLayout ,0,0)
+        SocketGroup.setLayout(mainLayout)
+        plotframe.setLayout(mainLayout) 
+                     
     def add_node(self, childWindow, conf):
         #check the conf file
         NodeGroup= QGroupBox("Node Info")
@@ -320,7 +358,7 @@ class MenuBar(QWidget):
         
         nodeLayout= QVBoxLayout()
         #Inputs
-        inLayout = QVBoxLayout()  
+        inLayout = QHBoxLayout()  
         nodeSpinBox = QSpinBox()
         
         add_button = QPushButton("Add")
@@ -361,14 +399,12 @@ class MenuBar(QWidget):
         chipLayout.addWidget(chipIdSpinBox)
         chipLayout.addSpacing(60)
 
-
         hardwareLayout = QHBoxLayout()
         hardwareLabel = QLabel()
         hardwareLabel.setText("Resistor ratio")
         hardwareIdSpinBox = QSpinBox()
         hardwareLayout.addWidget(hardwareLabel)
         hardwareLayout.addWidget(hardwareIdSpinBox)
-        
                     
         infoLayout.addLayout(iconLayout)
         infoLayout.addLayout(chipLayout)

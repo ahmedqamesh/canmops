@@ -1,6 +1,7 @@
 Application:
   Devices:
   - MOPS
+  - MOPS
   app_icon_dir: graphicsUtils/icons/icon_mops.png
   app_name: CANMOPS
   app_version: v1.2
@@ -9,4 +10,6 @@ channel_ports:
   '0':
     Nodes:
     - '1'
-    - '2'
+  '1':
+    Nodes:
+    - '0'

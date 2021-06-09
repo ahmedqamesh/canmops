@@ -95,10 +95,10 @@ class CanWrapper(object):
         self.__channelPorts = self.__conf["channel_ports"]
         self.__channel = list(self.__conf['channel_ports'])[0]
        # Read CAN settings from a file 
-        filename = os.path.join(lib_dir, config_dir + interface + "_CANSettings.yml")
+        filename = os.path.join(lib_dir, config_dir + interface +"_CANSettings_bus"+str(channel)+".yml")
         test_date = time.ctime(os.path.getmtime(filename))
         # Load settings from CAN settings file
-        _canSettings = AnalysisUtils().open_yaml_file(file=config_dir + interface + "_CANSettings.yml", directory=lib_dir)
+        _canSettings = AnalysisUtils().open_yaml_file(file=config_dir + interface + "_CANSettings_bus"+str(channel)+".yml", directory=lib_dir)
         if bitrate is None:
             self.logger.notice("Loading CAN settings from the file %s produced on %s" % (filename, test_date))
             self.__channels = _canSettings['CAN_Interfaces'][interface]["channels"]
@@ -357,6 +357,7 @@ class CanWrapper(object):
                         
         self.__busOn = False
         self.logger.warning('Stopping the server.')
+
         
     def read_sdo_can_thread(self, nodeId=None, index=None, subindex=None, timeout=100, MAX_DATABYTES=8, SDO_TX=None, SDO_RX=None, cobid=None):
         """Read an object via |SDO|

@@ -42,7 +42,7 @@ class MainWindow(QMainWindow):
         self.__CANID_list = ['0x600'] 
         self.__bytes = ["40","0","10","0","0","0","0","0"]
         self.__interfaceItems = list(["AnaGate","Kvaser","socketcan"]) 
-        self.__channelPorts = self.__conf["channel_ports"]
+        self.__channelPorts = list(self.__conf["channel_ports"])
         self.__timeout = 2000
         self.__canId_rx = 0x580
         self.__canId_tx = 0x600
@@ -150,12 +150,14 @@ class MainWindow(QMainWindow):
         def on_channelComboBox_currentIndexChanged():
             _interface = self.interfaceComboBox.currentText()
             _channel = self.channelComboBox.currentText()
-            _channels = self.__conf["channel_ports"]
-            
             self.set_interface(_interface)
             self.set_channel(int(_channel))
             try:
                 _nodeItems = AnalysisUtils().get_info_yaml(dictionary=self.__conf['channel_ports'], index=str(_channel), subindex="Nodes")
+            except Exception:
+                self.logger.warning("No Nodes found in the settings file")
+                pass
+            try:
                 self.nodeComboBox.clear()
                 self.nodeComboBox.addItems(list(map(str, _nodeItems)))
             except Exception:
@@ -542,16 +544,17 @@ class MainWindow(QMainWindow):
         Second: Communication with CAN wrapper will begin
         ''' 
         if self.connectButton.isChecked():
-            _interface = self.get_interface()    
+            _interface = self.get_interface()   
+            _default_channel = self.get_channel()
             try: 
                 #Default settings from yml file
-                filename = lib_dir + config_dir + _interface + "_CANSettings.yml"
-                filename = os.path.join(lib_dir, config_dir + _interface + "_CANSettings.yml")
+                filename = lib_dir + config_dir + _interface + "_CANSettings_bus"+str(_default_channel)+".yml"
+                filename = os.path.join(lib_dir, config_dir + _interface + "_CANSettings_bus"+str(_default_channel)+".yml")
                 test_date = time.ctime(os.path.getmtime(filename))
                 # Load settings from CAN settings file
-                _canSettings = AnalysisUtils().open_yaml_file(file=config_dir + _interface + "_CANSettings.yml", directory=lib_dir)
+                _canSettings = AnalysisUtils().open_yaml_file(file=config_dir + _interface + "_CANSettings_bus"+str(_default_channel)+".yml", directory=lib_dir)
                 self.logger.notice("Loading CAN settings from the file %s produced on %s" % (filename, test_date))
-                _channels = _canSettings['CAN_Interfaces'][_interface]["channels"]
+                _channel = _canSettings['CAN_Interfaces'][_interface]["channel"]
                 _ipAddress = _canSettings['CAN_Interfaces'][_interface]["ipAddress"]
                 _bitrate = _canSettings['CAN_Interfaces'][_interface]["bitrate"]
                 _samplePoint = _canSettings['CAN_Interfaces'][_interface]["samplePoint"]
@@ -559,13 +562,10 @@ class MainWindow(QMainWindow):
                 _tseg1 = _canSettings['CAN_Interfaces'][_interface]["tseg1"]
                 _tseg2 = _canSettings['CAN_Interfaces'][_interface]["tseg2"]                   
                 # Update settings
-                self.set_channelPorts(list(str(_channels)))                
-                self.set_channel(_channels)
-                _channel = self.get_channel()
+                self.set_channelPorts(list(_channel))         
                 # Update buttons
                 self.channelComboBox.clear()
-                self.channelComboBox.addItems(list(str(_channels)))
-                
+                self.channelComboBox.addItems(list(_channel))
                 self.wrapper = CanWrapper(interface=_interface,
                                           bitrate=_bitrate,
                                           samplePoint = _samplePoint,
@@ -573,9 +573,9 @@ class MainWindow(QMainWindow):
                                           tseg1 = _tseg1,
                                           tseg2 = _tseg2,
                                           ipAddress=_ipAddress,
-                                          channel=_channel)
+                                          channel=int(_channel))
                 if self.__deviceName == "MOPS":
-                    self.wrapper.confirm_nodes(channel=_channel)
+                    self.wrapper.confirm_nodes(channel=int(_channel))
                 else:
                     pass
                 self.control_logger = self.wrapper.logger
@@ -608,12 +608,13 @@ class MainWindow(QMainWindow):
         try: 
             _bitrate = self.get_bitrate()
             _interface = self.get_interface()
+            _channels = self.get_channelPorts()
             _channel = self.get_channel()
             _sample_point = self.get_sample_point()
             _sjw = self.get_sjw()
             _tseg1 = self.get_tseg1()
             _tseg2 = self.get_tseg2()
-            _nodeItems = AnalysisUtils().get_info_yaml(dictionary=self.__conf['channel_ports'], index=str(_channel), subindex="Nodes")
+            _nodeItems = AnalysisUtils().get_info_yaml(dictionary=self.__conf['channel_ports'], index=str(_channels[0]), subindex="Nodes")
             _timeout = 500
             if _interface == "AnaGate":
                  self.set_ipAddress(self.firsttextbox.text()) 
@@ -638,10 +639,10 @@ class MainWindow(QMainWindow):
                                                         "tseg2":_tseg2, 
                                                         "ipAddress":str(_ipAddress),
                                                         "timeout":_timeout, 
-                                                        "channels":int(_channel)}}}
-            self.logger.info("Saving CAN settings to the file %s" % lib_dir + config_dir + _interface + "_CANSettings.yml") 
+                                                        "channel":_channels[0]}}}
+            self.logger.info("Saving CAN settings to the file %s" % lib_dir + config_dir + _interface + "_CANSettings_bus"+_channel+".yml") 
             self.logger.info("Please restart your bus from the tools menu (Interface >> %s >> Set_%s_interface )to apply the new settings "%(_interface,_interface))
-            with open(lib_dir + config_dir + _interface + "_CANSettings.yml", 'w') as yaml_file:
+            with open(lib_dir + config_dir + _interface + "_CANSettings_bus"+_channel+".yml", 'w') as yaml_file:
                 yaml.dump(dict_file, yaml_file, default_flow_style=False)
             
             # Apply the settings to the main server
@@ -661,24 +662,24 @@ class MainWindow(QMainWindow):
                                          samplepoint=_sample_point,
                                          tseg1=int(_tseg1),
                                          tseg2=int(_tseg2))
-            
+        
             # the the connect button to checked
             self.connectButton.setChecked(True)
         except Exception:
           self.error_message(text="Please choose an interface or close the window")
  
-    def set_canchannel(self,arg = None, interface =None):
+    def set_canchannel(self,arg = None, interface =None,default_channel = None):
         '''
         The function will restart the van channel
         '''
         try:
             if interface is not None: 
-                filename = lib_dir + config_dir + interface + "_CANSettings.yml"
-                filename = os.path.join(lib_dir, config_dir + interface + "_CANSettings.yml")
+                _channel = default_channel
+                filename = lib_dir + config_dir + interface + "_CANSettings_bus"+_channel+".yml"
+                filename = os.path.join(lib_dir, config_dir + interface + "_CANSettings_bus"+_channel+".yml")
                 test_date = time.ctime(os.path.getmtime(filename))
                 # Load settings from CAN settings file
-                _canSettings = AnalysisUtils().open_yaml_file(file=config_dir + interface + "_CANSettings.yml", directory=lib_dir)
-                _channel = _canSettings['CAN_Interfaces'][interface]["channels"]
+                _canSettings = AnalysisUtils().open_yaml_file(file=config_dir + interface + "_CANSettings_bus"+_channel+".yml", directory=lib_dir)
                 _bitrate = _canSettings['CAN_Interfaces'][interface]["bitrate"]
                 _samplePoint = _canSettings['CAN_Interfaces'][interface]["samplePoint"]
                 _sjw = _canSettings['CAN_Interfaces'][interface]["SJW"]
@@ -692,7 +693,7 @@ class MainWindow(QMainWindow):
                               tseg1 = _tseg1,
                               tseg2 = _tseg2,
                               ipAddress=_ipAddress,
-                              channel=_channel)
+                              channel=int(_channel))
                 if (arg == "socketcan" and interface == "socketcan"):
                     _bus_type = "can"
                     _can_channel = _bus_type +  str(_channel)
@@ -766,7 +767,6 @@ class MainWindow(QMainWindow):
         ChildWindow.setWindowTitle("CAN Message")
         ChildWindow.setGeometry(915, 490, 250, 315)
         mainLayout = QGridLayout()
-        __channelList = self.__channelPorts
         _od_index = self.CANIdComboBox.currentText()
         _nodeId = self.nodeComboBox.currentText()
         _cobeid = int(_od_index,16)+int(_nodeId,16)
@@ -877,9 +877,9 @@ class MainWindow(QMainWindow):
         
         channelLabel = QLabel()
         channelLabel.setText("CAN Bus: ")
-        channelComboBox = QComboBox()
-        for item in _channelList: channelComboBox.addItem(item)
-        channelComboBox.activated[str].connect(self.set_channel)
+        self.channelSettingsComboBox = QComboBox()
+        for item in _channelList: self.channelSettingsComboBox.addItem(str(item))
+        self.channelSettingsComboBox.activated[str].connect(self.set_channel)
 
         # FirstButton
         clear_button = QPushButton("Clear")
@@ -889,14 +889,14 @@ class MainWindow(QMainWindow):
         SecondGridLayout.addWidget(chLabel, 0, 0)
         SecondGridLayout.addLayout(interfaceLayout, 1, 0)
         SecondGridLayout.addWidget(channelLabel, 2, 0)
-        SecondGridLayout.addWidget(channelComboBox, 3, 0)
-        
+        SecondGridLayout.addWidget(self.channelSettingsComboBox, 3, 0)
+        SecondGridLayout.addWidget(self.NodeGroup,5 , 0)
         def _interfaceParameters():
             SecondGridLayout.removeWidget(self.SubSecondGroupBox)
             self.SubSecondGroupBox.deleteLater()
             self.SubSecondGroupBox = None
             _interface = interfaceComboBox.currentText()
-            _channel = channelComboBox.currentText()
+            _channel = self.channelSettingsComboBox.currentText()
             self.set_channel(_channel)
             self.set_interface(_interface)
             self.BusParametersGroupBox(interface=_interface)
@@ -912,7 +912,7 @@ class MainWindow(QMainWindow):
         ThirdGridLayout.addWidget(close_button)
          
         mainLayout.addWidget(SecondGroupBox, 1, 0)
-        mainLayout.addWidget(self.NodeGroup, 2, 0)
+       
         mainLayout.addLayout(ThirdGridLayout, 3, 0)
         plotframe.setLayout(mainLayout) 
         self.MenuBar.create_statusBar(ChildWindow)
@@ -924,7 +924,7 @@ class MainWindow(QMainWindow):
         self.NodeGroup= QGroupBox("Node Info")
         nodeLayout= QVBoxLayout()
         #Inputs
-        inLayout = QVBoxLayout()  
+        inLayout = QHBoxLayout()  
         nodeSpinBox = QSpinBox()
         
         add_button = QPushButton("Add")
@@ -947,11 +947,10 @@ class MainWindow(QMainWindow):
         nodeListBox = QListWidget()
         outLayout.addWidget(nodeLabel)
         outLayout.addWidget(nodeListBox)
-        outLayout.addWidget(clear_button)
-        outLayout.addWidget(save_button)
         nodeLayout.addLayout(inLayout)
         nodeLayout.addLayout(outLayout) 
-        
+        nodeLayout.addWidget(clear_button)
+        nodeLayout.addWidget(save_button)
         def _add_item():
             node = nodeSpinBox.value()
             nodeListBox.addItem(str(int(node)))
@@ -961,14 +960,17 @@ class MainWindow(QMainWindow):
             nodeListBox.takeItem(_row)
         
         def _save_items():
-            _nodes = [nodeListBox.item(x).text() for x in range(nodeListBox.count())]
-            _channel = 0
-            [self.__conf["channel_ports"][i] for i in [str(_channel)] if i in self.__conf["channel_ports"]][0]["Nodes"]= _nodes
-            file = config_dir +"main_cfg.yml"
-            AnalysisUtils().dump_yaml_file(file=file,
-                                           loaded = self.__conf,
-                                           directory=lib_dir)
-            self.logger.info("Saving Information to the file %s"%file)
+            if (nodeListBox.count() != 0):
+                _nodes = [nodeListBox.item(x).text() for x in range(nodeListBox.count())]
+                _channel = self.channelSettingsComboBox.currentText()
+                [self.__conf["channel_ports"][i] for i in [str(_channel)] if i in self.__conf["channel_ports"]][0]["Nodes"]= _nodes
+                file = config_dir +"main_cfg.yml"
+                AnalysisUtils().dump_yaml_file(file=file,
+                                               loaded = self.__conf,
+                                               directory=lib_dir)
+                self.logger.info("Saving Information to the file %s"%file)
+            else:
+                self.logger.error("No data to be saved.....")
         add_button.clicked.connect(_add_item)
         clear_button.clicked.connect(_clear_item)
         save_button.clicked.connect(_save_items)
@@ -1123,8 +1125,10 @@ class MainWindow(QMainWindow):
             # printing TX   
             self.set_textBox_message(comunication_object="SDO_RX", msg=str([hex(m)[2:] for m in RX_response]), cobid = str(hex(cobid_RX)+" "))
             # print decoded response
+            converted_response = Analysis().adc_conversion("V",response_from_node,int(self.__resistor_ratio))
             decoded_response = f'{response_from_node:03X}'
-            self.set_textBox_message(comunication_object="Decoded", msg=decoded_response,cobid =str(hex(cobid_RX)+": ADC value = "))
+            self.set_textBox_message(comunication_object="Decoded", msg=decoded_response,cobid =str(hex(cobid_RX)+": dec. value = "))
+            self.set_textBox_message(comunication_object="ADC", msg=f'{round(converted_response,3)}',cobid =str(hex(cobid_RX)+": ADC value = "))
         else:
             RX_response = "No Response Message"
             self.set_textBox_message(comunication_object="ErrorFrame", msg=RX_response,cobid =str("NONE"+"  "))
@@ -2014,6 +2018,9 @@ class MainWindow(QMainWindow):
         if comunication_object == "Decoded": 
             color = QColor("green")
             mode = "RX [dec] :"
+        if comunication_object == "ADC": 
+            color = QColor("green")
+            mode = "RX [  V ] :"
         if comunication_object == "ErrorFrame": 
             color = QColor("red")
             mode = "E:  "
