@@ -95,19 +95,20 @@ class CanWrapper(object):
         self.__channelPorts = self.__conf["channel_ports"]
         self.__channel = list(self.__conf['channel_ports'])[0]
        # Read CAN settings from a file 
-        filename = os.path.join(lib_dir, config_dir + interface +"_CANSettings_bus"+str(channel)+".yml")
+        filename = os.path.join(lib_dir, config_dir + interface +"_CANSettings.yml")
         test_date = time.ctime(os.path.getmtime(filename))
         # Load settings from CAN settings file
-        _canSettings = AnalysisUtils().open_yaml_file(file=config_dir + interface + "_CANSettings_bus"+str(channel)+".yml", directory=lib_dir)
+        _canSettings = AnalysisUtils().open_yaml_file(file=config_dir + interface + "_CANSettings.yml", directory=lib_dir)
         if bitrate is None:
             self.logger.notice("Loading CAN settings from the file %s produced on %s" % (filename, test_date))
-            self.__channels = _canSettings['CAN_Interfaces'][interface]["channels"]
-            self.__ipAddress = _canSettings['CAN_Interfaces'][interface]["ipAddress"]
-            self.__bitrate = _canSettings['CAN_Interfaces'][interface]["bitrate"]
-            self.__samplePoint = _canSettings['CAN_Interfaces'][interface]["samplePoint"]
-            self.__sjw = _canSettings['CAN_Interfaces'][interface]["SJW"]
-            self.__tseg1 = _canSettings['CAN_Interfaces'][interface]["tseg1"]  
-            self.__tseg2 = _canSettings['CAN_Interfaces'][interface]["tseg2"] 
+            _default_channel = self.__channel
+            self.__channels = _canSettings['channel'+str(_default_channel)]["channel"] 
+            self.__ipAddress =  _canSettings['channel'+str(_default_channel)]["ipAddress"]
+            self.__bitrate =  _canSettings['channel'+str(_default_channel)]["bitrate"]
+            self.__samplePoint = _canSettings['channel'+str(_default_channel)]["samplePoint"]
+            self.__sjw = _canSettings['channel'+str(_default_channel)]["SJW"]
+            self.__tseg1 = _canSettings['channel'+str(_default_channel)]["tseg2"]   
+            self.__tseg2 =_canSettings['channel'+str(_default_channel)]["tseg2"]   
 
         # Initialize default arguments
         """:obj:`str` : Internal attribute for the interface"""

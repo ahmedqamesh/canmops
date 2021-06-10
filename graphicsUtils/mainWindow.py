@@ -548,19 +548,19 @@ class MainWindow(QMainWindow):
             _default_channel = self.get_channel()
             try: 
                 #Default settings from yml file
-                filename = lib_dir + config_dir + _interface + "_CANSettings_bus"+str(_default_channel)+".yml"
-                filename = os.path.join(lib_dir, config_dir + _interface + "_CANSettings_bus"+str(_default_channel)+".yml")
+                filename = lib_dir + config_dir + _interface + "_CANSettings.yml"
+                filename = os.path.join(lib_dir, config_dir + _interface + "_CANSettings.yml")
                 test_date = time.ctime(os.path.getmtime(filename))
                 # Load settings from CAN settings file
-                _canSettings = AnalysisUtils().open_yaml_file(file=config_dir + _interface + "_CANSettings_bus"+str(_default_channel)+".yml", directory=lib_dir)
+                _canSettings = AnalysisUtils().open_yaml_file(file=config_dir + _interface + "_CANSettings.yml", directory=lib_dir)
                 self.logger.notice("Loading CAN settings from the file %s produced on %s" % (filename, test_date))
-                _channel = _canSettings['CAN_Interfaces'][_interface]["channel"]
-                _ipAddress = _canSettings['CAN_Interfaces'][_interface]["ipAddress"]
-                _bitrate = _canSettings['CAN_Interfaces'][_interface]["bitrate"]
-                _samplePoint = _canSettings['CAN_Interfaces'][_interface]["samplePoint"]
-                _sjw = _canSettings['CAN_Interfaces'][_interface]["SJW"]
-                _tseg1 = _canSettings['CAN_Interfaces'][_interface]["tseg1"]
-                _tseg2 = _canSettings['CAN_Interfaces'][_interface]["tseg2"]                   
+                _channel = _canSettings['channel'+str(_default_channel)]["channel"]
+                _ipAddress = _canSettings['channel'+str(_default_channel)]["ipAddress"]
+                _bitrate = _canSettings['channel'+str(_default_channel)]["bitrate"]
+                _samplePoint = _canSettings['channel'+str(_default_channel)]["samplePoint"]
+                _sjw = _canSettings['channel'+str(_default_channel)]["SJW"]
+                _tseg1 = _canSettings['channel'+str(_default_channel)]["tseg1"]
+                _tseg2 = _canSettings['channel'+str(_default_channel)]["tseg2"]                   
                 # Update settings
                 self.set_channelPorts(list(_channel))         
                 # Update buttons
@@ -632,17 +632,19 @@ class MainWindow(QMainWindow):
             self.nodeComboBox.addItems(list(map(str, _nodeItems)))
             
             # Save the settings into a file
-            dict_file = {"CAN_Interfaces": {_interface:{"bitrate":_bitrate ,
-                                                        "samplePoint":_sample_point,
-                                                        "SJW":_sjw,
-                                                        "tseg1":_tseg1, 
-                                                        "tseg2":_tseg2, 
-                                                        "ipAddress":str(_ipAddress),
-                                                        "timeout":_timeout, 
-                                                        "channel":_channels[0]}}}
-            self.logger.info("Saving CAN settings to the file %s" % lib_dir + config_dir + _interface + "_CANSettings_bus"+_channel+".yml") 
+            dict_file = {"CAN_Interfaces": {_interface},
+                       "channel"+_channels[0]:  {"bitrate":_bitrate,
+                                                 "channel":_channels[0] ,
+                                                 "samplePoint":_sample_point,
+                                                 "SJW":_sjw,
+                                                 "tseg1":_tseg1, 
+                                                 "tseg2":_tseg2, 
+                                                 "ipAddress":str(_ipAddress),
+                                                 "timeout":_timeout}                             
+                                                         }
+            self.logger.info("Saving CAN settings to the file %s" % lib_dir + config_dir + _interface + "_CANSettings.yml") 
             self.logger.info("Please restart your bus from the tools menu (Interface >> %s >> Set_%s_interface )to apply the new settings "%(_interface,_interface))
-            with open(lib_dir + config_dir + _interface + "_CANSettings_bus"+_channel+".yml", 'w') as yaml_file:
+            with open(lib_dir + config_dir + _interface + "_CANSettings.yml", 'w') as yaml_file:
                 yaml.dump(dict_file, yaml_file, default_flow_style=False)
             
             # Apply the settings to the main server
@@ -675,17 +677,17 @@ class MainWindow(QMainWindow):
         try:
             if interface is not None: 
                 _channel = default_channel
-                filename = lib_dir + config_dir + interface + "_CANSettings_bus"+_channel+".yml"
-                filename = os.path.join(lib_dir, config_dir + interface + "_CANSettings_bus"+_channel+".yml")
+                filename = lib_dir + config_dir + interface + "_CANSettings.yml"
+                filename = os.path.join(lib_dir, config_dir + interface + "_CANSettings.yml")
                 test_date = time.ctime(os.path.getmtime(filename))
                 # Load settings from CAN settings file
-                _canSettings = AnalysisUtils().open_yaml_file(file=config_dir + interface + "_CANSettings_bus"+_channel+".yml", directory=lib_dir)
-                _bitrate = _canSettings['CAN_Interfaces'][interface]["bitrate"]
-                _samplePoint = _canSettings['CAN_Interfaces'][interface]["samplePoint"]
-                _sjw = _canSettings['CAN_Interfaces'][interface]["SJW"]
-                _tseg1 =_canSettings['CAN_Interfaces'][interface]["tseg1"]#to be used later with socketcan
-                _tseg2 = _canSettings['CAN_Interfaces'][interface]["tseg2"]#to be used later with socketcan
-                _ipAddress = _canSettings['CAN_Interfaces'][interface]["ipAddress"]
+                _canSettings = AnalysisUtils().open_yaml_file(file=config_dir + interface + "_CANSettings.yml", directory=lib_dir)
+                _bitrate = _canSettings['channel'+str(_channel)]["bitrate"]
+                _samplePoint = _canSettings['channel'+str(_channel)]["samplePoint"]
+                _sjw = _canSettings['channel'+str(_channel)]["SJW"]
+                _tseg1 =_canSettings['channel'+str(_channel)]["tseg1"]#to be used later with socketcan
+                _tseg2 = _canSettings['channel'+str(_channel)]["tseg2"]#to be used later with socketcan
+                _ipAddress = _canSettings['channel'+str(_channel)]["ipAddress"]
                 self.wrapper = CanWrapper(interface=interface,
                               bitrate=_bitrate,
                               samplePoint = _samplePoint,

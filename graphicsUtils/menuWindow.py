@@ -120,11 +120,11 @@ class MenuBar(QWidget):
                     
         #SetSocketcan = SocketMenu.addMenu('Set CAN Bus')
         
-        SetSocketCAN = QAction(QIcon('graphics_Utils/icons/icon_start.png'),'Set SocketCAN', mainwindow)
+        SetSocketCAN = QAction(QIcon('graphics_Utils/icons/icon_start.png'),'Reset SocketCAN', mainwindow)
         SetSocketCAN.setStatusTip("Set SocketCAN")
         SetSocketCAN.triggered.connect(_set_socketchannel)
 
-        SetVirtualSocketcan = QAction(QIcon('graphics_Utils/icons/icon_start.png'),'Set Virtual', mainwindow)
+        SetVirtualSocketcan = QAction(QIcon('graphics_Utils/icons/icon_start.png'),'Reset Virtual', mainwindow)
         SetVirtualSocketcan.setStatusTip("Set VirtualCAN")
         SetVirtualSocketcan.triggered.connect(_Set_virtual_socketchannel)
         
@@ -309,9 +309,9 @@ class MenuBar(QWidget):
         
     def set_socketcan(self,childWindow, arg, interface):
         #check the conf file
-        SocketGroup= QGroupBox("Set SocketCAN settings")
-        childWindow.setObjectName("Set SocketCAN settings")
-        childWindow.setWindowTitle("Set SocketCAN settings")
+        SocketGroup= QGroupBox("Reset SocketCAN ")
+        childWindow.setObjectName("Reset SocketCAN ")
+        childWindow.setWindowTitle("Reset SocketCAN")
         #childWindow.setWindowIcon(QtGui.QIcon(self.__appIconDir))
         childWindow.setGeometry(200, 200, 100, 100)
         mainLayout = QGridLayout()
@@ -320,22 +320,27 @@ class MenuBar(QWidget):
         plotframe.setLineWidth(0.6)
         childWindow.setCentralWidget(plotframe)
         mainLayout = QGridLayout()
-        inLayout = QHBoxLayout()  
+        buttonLayout = QHBoxLayout()  
         _channelPorts =  range(0,8)
         _arg = arg
         _interface = interface
 
         busComboBox = QComboBox()
         for item in _channelPorts: busComboBox.addItem(str(item))
+        
         def _set():
             _default_channel = busComboBox.currentText()
             self.MainWindow.set_canchannel(arg = _arg, interface = _interface,default_channel =_default_channel )        
-        add_button = QPushButton("Set")
+        add_button = QPushButton("Reset")
         add_button.setIcon(QIcon('graphicsUtils/icons/icon_start.png'))
         add_button.clicked.connect(_set)
-        inLayout.addWidget(busComboBox)
-        inLayout.addWidget(add_button)  
-        mainLayout.addLayout(inLayout ,0,0)
+        close_button = QPushButton("Close")
+        close_button.setIcon(QIcon('graphicsUtils/icons/icon_close.png'))
+        close_button.clicked.connect(childWindow.close)
+        buttonLayout.addWidget(add_button)  
+        buttonLayout.addWidget(close_button) 
+        mainLayout.addWidget(busComboBox ,0,0)
+        mainLayout.addLayout(buttonLayout ,1,0)
         SocketGroup.setLayout(mainLayout)
         plotframe.setLayout(mainLayout) 
                      
