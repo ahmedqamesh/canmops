@@ -1,7 +1,6 @@
 Application:
   Devices:
   - MOPS
-  - MOPS
   app_icon_dir: graphicsUtils/icons/icon_mops.png
   app_name: CANMOPS
   app_version: v1.2
