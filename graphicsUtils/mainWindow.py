@@ -638,11 +638,8 @@ class MainWindow(QMainWindow):
                                                  "timeout":_timeout}                             
                                                          }
             self.logger.info("Saving CAN settings to the file %s" % lib_dir + config_dir + _interface + "_CANSettings.yml") 
-            # self.logger.info("Please restart your bus from the tools menu (Interface >> %s >> Set_%s_interface )to apply the new settings "%(_interface,_interface))
+            self.logger.info("Please restart your bus from the tools menu (Interface >> %s >> Reset_%s_interface )to apply the new settings "%(_interface,_interface))
             AnalysisUtils().dump_yaml_file(directory=lib_dir + config_dir , file=_interface + "_CANSettings.yml", loaded=dict_file)
-           # with open(lib_dir + config_dir + _interface + "_CANSettings.yml", 'w') as yaml_file:
-            #    yaml.dump(dict_file, yaml_file, default_flow_style=False)
-            
             # Apply the settings to the main server
             self.wrapper = CanWrapper(interface=_interface,
                                       bitrate=_bitrate,
@@ -684,14 +681,6 @@ class MainWindow(QMainWindow):
                 _tseg1 = _canSettings['channel' + str(_channel)]["tseg1"]
                 _tseg2 = _canSettings['channel' + str(_channel)]["tseg2"]
                 _ipAddress = _canSettings['channel' + str(_channel)]["ipAddress"]
-                self.wrapper = CanWrapper(interface=interface,
-                              bitrate=_bitrate,
-                              samplePoint=_samplePoint,
-                              sjw=_sjw,
-                              tseg1=_tseg1,
-                              tseg2=_tseg2,
-                              ipAddress=_ipAddress,
-                              channel=int(_channel))
                 if (arg == "socketcan" and interface == "socketcan"):
                     _bus_type = "can"
                     _can_channel = _bus_type + str(_channel)
@@ -712,8 +701,17 @@ class MainWindow(QMainWindow):
                     _can_channel = "can" + str(_channel)       
                     os.system(". " + rootdir[:-14] + "/canmops/socketcan_wrapper_enable.sh %s %s %s %s %s" % ("_bitrate", "_samplePoint", "_sjw", _can_channel, _bus_type))
                 
-                if (arg == "restart" and interface == "Kvaser"):
-                    self.wrapper.restart_channel_connection(interface="Kvaser")
+                #if (arg == "restart" and interface == "Kvaser"):
+                #    self.wrapper.restart_channel_connection(interface="Kvaser")
+                self.wrapper = CanWrapper(interface=interface,
+                              bitrate=_bitrate,
+                              samplePoint=_samplePoint,
+                              sjw=_sjw,
+                              tseg1=_tseg1,
+                              tseg2=_tseg2,
+                              ipAddress=_ipAddress,
+                              channel=int(_channel))
+                                
         except:
             self.logger.error("Cannot Connect to the CAN bus interface")
             pass

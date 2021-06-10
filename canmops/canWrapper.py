@@ -213,7 +213,6 @@ class CanWrapper(object):
                 self.__ch = can.interface.Bus(bustype=interface, channel=channel, bitrate=self.__bitrate)   
         except Exception:
             self.logger.error("TCP/IP or USB socket error in %s interface" % interface)
-            # sys.exit(1)# it causes that the program is killed completely
         self.logger.success(str(self))        
     
     def start_channel_connection(self, interface =None):
@@ -263,7 +262,6 @@ class CanWrapper(object):
         _adc_channels_reg = dev["adc_channels_reg"]["adc_channels"]
         _adc_index = list(dev["adc_channels_reg"]["adc_index"])[0]
         _channelItems = [int(channel) for channel in list(_adc_channels_reg)]
-        
         # Write header to the data
         out_file_csv = AnalysisUtils().open_csv_file(outname=outputname, directory=outputdir)
         fieldnames = ['Time', 'Channel', "nodeId", "ADCChannel", "ADCData" , "ADCDataConverted"]
@@ -274,7 +272,8 @@ class CanWrapper(object):
         for point in np.arange(0, n_readings): 
             # Read ADC channels
             pbar = tqdm(total=len(_channelItems) + 1 , desc="ADC channels", iterable=True)
-            for channel in np.arange(_channelItems[0], _channelItems[-1] + 1, 1):
+            for c in np.arange(len(_channelItems)):
+                channel =  _channelItems[c]
                 subindex = channel - 2
                 data_point = self.read_sdo_can(nodeId, int(_adc_index, 16), subindex, 1000)
                 ts = time.time()

@@ -29,7 +29,7 @@ class AnalysisUtils(object):
     def dump_yaml_file(self,directory=None , file=None, loaded = None):
         filename = os.path.join(directory, file)
         with open(filename, 'w') as ymlfile:
-            yaml.dump(loaded, ymlfile, sort_keys=False)
+            yaml.dump(loaded, ymlfile, sort_keys=False)#default_flow_style=False
     
     def save_to_csv(self,data=None, outname=None, directory=None):
         df = pd.DataFrame(data)
