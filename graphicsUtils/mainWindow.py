@@ -1224,7 +1224,7 @@ class MainWindow(QMainWindow):
         else:
             readCanMessage = self.wrapper.read_can_message()
         
-        if readCanMessage: 
+        if any(readCanMessage): 
            cobid_ret, data_ret , dlc, flag, t, _ = readCanMessage
            data_ret_int = int.from_bytes(data_ret, byteorder=sys.byteorder)
            # get the data in Bytes
@@ -1283,12 +1283,6 @@ class MainWindow(QMainWindow):
         nodeItems = self.__nodeIds
         self.set_nodeList(nodeItems)
         for item in list(map(str, nodeItems)): self.deviceNodeComboBox.addItem(item)
-
-        # cobidLabel = QLabel()
-        # cobidLabel.setText("CAN Identifier")
-        # CobIdTextBox = QLineEdit(self.__cobid)
-        # CobIdTextBox.setFixedSize(70, 25)
-
         def __set_bus():
             try:
                 _nodeid = self.deviceNodeComboBox.currentText()
@@ -1373,8 +1367,6 @@ class MainWindow(QMainWindow):
         BottonHLayout.addWidget(restartButton)
         
         firstVLayout = QVBoxLayout()
-        # firstVLayout.addWidget(icon)
-        # firstVLayout.addLayout(deviceLayout)
         firstVLayout.addWidget(self.deviceInfoGroupBox)        
         firstVLayout.addLayout(BottonHLayout)
         firstVLayout.addSpacing(400)
@@ -1432,12 +1424,7 @@ class MainWindow(QMainWindow):
         nodeHLayout.addWidget(nodeLabel)
         nodeHLayout.addWidget(self.deviceNodeComboBox)
         nodeHLayout.addSpacing(400)
-        
-        # codidLayout = QHBoxLayout()
-        # codidLayout.addWidget(cobidLabel)
-        # codidLayout.addWidget(CobIdTextBox)
-        # codidLayout.addSpacing(400)
-        
+
         self.tabLayout.addLayout(nodeHLayout, 1, 0)
         # self.tabLayout.addLayout(codidLayout, 2, 0)
         self.tabLayout.addWidget(self.devicetTabs, 3, 0)
@@ -1472,8 +1459,8 @@ class MainWindow(QMainWindow):
         HBox.addWidget(stop_button)
         mainLayout.addWidget(self.FirstGroupBox      , 0, 0, 4, 2)
         mainLayout.addWidget(self.deviceInfoGroupBox , 0, 3, 1, 2)
-        mainLayout.addWidget(self.ThirdGroupBox      , 1, 3, 2, 2)  # 0, 3, 2, 5)
-        mainLayout.addWidget(self.SecondGroupBox     , 3, 3, 1, 2)  # 2, 3, 1, 5)
+        mainLayout.addWidget(self.ThirdGroupBox      , 1, 3, 2, 2) 
+        mainLayout.addWidget(self.SecondGroupBox     , 3, 3, 1, 2) 
         
         mainLayout.addLayout(HBox , 5, 0)
         mainLayout.addLayout(progressHLayout, 5, 1)
