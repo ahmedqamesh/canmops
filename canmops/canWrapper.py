@@ -832,12 +832,6 @@ class CanWrapper(object):
         self.stop()
         logging.shutdown()
         return True
-    
-    @property
-    def od(self):
-        """:class:`~dcsControllerServer.objectDictionary.objectDictionary` :
-        Object dictionary for checking access attributes"""
-        return self.__od
            
     @property
     def lock(self):
@@ -904,23 +898,6 @@ class CanWrapper(object):
             self.start()
         else:
             self.__ch.baudrate = bitrate     
-
-    @property
-    def mypyDCs(self):
-        """:obj:`dict`: Dictionary containing |DCS| Controller mirror classes.
-        Key is the CANopen node id."""
-        return self.__mypyDCs
-
-    @property
-    def idx(self):
-        """:obj:`int` : Index of custom namespace"""
-        return self.__idx
-
-    @property
-    def myDCs(self):
-        """:obj:`list` : List of created UA objects"""
-        return self.__myDCs                                                  
-
 
 def main():
     """Wrapper function for using the server as a command line tool

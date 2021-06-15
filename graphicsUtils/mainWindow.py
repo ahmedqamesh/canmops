@@ -1,31 +1,31 @@
 from __future__ import annotations
+from matplotlib.backends.qt_compat import QtCore, QtWidgets
 import signal
-import  time
+import time
 import sys
-import pandas as pd
 import os
+import csv
+import yaml
 import logging
 import numpy as np
-from typing import *
-from matplotlib.backends.qt_compat import QtCore, QtWidgets
 import pyqtgraph as pg
+import pandas as pd
+from csv                    import writer
 from PyQt5 import *
-from PyQt5.QtCore    import *
-from PyQt5.QtGui     import *
-from PyQt5.QtWidgets import *
-from random import randint
-from graphicsUtils import menuWindow
-from canmops.analysis import Analysis
-from canmops.logger import Logger 
-from canmops.analysisUtils import AnalysisUtils
-from canmops.canWrapper   import CanWrapper
-import csv
-from csv import writer
-import yaml
+from PyQt5.QtCore           import *
+from PyQt5.QtGui            import *
+from PyQt5.QtWidgets        import *
+from typing                 import *
+from random                 import randint
+from graphicsUtils          import menuWindow, opcuaWindow
+from canmops.analysis       import Analysis
+from canmops.logger         import Logger 
+from canmops.analysisUtils  import AnalysisUtils
+from canmops.canWrapper     import CanWrapper
+
 rootdir = os.path.dirname(os.path.abspath(__file__)) 
 lib_dir = rootdir[:-13]
 config_dir = "config/"
-
 
 class MainWindow(QMainWindow):
 
@@ -79,7 +79,9 @@ class MainWindow(QMainWindow):
         # create toolBar
         toolBar = self.addToolBar("tools")
         self.show_toolBar(toolBar, self)
-
+        
+        # Opcua child window
+        self.opcuaWindow = opcuaWindow.OpcuaWindow()
         # 1. Window settings
         self.setWindowTitle(self.__appName + "_" + self.__appVersion)
         self.setWindowIcon(QtGui.QIcon(self.__appIconDir))
@@ -91,7 +93,7 @@ class MainWindow(QMainWindow):
         self.textOutputWindow()
         self.tableOutputWindow()
         self.configure_device_box()
-        
+        self.configure_cic_box()
         # Create a frame in the main menu for the gridlayout
         mainFrame = QFrame()
         mainFrame.setLineWidth(0.6)
@@ -103,7 +105,8 @@ class MainWindow(QMainWindow):
         mainLayout.addWidget(self.defaultMessageGroupBox, 1, 0)  
         mainLayout.addWidget(self.textGroupBox, 0, 1, 2, 1)
         mainLayout.addWidget(self.monitorGroupBox, 3, 0, 2, 2)
-        mainLayout.addWidget(self.configureDeviceBoxGroupBox, 5, 0)
+        mainLayout.addWidget(self.configureDeviceBoxGroupBox, 5, 0,1,1)
+        mainLayout.addWidget(self.configureCICBoxGroupBox   ,5, 1,1,1)
         mainFrame.setLayout(mainLayout)
         # 3. Show
         self.show()
@@ -169,13 +172,13 @@ class MainWindow(QMainWindow):
         self.channelComboBox.setCurrentIndex(0)
         self.connectButton.clicked.connect(on_channelComboBox_currentIndexChanged)
         self.connectButton.clicked.connect(self.connect_server)
-                
+        
         defaultSettingsWindowLayout.addWidget(channelLabel, 0, 0)
         defaultSettingsWindowLayout.addWidget(self.channelComboBox, 1, 0)
         defaultSettingsWindowLayout.addWidget(interfaceLabel, 0, 1)
         defaultSettingsWindowLayout.addWidget(self.interfaceComboBox, 1, 1)
         defaultSettingsWindowLayout.addWidget(self.connectButton, 1, 2)
-         
+
         plotframe.setLayout(defaultSettingsWindowLayout)
         self.defaultSettingsGroupBox.setLayout(defaultSettingsWindowLayout)
                        
@@ -455,6 +458,28 @@ class MainWindow(QMainWindow):
         
         plotframe.setLayout(gridLayout)
         self.monitorGroupBox.setLayout(gridLayout)
+   
+    def configure_cic_box(self):
+        '''
+        The function provides a frame for the configured devices  according to the file main_cfg.yml
+        '''
+        self.configureCICBoxGroupBox = QGroupBox("OPCUA Devices")
+        plotframe = QFrame()
+        plotframe.setStyleSheet("QWidget { background-color: #eeeeec; }")
+        plotframe.setLineWidth(0.6)
+        self.configureCICBoxGroupBoxLayout = QHBoxLayout()
+        opcuaLabel = QLabel()
+        self.opcuaButton = QPushButton("")
+        self.opcuaButton.setStatusTip('Open OPCUA window')
+        opcuaLabel.setText("")
+        self.opcuaButton.setIcon(QIcon('graphicsUtils/icons/icon_opcua.png'))
+        self.opcuaButton.clicked.connect(self.opcuaWindow.update_opcua_config_box)
+        self.opcuaButton.clicked.connect(self.opcuaWindow.show_cicWindow)
+        self.configureCICBoxGroupBoxLayout.addWidget(self.opcuaButton)
+        self.configureCICBoxGroupBoxLayout.addWidget(opcuaLabel)
+        self.setCentralWidget(plotframe)
+        plotframe.setLayout(self.configureCICBoxGroupBoxLayout)
+        self.configureCICBoxGroupBox.setLayout(self.configureCICBoxGroupBoxLayout)
         
     def configure_device_box(self):
         '''
@@ -1059,14 +1084,11 @@ class MainWindow(QMainWindow):
             _index = int(self.get_index(), 16)
             _subIndex = int(self.get_subIndex(), 16)
             _nodeId = self.get_nodeId()
-            _nodeId = int(_nodeId[0])
+            _nodeId = int(_nodeId)
             _interface = self.get_interface()
             data_RX = self.wrapper.read_sdo_can(_nodeId, _index, _subIndex, self.__timeout)
             return data_RX
         except Exception:
-#             self.logger.notice(f'No Matching SDO response while reading '
-#                               f'object {_index:04X}:{_subIndex:02X} of node'
-#                               f'{_nodeId}')
             return None
                            
     def read_sdo_can_thread(self, trending=False, print_sdo=True):
@@ -1248,13 +1270,20 @@ class MainWindow(QMainWindow):
         self.set_textBox_message(comunication_object="newline", msg=decoded_response, cobid=None) 
         return cobid_ret, data_ret, dlc, flag, t
            
-    def device_child_window(self, childWindow): 
+    def device_child_window(self, childWindow,device = None): 
         '''
         The function will Open a special window for the device [MOPS] .
         The calling function for this is show_deviceWindow
         '''
-        # to be done
-        self.MenuBar.create_device_menuBar(childWindow)
+        try:
+            self.MenuBar.create_device_menuBar(childWindow)
+        except Exception:
+            self.MenuBar = menuWindow.MenuBar(self)
+            self.MenuBar.create_device_menuBar(childWindow)
+        if device:
+            _device_name = device
+        else:
+            _device_name = self.__deviceName
         _channel = self.get_channel()
         n_channels = 33
         try:
@@ -1263,7 +1292,7 @@ class MainWindow(QMainWindow):
             pass
         #  Open the window
         childWindow.setObjectName("DeviceWindow")
-        childWindow.setWindowTitle("Device Window [ " + self.__deviceName + "]")
+        childWindow.setWindowTitle("Device Window [ " + _device_name + "]")
         childWindow.setWindowIcon(QtGui.QIcon(self.__appIconDir))
         childWindow.setGeometry(1175, 10, 200, 770)
         logframe = QFrame()
@@ -1271,7 +1300,7 @@ class MainWindow(QMainWindow):
         childWindow.setCentralWidget(logframe)
         
         # Initialize tab screen
-        self.tabLayout = QGridLayout()
+        tabLayout = QGridLayout()
         self.devicetTabs = QTabWidget()
         self.tab1 = QWidget()
         self.tab2 = QWidget() 
@@ -1425,10 +1454,10 @@ class MainWindow(QMainWindow):
         nodeHLayout.addWidget(self.deviceNodeComboBox)
         nodeHLayout.addSpacing(400)
 
-        self.tabLayout.addLayout(nodeHLayout, 1, 0)
-        # self.tabLayout.addLayout(codidLayout, 2, 0)
-        self.tabLayout.addWidget(self.devicetTabs, 3, 0)
-        self.tabLayout.addLayout(HLayout, 4, 0)
+        tabLayout.addLayout(nodeHLayout, 1, 0)
+        # tabLayout.addLayout(codidLayout, 2, 0)
+        tabLayout.addWidget(self.devicetTabs, 3, 0)
+        tabLayout.addLayout(HLayout, 4, 0)
         
         self.devicetTabs.addTab(self.tab2, "Device Channels") 
         self.devicetTabs.addTab(self.tab1, "Object Dictionary")
@@ -1457,7 +1486,7 @@ class MainWindow(QMainWindow):
                 
         HBox.addWidget(send_button)
         HBox.addWidget(stop_button)
-        mainLayout.addWidget(self.FirstGroupBox      , 0, 0, 4, 2)
+        mainLayout.addWidget(self.ADCGroupBox      , 0, 0, 4, 2)
         mainLayout.addWidget(self.deviceInfoGroupBox , 0, 3, 1, 2)
         mainLayout.addWidget(self.ThirdGroupBox      , 1, 3, 2, 2) 
         mainLayout.addWidget(self.SecondGroupBox     , 3, 3, 1, 2) 
@@ -1466,7 +1495,7 @@ class MainWindow(QMainWindow):
         mainLayout.addLayout(progressHLayout, 5, 1)
         self.tab2.setLayout(mainLayout)
         self.MenuBar.create_statusBar(childWindow)
-        logframe.setLayout(self.tabLayout)
+        logframe.setLayout(tabLayout)
          
     def deviceGroupBox(self):
         '''
@@ -1513,7 +1542,7 @@ class MainWindow(QMainWindow):
         The function will create a QGroupBox for ADC Values [it is called by the function device_child_window]
         '''
         # info to read the ADC from the yaml file
-        self.FirstGroupBox = QGroupBox("ADC Channels")
+        self.ADCGroupBox = QGroupBox("ADC Channels")
         FirstGridLayout = QGridLayout()
         _adc_channels_reg = self.get_adc_channels_reg()
         _dictionary = self.__dictionary_items
@@ -1565,7 +1594,7 @@ class MainWindow(QMainWindow):
                     FirstGridLayout.addWidget(self.trendingBotton[s], s - col_len, 7)
                     FirstGridLayout.addWidget(labelChannel[s], s - col_len, 8)
                     FirstGridLayout.addWidget(self.channelValueBox[s], s - col_len , 9)         
-        self.FirstGroupBox.setLayout(FirstGridLayout)
+        self.ADCGroupBox.setLayout(FirstGridLayout)
 
     def monitoring_values_window(self):
         '''
@@ -1843,7 +1872,7 @@ class MainWindow(QMainWindow):
                 data_point = self.read_sdo_can()  # _thread(print_sdo=False)
                 self.monValueBox[a].setText(str(Analysis().convertion(data_point)))
                 a = a + 1
-                   
+      
     def read_configuration_values(self):
         '''
         The function will will send a CAN message to read configuration values using the function read_sdo_can and 
@@ -1985,7 +2014,6 @@ class MainWindow(QMainWindow):
         self.deviceWindow.show()
        # except Exception:
        #     self.error_message("Either the channel is not activated or the CAN interface is not connected")
- 
     '''
     Define set/get functions
     '''
@@ -2038,7 +2066,7 @@ class MainWindow(QMainWindow):
             self.RXTable.clearContents()  # clear cells
             self.hexRXTable.clearContents()  # clear cells
             self.decRXTable.clearContents()  # clear cells            
-        else:
+        if comunication_object == "SDO_TX":
             self.TXTable.clearContents()  # clear cells
             self.hexTXTable.clearContents()  # clear cells
             self.decTXTable.clearContents()  # clear cells
@@ -2051,7 +2079,9 @@ class MainWindow(QMainWindow):
                 for b in np.arange(len(slicedBits)):
                     self.TXTable.setItem(byte, n_bytes - b, QTableWidgetItem(slicedBits[b]))
                     self.TXTable.item(byte, n_bytes - b).setBackground(QColor(self.get_color(int(slicedBits[b]))))
-    
+        else:
+            pass
+        
     def clear_table_content(self):
         self.TXTable.clearContents() 
         self.hexTXTable.clearContents() 
