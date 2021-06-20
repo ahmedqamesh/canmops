@@ -6,13 +6,15 @@ import sys
 from yaml import load, dump
 from itertools import product
 from asyncua import Node
+from random import randint
 from math import exp
+
 try:
     from yaml import CLoader as Loader, CDumper as Dumper
 except ImportError:
     from yaml import Loader, Dumper
 sys.path.insert(0, "..")
-from CANWrapper_MOPSHUB import CANWrapper, wrapper
+from CANWrapper import CANWrapper, wrapper
 
 
 class MOPSHUBCrate(CANWrapper):
@@ -40,8 +42,8 @@ class MOPSHUBCrate(CANWrapper):
         }
         self.converters = {
             "Raw": (lambda x: x),
-            "Voltage" : (lambda x : x/2**12 * 1.2),
-            "Temperature": (lambda x: x/2**12 * 2.4)
+            "Voltage": (lambda x: x / 2 ** 12 * 1.2),
+            "Temperature": (lambda x: x / 2 ** 12 * 2.4)
         }
 
     async def init(self, config_file: str):
@@ -56,18 +58,20 @@ class MOPSHUBCrate(CANWrapper):
         self.idx = await self.Server.register_namespace(self.namespace)
         await self._populate(config_file)
 
-    async def _find_in_node(self, node : Node, search_string : str):
+    async def _find_in_node(self, node: Node, search_string: str):
         """Search for a variable by name in a node
-        
+
         :type node: asyncua Node
         :type search_string: str
         :param node: Node that contains the variable
         :param search_string: Part of the variable name
         :return: Array of all variables that matched to the search string
         """
+
         async def is_string(node, string):
             return string in (await node.read_browse_name()).__str__()
-        return [ v for v in (await node.get_variables()) if (await is_string(v, search_string))]
+
+        return [v for v in (await node.get_variables()) if (await is_string(v, search_string))]
 
     def load_configuration(self, config_file: str):
         """Load configuration YAML and insert the system defaults where the user didn't specify them. Give warning where user didn't specify a default.
@@ -109,15 +113,17 @@ class MOPSHUBCrate(CANWrapper):
         """
         adc_object = await self.find_object(f"CIC {cic_index}:MOPS {mops_index}:ADCChannel {channel_index:02}")
         value_var = (await self._find_in_node(adc_object, "monitoringValue"))[0]
-        converter = await (await self._find_in_node(adc_object, "Converter"))[0].get_value()
-        await value_var.write_value(self.converters[converter](adc_value))
+        #converter = await (await self._find_in_node(adc_object, "Converter"))[0].get_value()
+        #await value_var.write_value(self.converters[converter](adc_value))
+        await value_var.write_value(adc_value)
 
     async def find_object(self, search_string: str) -> Node:
         """Find a server object in the node tree. Objects have to exist, otherwise a KeyError exception is raised.
 
         :param search_string: Search string (e.g "CIC 2:MOPS 1:ADCChannel 01")
-        :return: 
+        :return:
         """
+
         def error(issue):
             """Raise a KeyError exception
 
@@ -126,7 +132,7 @@ class MOPSHUBCrate(CANWrapper):
             self._logger.error(f"Invalid key {issue} in {search_string}")
             raise KeyError(f"Invalid key {issue}")
 
-        async def is_string(node : Node, string : str) -> bool:
+        async def is_string(node: Node, string: str) -> bool:
             """Check if the node name matches to a search string
 
             :rtype: bool
@@ -230,7 +236,7 @@ class MOPSHUBCrate(CANWrapper):
                     await trimming_var.set_writable()
 
                 # Add ADC Channels
-                for channel_id in range(32):
+                for channel_id in range(35):
                     channel_object = await mops_object.add_object(self.idx, f"ADCChannel {channel_id:02}")
 
                     if f"ADC Channel {channel_id}" in mops_data:
@@ -284,31 +290,32 @@ async def main(config_file):
     async with mobshub_crate:
         i = 0
         while True:
-#            SDO_TX = 0x600
- #           SDO_RX = 0x580
-  #          nodeId = 1
-   #         wrapper.read_sdo_can_thread(nodeId, 
-    #                                    index=0x1000,
-     #                                   subindex=0,
-      #                                  timeout=3000,
-       #                                 SDO_TX=SDO_TX,
-        #                                SDO_RX=SDO_RX,
-         #                               cobid = SDO_TX+nodeId)
+            cic_index = 0
+            mops_index = 1
+            adc_index = 1
+            #         SDO_TX = 0x600
+            #         SDO_RX = 0x580
+            #         nodeId = 1
+            #         wrapper.read_sdo_can_thread(nodeId,
+            #                                       index=0x1000,
+            #                                       subindex=0,
+            #                                       timeout=3000,
+            #                                       SDO_TX=SDO_TX,
+            #                                       SDO_RX=SDO_RX,
+            #                                       cobid = SDO_TX+nodeId)
 
-            wrapper.read_adc_channels("MOPS_cfg.yml",
-                                        "" ,
-                                        1, "Test1", 
-                                        "/Output_Files", 
-                                        1)
-
-
+            readout = wrapper.read_adc_channels("MOPS_cfg.yml", "config", 1, '1')
             await asyncio.sleep(2)
-            await mobshub_crate.write_adc(3, 0, 1, i)
-            i += 1
-            if i > 2**12:
-                i = 1
+            #This Function writes to the Nodes of the OPC UA Server
+            #cic_index: int, mops_index: int, channel_index: int, adc_value: int
+            for i in range(len(readout)):
+                adc_index = readout[i][0]
+                value = readout[i][1]
+                print(readout[i])
+                await mobshub_crate.write_adc(cic_index, mops_index, adc_index, value)
+
 
 if __name__ == '__main__':
     logging.basicConfig(level=logging.DEBUG)
-    asyncio.run(main("config.yaml"), debug=True)
+    asyncio.run(main("config/config.yaml"), debug=True)
 
