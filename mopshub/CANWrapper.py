@@ -1,3 +1,4 @@
+import logging
 from typing import List, Any
 from threading import Thread, Event, Lock
 from collections import deque, Counter
@@ -5,6 +6,8 @@ import time
 from analysisUtils import AnalysisUtils
 from analysis import Analysis
 from CANconfig import CANconfig
+from MPconfig import mp
+from PEconfig import pe
 from random import randint
 
 
@@ -45,6 +48,7 @@ class CANWrapper(CANconfig):
                 return cobid, data, dlc, flag, t, error_frame
             except:
                 self.__pill2kill = Event()
+                logging.warning('There was no msg received on channel %s', channel)
                 return None, None, None, None, None, None
 
     def start_channel_connection(self, channel):
@@ -52,16 +56,16 @@ class CANWrapper(CANconfig):
         The function will start the channel connection when sending SDO CAN message
         Parameters
         """
-        # self.logger.notice('Starting CAN Connection ...')
+        logging.info('Starting CAN connection')
         status = False
-        if channel == self._channel0:
+        if str(channel) == self._channel0:
             if not self._busOn0:
-                print("Channel wasn't started or crashed")
+                logging.warning('Channel %s was not started or crashed', channel)
                 self.restart_channel_connection(channel)
             status = True
-        elif channel == self._channel1:
+        elif str(channel) == self._channel1:
             if not self._busOn1:
-                print("Channel wasn't started or crashed")
+                logging.warning('Channel %s was not started or crashed', channel)
                 self.restart_channel_connection(channel)
             status = True
         if status:
@@ -75,13 +79,13 @@ class CANWrapper(CANconfig):
         The function will writing the dictionary request from the master to the node then read the response from the node to the master
         The user has to decide how to decode the data.
         """
-        # self.logger.notice("Reading an object via |SDO|")
+        logging.info('Reading an object via |SDO|')
         self.start_channel_connection(channel)
         if nodeId is None or index is None or subindex is None:
-            # self.logger.warning('SDO read protocol cancelled before it could begin.')
+            logging.warning('SDO read protocol cancelled before it could begin.')
             return None
         self.cnt['SDO read total'] += 1
-        # self.logger.info(f'Send SDO read request to node {nodeId}.')
+        logging.info('Send SDO read request to node %s', nodeId)
         cobid = SDO_TX + nodeId
         msg = [0 for i in range(MAX_DATABYTES)]
         msg[0] = 0x40
@@ -116,18 +120,21 @@ class CANWrapper(CANconfig):
             if (errorResponse):
                 return cobid_ret, None
         else:
-            # self.logger.info(f'SDO read response timeout (node {nodeId}, index'
-            #                 f' {index:04X}:{subindex:02X})')
-            print("SDO read response timeout")
+            logging.info('SDO read response timeout.')
+            logging.info('NodeID: %s', nodeId)
+            logging.info('Index: %s', index)
+            logging.info('Subindex: %s', subindex)
             self.cnt['SDO read response timeout'] += 1
-            return None, None
+            return None
 
         # Check command byte
         if ret[0] == (0x80):
             abort_code = int.from_bytes(ret[4:], 'little')
-            # self.logger.error(f'Received SDO abort message while reading '
-            #                  f'object {index:04X}:{subindex:02X} of node '
-            #                  f'{nodeId} with abort code {abort_code:08X}')
+            logging.error('Received SDO abort message while reading')
+            logging.error('Object: %s', index)
+            logging.error('Subindex: %s', subindex)
+            logging.error('NodeID: %s', nodeId)
+            logging.error('Abort code: %s', abort_code)
             self.cnt['SDO read abort'] += 1
             return None, None
 
@@ -135,16 +142,36 @@ class CANWrapper(CANconfig):
         data = []
         for i in range(nDatabytes):
             data.append(ret[4 + i])
-        # self.logger.info(f'Got data: {data}')
+        logging.info('Got data %s', data)
         return cobid_ret, int.from_bytes(data, 'little')
 
-    def read_adc_channels(self, file, directory, nodeId, channel):
+    def read_adc_channels(self, file, directory, nodeId, mp_channel, can_channel):
         """Start actual CANopen communication
         This function contains an endless loop in which it is looped over all
         ADC channels. Each value is read using
         :meth:`read_sdo_can_thread` and written to its corresponding
         """
+
+        #Setting Multiplexer
+        try:
+            mp.mp_switch(mp_channel, can_channel)
+            logging.info('MP Channel was set to %s and can channel to %s', mp_channel, can_channel)
+        except:
+            logging.error('MP channel %s could not be set', mp_channel)
+            return None
+        #Check power status
+        try:
+            status = pe.check_status(mp_channel)
+            if status != 0:
+                logging.error('Power is not enabled on Channel %s', mp_channel)
+                pe.addressable_latch_mode(mp_channel, 0)
+                logging.info('Power for channel %s was enabled', mp_channel)
+        except:
+            logging.error('Error while enabling Power of channel %s', mp_channel)
+            return None
+
         dev = AnalysisUtils().open_yaml_file(file=file, directory=directory)
+        logging.info('Reading from yaml to get dictionary items')
         # yaml file is needed to get the object dictionary items
         dictionary_items = dev["Application"]["index_items"]
         _adc_channels_reg = dev["adc_channels_reg"]["adc_channels"]
@@ -153,23 +180,24 @@ class CANWrapper(CANconfig):
         _channelDesc: List[Any] = [dev["adc_channels_reg"]["adc_channels"][str(_channelItems[i])] for i in
                                    range(len(_channelItems))]
 
+        logging.info('Reading ADC channels of Mops with ID %s', nodeId)
         mops_readout = [[0 for x in range(3)] for y in range(len(_channelItems))]  # indexing: [y][x]
 
         monitoringTime = time.time()
         # Read ADC channels
-        # pbar = tqdm(total=len(_channelItems) + 1, desc="ADC channels", iterable=True)
         for i in range(0, len(_channelItems)):
             subindex = _channelItems[i] - 2
-            # data_point = randint(0, 100)
-            data_point = self.read_sdo_can_thread(nodeId, int(_adc_index, 16), subindex, self._timeout_ch0, channel)
+            #data_point = randint(0, 100)
+            data_point = self.read_sdo_can_thread(nodeId, int(_adc_index, 16), subindex, self._timeout_ch0, can_channel)
             if data_point is not None:
                 adc_converted = Analysis().adc_conversion(str(_channelDesc[i]), data_point[0])
                 adc_converted = round(adc_converted, 3)
                 adc_converted = adc_converted * 100 * randint(10, 100)
                 mops_readout[i][0] = (_channelItems[i])  # adc channel_index
+                mops_readout[i][1] = data_point
                 mops_readout[i][1] = int(adc_converted)  # datapoint of channel read
-                mops_readout[i][2] = str(_channelDesc[i])  # descrtion of channel
-                # self.logger.info(f'Got data for channel {channel}: = {adc_converted}')
+                mops_readout[i][2] = str(_channelDesc[i])  # description of channel
+                logging.info('Got data for ADC channel %s = %s', subindex, data_point)
         return mops_readout
 
 

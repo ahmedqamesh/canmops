@@ -6,8 +6,6 @@ import sys
 from yaml import load, dump
 from itertools import product
 from asyncua import Node
-from random import randint
-from math import exp
 
 try:
     from yaml import CLoader as Loader, CDumper as Dumper
@@ -27,6 +25,7 @@ class MOPSHUBCrate(CANWrapper):
         :param endpoint: The server endpoint (hint: 127.0.0.1 hosts on YOUR machine, 0.0.0.0 exposes the server to the network as well)
         :param namespace: The namespace
         """
+
         self.endpoint = endpoint
         self.namespace = namespace
         self.Server = asyncua.Server()
@@ -113,8 +112,8 @@ class MOPSHUBCrate(CANWrapper):
         """
         adc_object = await self.find_object(f"CIC {cic_index}:MOPS {mops_index}:ADCChannel {channel_index:02}")
         value_var = (await self._find_in_node(adc_object, "monitoringValue"))[0]
-        #converter = await (await self._find_in_node(adc_object, "Converter"))[0].get_value()
-        #await value_var.write_value(self.converters[converter](adc_value))
+        # converter = await (await self._find_in_node(adc_object, "Converter"))[0].get_value()
+        # await value_var.write_value(self.converters[converter](adc_value))
         await value_var.write_value(adc_value)
 
     async def find_object(self, search_string: str) -> Node:
@@ -290,9 +289,13 @@ async def main(config_file):
     async with mobshub_crate:
         i = 0
         while True:
+            crate_index = 0
             cic_index = 0
             mops_index = 1
-            adc_index = 1
+            mp_channel = 31
+            can_channel = 1
+            logging.info('Reading from MOPS with NodeID %s on Crate %s and CIC %s', mops_index, crate_index, cic_index)
+
             #         SDO_TX = 0x600
             #         SDO_RX = 0x580
             #         nodeId = 1
@@ -304,18 +307,18 @@ async def main(config_file):
             #                                       SDO_RX=SDO_RX,
             #                                       cobid = SDO_TX+nodeId)
 
-            readout = wrapper.read_adc_channels("MOPS_cfg.yml", "config", 1, '1')
+            readout = wrapper.read_adc_channels("MOPS_cfg.yml", "config", mops_index, mp_channel, can_channel)
+            # This Function writes to the Nodes of the OPC UA Server
+            # cic_index: int, mops_index: int, channel_index: int, adc_value: int
+            if readout is not None:
+                for i in range(len(readout)):
+                    adc_index = readout[i][0]
+                    value = readout[i][1]
+                    print(readout[i])
+                    await mobshub_crate.write_adc(cic_index, mops_index, adc_index, value)
+            logging.info('Readout finished')
             await asyncio.sleep(2)
-            #This Function writes to the Nodes of the OPC UA Server
-            #cic_index: int, mops_index: int, channel_index: int, adc_value: int
-            for i in range(len(readout)):
-                adc_index = readout[i][0]
-                value = readout[i][1]
-                print(readout[i])
-                await mobshub_crate.write_adc(cic_index, mops_index, adc_index, value)
 
 
 if __name__ == '__main__':
-    logging.basicConfig(level=logging.DEBUG)
     asyncio.run(main("config/config.yaml"), debug=True)
-
