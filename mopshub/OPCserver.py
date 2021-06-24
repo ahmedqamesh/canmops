@@ -12,7 +12,7 @@ async def main(config_file, endpoint, namespace):
     await mobshub_crate.init(config_file)
     async with mobshub_crate:
         while True:
-            # The main CAN + SPI loop goes here!
+            #Here will be the main SPI/CAN LOOP
             await asyncio.sleep(0.1)
 
 
@@ -29,3 +29,4 @@ if __name__ == '__main__':
     parser = argh.ArghParser()
     parser.add_commands([start])
     parser.dispatch()
+    start('config/config.yaml')

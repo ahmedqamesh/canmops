@@ -6,17 +6,18 @@ import sys
 from yaml import load, dump
 from itertools import product
 from asyncua import Node
+from CANWrapper import CANWrapper, wrapper
+from CICreadout import CICreadout, adc
 
 try:
     from yaml import CLoader as Loader, CDumper as Dumper
 except ImportError:
     from yaml import Loader, Dumper
 sys.path.insert(0, "..")
-from CANWrapper import CANWrapper, wrapper
 
 
-class MOPSHUBCrate(CANWrapper):
-    def __init__(self, endpoint: str = 'opc.tcp://0.0.0.0:4840/freeopcua/server/',
+class MOPSHUBCrate(CANWrapper, CICreadout):
+    def __init__(self, endpoint: str = 'opc.tcp://127.0.0.1:4840/freeopcua/server/',
                  namespace: str = 'http://examples.freeopcua.github.io'):
         """Constructor for MOPSHUBCrate
 
@@ -31,6 +32,7 @@ class MOPSHUBCrate(CANWrapper):
         self.Server = asyncua.Server()
         self.idx = 0
         self.CICs = [None for _ in range(4)]
+        self.Bus = [None for _ in range(32)]
         self._logger: Logger = logging.getLogger('asyncua')
         self.defaults = {
             "ADC Channel Default Converter": 'Raw',
@@ -188,12 +190,50 @@ class MOPSHUBCrate(CANWrapper):
             if f"CIC {cic_id}" in data:
                 self.CICs[cic_id] = await self.mobshub_crate_object.add_object(self.idx, f"CIC {cic_id}")
 
-        # Create MOPS objects
-        for cic_id, mops_id in product(range(4), range(2)):
-            if (self.CICs[cic_id] is not None) and (f"MOPS {mops_id}" in data[f"CIC {cic_id}"]):
+        # Create Can Bus objects
+        for cic_id, bus_id in product(range(4), range(1,33)):
+            if (self.CICs[cic_id] is not None) and (f"Bus {bus_id}" in data[f"CIC {cic_id}"]):
                 cic_data = data[f"CIC {cic_id}"]
-                mops_object = await self.CICs[cic_id].add_object(self.idx, f"MOPS {mops_id}")
-                mops_data = cic_data[f"MOPS {mops_id}"]
+                self.Bus[bus_id-1] = await self.CICs[cic_id].add_object(self.idx, f"CANBus {bus_id}")
+                bus_data = cic_data[f"Bus {bus_id}"]
+
+                cic_adc_object = await self.Bus[bus_id-1].add_object(self.idx, f"ADC CANBus {bus_id}")
+
+                pe_object = await cic_adc_object.add_object(self.idx, "Power Enable")
+                #await pe_object.add_variable(self.idx, "Description", "Power Enable Signal CIC.")
+                #await pe_object.add_variable(self.idx, "Datatype", "Boolean")
+                await pe_object.add_variable(self.idx, "Monitoring Value", True)
+
+                current_object = await cic_adc_object.add_object(self.idx, "Current Monitoring")
+                #await current_object.add_variable(self.idx, "Description", "Current Monitoring UI = UH - UL")
+                #await current_object.add_variable(self.idx, "Physical Parameter", "V")
+                await current_object.add_variable(self.idx, "Monitoring Value UH", 0.0)
+                await current_object.add_variable(self.idx, "Monitoring Value UL", 0.0)
+
+                voltage_object = await cic_adc_object.add_object(self.idx, "Voltage Monitoring")
+                #await voltage_object.add_variable(self.idx, "Description", "Voltage Monitoring")
+                #await voltage_object.add_variable(self.idx, "Physical Parameter", "V")
+                await voltage_object.add_variable(self.idx, "Monitoring Value", 0.0)
+
+                gnd_object = await cic_adc_object.add_object(self.idx, "GND")
+                #await gnd_object.add_variable(self.idx, "Description", "GND Monitoring")
+                await gnd_object.add_variable(self.idx, "Monitoring Value", 0.0)
+
+                temperature_object = gnd_object = await cic_adc_object.add_object(self.idx, "Temperature")
+                #await temperature_object.add_variable(self.idx, "Description", "Temperature Monitoring")
+                #await temperature_object.add_variable(self.idx, "Physical Parameter", "V")
+                await temperature_object.add_variable(self.idx, "Monitoring Value", 0.0)
+                #await temperature_object.add_variable(self.idx, "Converted Value Unit", "°C")
+                await temperature_object.add_variable(self.idx, "Converted Value", 0.0)
+
+
+        # Create MOPS objects
+        for cic_id, bus_id, mops_id in product(range(4), range(1,33), range(2)):
+            if (self.CICs[cic_id] is not None) and (f"Bus {bus_id}" in data[f"CIC {cic_id}"]) and (f"MOPS {mops_id}" in data[f"CIC {cic_id}"][f"Bus {bus_id}"]):
+
+                bus_data = data[f"CIC {cic_id}"][f"Bus {bus_id}"]
+                mops_object = await self.Bus[bus_id-1].add_object(self.idx, f"MOPS {mops_id}")
+                mops_data = bus_data[f"MOPS {mops_id}"]
 
                 # Specify location
                 if "Location" in mops_data:
@@ -235,7 +275,7 @@ class MOPSHUBCrate(CANWrapper):
                     await trimming_var.set_writable()
 
                 # Add ADC Channels
-                for channel_id in range(35):
+                for channel_id in range(32):
                     channel_object = await mops_object.add_object(self.idx, f"ADCChannel {channel_id:02}")
 
                     if f"ADC Channel {channel_id}" in mops_data:
@@ -285,6 +325,7 @@ async def main(config_file):
     _logger: Logger = logging.getLogger('asyncua')
     mobshub_crate = MOPSHUBCrate()
     _logger.info('Starting server!')
+    res = adc.read_adc(0, 31, 1)
     await mobshub_crate.init(config_file)
     async with mobshub_crate:
         i = 0
@@ -299,13 +340,8 @@ async def main(config_file):
             #         SDO_TX = 0x600
             #         SDO_RX = 0x580
             #         nodeId = 1
-            #         wrapper.read_sdo_can_thread(nodeId,
-            #                                       index=0x1000,
-            #                                       subindex=0,
-            #                                       timeout=3000,
-            #                                       SDO_TX=SDO_TX,
-            #                                       SDO_RX=SDO_RX,
-            #                                       cobid = SDO_TX+nodeId)
+            #         wrapper.read_sdo_can_thread(nodeId, index=0x1000, subindex=0, timeout=3000, SDO_TX=SDO_TX,
+            #                                    SDO_RX=SDO_RX, cobid = SDO_TX+nodeId)
 
             readout = wrapper.read_adc_channels("MOPS_cfg.yml", "config", mops_index, mp_channel, can_channel)
             # This Function writes to the Nodes of the OPC UA Server
