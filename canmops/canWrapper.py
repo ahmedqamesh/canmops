@@ -166,9 +166,9 @@ class CanWrapper(object):
         else:
             return f'{self.__ch.channel_info}, Bitrate:{self.__bitrate}'
                     
-    def confirm_nodes(self, channel=0, timeout=100):
+    def confirm_nodes(self, channel=0, timeout=100,nodeIds = ["1","2"]):
         self.logger.notice('Checking MOPS status ...')
-        _nodeIds = AnalysisUtils().get_info_yaml(dictionary=self.__conf['channel_ports'], index=str(channel), subindex="Nodes")
+        _nodeIds = nodeIds 
         self.set_nodeList(_nodeIds)
         self.logger.info(f'Connection to channel {channel} has been verified.')
         for nodeId in _nodeIds: 

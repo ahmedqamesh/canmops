@@ -21,7 +21,10 @@ import os
 rootdir = os.path.dirname(os.path.abspath(__file__)) 
 config_dir = "config/"
 lib_dir = lib_dir = rootdir[:]
+
+
 class OpcuaWindow(QMainWindow):
+
     def __init__(self):
         super(OpcuaWindow, self).__init__(None)
         self.conf_cic = AnalysisUtils().open_yaml_file(file=config_dir + "config.yaml", directory=lib_dir)
@@ -31,17 +34,17 @@ class OpcuaWindow(QMainWindow):
         self.__adc_index = dev["adc_channels_reg"]["adc_index"]
         pass
     
-    def device_child_window(self,childWindow):
+    def device_child_window(self, childWindow):
         MessageWindow = QMainWindow()
         childWindow.setObjectName("DeviceWindow")
-        #childWindow.setGeometry(1175, 10, 200, 770)
+        # childWindow.setGeometry(1175, 10, 200, 770)
         logframe = QFrame()
         logframe.setLineWidth(0.9)
         childWindow.setCentralWidget(logframe)
         self.cic_group_window()
 
         mainLayout = QGridLayout()   
-        #mainLayout.addWidget(self.FirstGroupBox    , 0, 0, 4, 2)
+        # mainLayout.addWidget(self.FirstGroupBox    , 0, 0, 4, 2)
         mainLayout.addWidget(self.CICGroupBox[0]   , 0, 0)
         mainLayout.addWidget(self.CICGroupBox[1]   , 0, 1) 
         mainLayout.addWidget(self.CICGroupBox[2]   , 1, 0) 
@@ -49,25 +52,22 @@ class OpcuaWindow(QMainWindow):
         logframe.setLayout(mainLayout)
 
     def show_adc_window(self):
-        sender =  self.sender().objectName()
-        cic_num  = sender[1:-2]
+        sender = self.sender().objectName()
+        cic_num = sender[1:-2]
         mops_num = sender[3:]
        # try:
         self.adcWindow = QMainWindow()
-        self.adc_values_window(childWindow = self.adcWindow, cic_num = cic_num, mops_num = mops_num)
+        self.adc_values_window(childWindow=self.adcWindow, cic_num=cic_num, mops_num=mops_num)
         self.adcWindow.show()
-        #except:
+        # except:
         #    print("CIC "+cic_num,"MOPS "+mops_num, ": Not Found")
-
-    
     
     def show_deviceWindow(self):
         self.deviceWindow = QMainWindow()
         self.device_child_window(childWindow=self.deviceWindow)
         self.deviceWindow.show()
-            
     
-    def alarm_timers(self,period = 500):
+    def alarm_timers(self, period=500):
         self.alarm = QtCore.QTimer(self)
         self.alarm.setInterval(period)
         self.alarm.timeout.connect(self.read_adc_channels)
@@ -82,15 +82,15 @@ class OpcuaWindow(QMainWindow):
         self.mopsBotton = [k for k in np.arange(mops_num)]
         self.CICGroupBox = [k for k in np.arange(cic_num)]
         self.AlarmBox = [k for k in np.arange(mops_num)]
-        alarm_led = [[0]*mops_num]*cic_num
+        alarm_led = [[0] * mops_num] * cic_num
         for c in np.arange(cic_num):
             CICGridLayout = QGridLayout()
-            self.CICGroupBox[c] = QGroupBox("        CIC"+str(c))
+            self.CICGroupBox[c] = QGroupBox("        CIC" + str(c))
             self.CICGroupBox[c].setStyleSheet("QGroupBox { font-weight: bold;font-size: 16px; } ")
             for m in np.arange(mops_num):
                 try:
-                    self.conf_cic["CIC "+str(c)]["MOPS "+str(m)]
-                    icon_state =True
+                    self.conf_cic["CIC " + str(c)]["MOPS " + str(m)]
+                    icon_state = True
                 except:
                     icon_state = False
                 if icon_state:
@@ -101,8 +101,8 @@ class OpcuaWindow(QMainWindow):
                 alarm_led[c][m].setScaledSize(QSize().scaled(20, 20, Qt.KeepAspectRatio))                 
                 col_len = int(mops_num / 2)
                 s = m
-                self.mopsBotton[s] = QPushButton("  ["+str(m)+"]")
-                self.mopsBotton[s].setObjectName("C"+str(c)+"M"+str(m))
+                self.mopsBotton[s] = QPushButton("  [" + str(m) + "]")
+                self.mopsBotton[s].setObjectName("C" + str(c) + "M" + str(m))
                 self.mopsBotton[s].setIcon(QIcon('graphicsUtils/icons/icon_mops.png'))
                 self.mopsBotton[s].clicked.connect(self.cic_group_action)
                 self.AlarmBox[s] = QLabel()
@@ -111,28 +111,28 @@ class OpcuaWindow(QMainWindow):
                     CICGridLayout.addWidget(self.mopsBotton[s], s, 1)
                     CICGridLayout.addWidget(self.AlarmBox[s], s, 0)
                 else:
-                    CICGridLayout.addWidget(self.mopsBotton[s], s, 1)     #s- col_len, 0)      
+                    CICGridLayout.addWidget(self.mopsBotton[s], s, 1)  # s- col_len, 0)      
                     CICGridLayout.addWidget(self.AlarmBox[s], s, 0)      
                 alarm_led[c][m].start()
             self.CICGroupBox[c].setLayout(CICGridLayout)
 
     def cic_group_action(self):
-        sender =  self.sender().objectName()
+        sender = self.sender().objectName()
         CIC_num = sender[1:-2]
         MOPS_num = sender[3:]
         try:
-            print(self.conf_cic["CIC "+CIC_num]["MOPS "+MOPS_num])
-            state =True
+            print(self.conf_cic["CIC " + CIC_num]["MOPS " + MOPS_num])
+            state = True
             self.show_adc_window
         except:
-            print("CIC "+CIC_num,"MOPS "+MOPS_num, ": Not Found")
+            print("CIC " + CIC_num, "MOPS " + MOPS_num, ": Not Found")
             state = False
 
-    def adc_values_window(self,childWindow,cic_num = None, mops_num = None):
+    def adc_values_window(self, childWindow, cic_num=None, mops_num=None):
         '''
         The function will create a QGroupBox for ADC Values [it is called by the function device_child_window]
         '''
-        childWindow.setWindowTitle("CIC"+cic_num +" MOPS"+mops_num+"Window")
+        childWindow.setWindowTitle("CIC" + cic_num + " MOPS" + mops_num + "Window")
         childWindow.setObjectName("DeviceWindow")
         childWindow.setGeometry(1175, 10, 200, 770)        
         logframe = QFrame()
@@ -141,7 +141,7 @@ class OpcuaWindow(QMainWindow):
         # info to read the ADC from the yaml file
         self.FirstGroupBox = QGroupBox("ADC Channels")
         FirstGridLayout = QGridLayout()
-        _adc_channels_reg = self.__adc_channels_reg#self.get_adc_channels_reg()
+        _adc_channels_reg = self.__adc_channels_reg  # self.get_adc_channels_reg()
         _dictionary = self.__dictionary_items
         _adc_indices = list(self.__adc_index)
         for i in np.arange(len(_adc_indices)):
@@ -175,7 +175,7 @@ class OpcuaWindow(QMainWindow):
                 self.trendingBotton[s].setObjectName(str(subindex))
                 self.trendingBotton[s].setIcon(QIcon('graphicsUtils/icons/icon_trend.jpg'))
                 self.trendingBotton[s].setStatusTip('Data Trending for %s' % subindex_description_item[25:29])
-                #self.trendingBotton[s].clicked.connect(self.show_trendWindow)
+                # self.trendingBotton[s].clicked.connect(self.show_trendWindow)
 #                 self.trendingBox[s] = QCheckBox("")
 #                 self.trendingBox[s].setChecked(False)
                 col_len = int(len(_subIndexItems) / 2)
@@ -195,13 +195,11 @@ class OpcuaWindow(QMainWindow):
         mainLayout = QGridLayout()   
         mainLayout.addWidget(self.FirstGroupBox , 0, 0, 4, 2)
         logframe.setLayout(mainLayout)             
-if __name__=='__main__':
+
+
+if __name__ == '__main__':
     qApp = QtWidgets.QApplication(sys.argv)
     app = OpcuaWindow()
     app.show_deviceWindow()
     qApp.exec_()
-    
-    
-        
-
 

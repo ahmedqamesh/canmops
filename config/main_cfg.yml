@@ -7,8 +7,4 @@ Application:
   user: Ahmed Qamesh
 channel_ports:
   '0':
-    Nodes:
-    - '1'
   '1':
-    Nodes:
-    - '0'

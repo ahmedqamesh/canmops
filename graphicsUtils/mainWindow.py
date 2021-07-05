@@ -27,6 +27,7 @@ rootdir = os.path.dirname(os.path.abspath(__file__))
 lib_dir = rootdir[:-13]
 config_dir = "config/"
 
+
 class MainWindow(QMainWindow):
 
     def __init__(self, console_loglevel=logging.INFO):
@@ -105,8 +106,8 @@ class MainWindow(QMainWindow):
         mainLayout.addWidget(self.defaultMessageGroupBox, 1, 0)  
         mainLayout.addWidget(self.textGroupBox, 0, 1, 2, 1)
         mainLayout.addWidget(self.monitorGroupBox, 3, 0, 2, 2)
-        mainLayout.addWidget(self.configureDeviceBoxGroupBox, 5, 0,1,1)
-        mainLayout.addWidget(self.configureCICBoxGroupBox   ,5, 1,1,1)
+        mainLayout.addWidget(self.configureDeviceBoxGroupBox, 5, 0, 1, 1)
+        mainLayout.addWidget(self.configureCICBoxGroupBox   , 5, 1, 1, 1)
         mainFrame.setLayout(mainLayout)
         # 3. Show
         self.show()
@@ -161,13 +162,13 @@ class MainWindow(QMainWindow):
             except Exception:
                 self.logger.warning("No Nodes found in the settings file")
                 pass
-            try:
-                self.nodeComboBox.clear()
-                self.nodeComboBox.addItems(list(map(str, _nodeItems)))
-            except Exception:
-                self.logger.warning("No interface connected to the selected port")
-                self.nodeComboBox.clear()
-                pass
+          #  try:
+                #self.nodetextBox.clear()
+              #  self.nodetextBox.addItems(list(map(str, _nodeItems)))
+          #  except Exception:
+             #   self.logger.warning("No interface connected to the selected port")
+              #  self.nodetextBox.clear()
+            #    pass
 
         self.channelComboBox.setCurrentIndex(0)
         self.connectButton.clicked.connect(on_channelComboBox_currentIndexChanged)
@@ -201,9 +202,9 @@ class MainWindow(QMainWindow):
         defaultMessageWindowLayout = QGridLayout()                        
         nodeLabel = QLabel()
         nodeLabel.setText("NodeId [dec]")
-        self.nodeComboBox = QComboBox()
-        self.nodeComboBox.setStatusTip('Connected CAN Nodes as defined in the main_cfg.yml file')
-        self.nodeComboBox.setFixedSize(70, 25)
+        self.nodetextBox = QLineEdit("1")
+        self.nodetextBox.setStatusTip('Connected CAN Nodes as defined in the main_cfg.yml file')
+        self.nodetextBox.setFixedSize(70, 25)
         
         oDLabel = QLabel()
         oDLabel.setText("   CAN Id   ")
@@ -226,7 +227,7 @@ class MainWindow(QMainWindow):
             try:
                 self.set_index(self.mainIndexTextBox.text())
                 self.set_subIndex(self.mainSubIndextextbox.text())
-                self.set_nodeId(self.nodeComboBox.currentText())
+                self.set_nodeId(self.nodetextBox.text())
                 self.set_canId_tx(self.CANIdComboBox.currentText())
             except Exception:
                 self.error_message(text="Make sure that the CAN interface is connected")
@@ -237,7 +238,7 @@ class MainWindow(QMainWindow):
         self.startButton.clicked.connect(__set_bus)
         self.startButton.clicked.connect(self.read_sdo_can_thread)                 
         defaultMessageWindowLayout.addWidget(nodeLabel, 3, 0)
-        defaultMessageWindowLayout.addWidget(self.nodeComboBox, 4, 0)   
+        defaultMessageWindowLayout.addWidget(self.nodetextBox, 4, 0)   
         
         defaultMessageWindowLayout.addWidget(oDLabel, 3, 1)
         defaultMessageWindowLayout.addWidget(self.CANIdComboBox, 4, 1)
@@ -596,10 +597,10 @@ class MainWindow(QMainWindow):
                                           tseg2=_tseg2,
                                           ipAddress=_ipAddress,
                                           channel=int(_channel))
-                if self.__deviceName == "MOPS":
-                    self.wrapper.confirm_nodes(channel=int(_channel))
-                else:
-                    pass
+               # if self.__deviceName == "MOPS":
+               #     self.wrapper.confirm_nodes(channel=int(_channel))
+               # else:
+               #     pass
                 self.control_logger = self.wrapper.logger
             except:
                 self.logger.error("Cannot Connect to the CAN bus")
@@ -648,8 +649,8 @@ class MainWindow(QMainWindow):
             self.interfaceComboBox.addItems([_interface])
             self.channelComboBox.clear()
             self.channelComboBox.addItems([str(_channel)])
-            self.nodeComboBox.clear()
-            self.nodeComboBox.addItems(list(map(str, _nodeItems)))
+            #self.nodetextBox.clear()
+           # self.nodetextBox.addItems(list(map(str, _nodeItems)))
             
             # Save the settings into a file
             dict_file = {"CAN_Interfaces": _interface,
@@ -663,7 +664,7 @@ class MainWindow(QMainWindow):
                                                  "timeout":_timeout}                             
                                                          }
             self.logger.info("Saving CAN settings to the file %s" % lib_dir + config_dir + _interface + "_CANSettings.yml") 
-            self.logger.info("Please restart your bus from the tools menu (Interface >> %s >> Reset_%s_interface )to apply the new settings "%(_interface,_interface))
+            self.logger.info("Please restart your bus from the tools menu (Interface >> %s >> Reset_%s_interface )to apply the new settings " % (_interface, _interface))
             AnalysisUtils().dump_yaml_file(directory=lib_dir + config_dir , file=_interface + "_CANSettings.yml", loaded=dict_file)
             # Apply the settings to the main server
             self.wrapper = CanWrapper(interface=_interface,
@@ -726,7 +727,7 @@ class MainWindow(QMainWindow):
                     _can_channel = "can" + str(_channel)       
                     os.system(". " + rootdir[:-14] + "/canmops/socketcan_wrapper_enable.sh %s %s %s %s %s" % ("_bitrate", "_samplePoint", "_sjw", _can_channel, _bus_type))
                 
-                #if (arg == "restart" and interface == "Kvaser"):
+                # if (arg == "restart" and interface == "Kvaser"):
                 #    self.wrapper.restart_channel_connection(interface="Kvaser")
                 self.wrapper = CanWrapper(interface=interface,
                               bitrate=_bitrate,
@@ -789,7 +790,7 @@ class MainWindow(QMainWindow):
         ChildWindow.setGeometry(915, 490, 250, 315)
         mainLayout = QGridLayout()
         _od_index = self.CANIdComboBox.currentText()
-        _nodeId = self.nodeComboBox.currentText()
+        _nodeId = self.nodetextBox.text()
         _cobeid = int(_od_index, 16) + int(_nodeId, 16)
         _bytes = self.get_bytes()
         if type(_cobeid) == int:
@@ -894,7 +895,6 @@ class MainWindow(QMainWindow):
         interfaceLayout.addWidget(interfaceComboBox)
         # Another group will be here for Bus parameters
         self.BusParametersGroupBox()
-        self.NodeParameters()
         
         channelLabel = QLabel()
         channelLabel.setText("CAN Bus: ")
@@ -911,7 +911,6 @@ class MainWindow(QMainWindow):
         SecondGridLayout.addLayout(interfaceLayout, 1, 0)
         SecondGridLayout.addWidget(channelLabel, 2, 0)
         SecondGridLayout.addWidget(self.channelSettingsComboBox, 3, 0)
-        SecondGridLayout.addWidget(self.NodeGroup, 5 , 0)
 
         def _interfaceParameters():
             SecondGridLayout.removeWidget(self.SubSecondGroupBox)
@@ -934,69 +933,12 @@ class MainWindow(QMainWindow):
         ThirdGridLayout.addWidget(close_button)
          
         mainLayout.addWidget(SecondGroupBox, 1, 0)
-       
         mainLayout.addLayout(ThirdGridLayout, 3, 0)
         plotframe.setLayout(mainLayout) 
         self.MenuBar.create_statusBar(ChildWindow)
         plotframe.setStatusTip("")
         QtCore.QMetaObject.connectSlotsByName(ChildWindow)                
-    
-    def NodeParameters(self):
-        self.NodeGroup = QGroupBox("Node Info")
-        nodeLayout = QVBoxLayout()
-        # Inputs
-        inLayout = QHBoxLayout()  
-        nodeSpinBox = QSpinBox()
-        
-        add_button = QPushButton("Add")
-        add_button.setIcon(QIcon('graphicsUtils/icons/icon_add.png'))
 
-        clear_button = QPushButton("Clear")
-        clear_button.setIcon(QIcon('graphicsUtils/icons/icon_clear.png'))
-        
-        save_button = QPushButton("Save")
-        save_button.setIcon(QIcon('graphicsUtils/icons/icon_true.png'))
-                    
-        inLayout.addWidget(nodeSpinBox)
-        inLayout.addWidget(add_button)
-        
-        # outputs
-        outLayout = QVBoxLayout()
-        nodeLabel = QLabel()
-        nodeLabel.setText("Added  Nodes [dec]")    
-        nodeListBox = QListWidget()
-        outLayout.addWidget(nodeLabel)
-        outLayout.addWidget(nodeListBox)
-        nodeLayout.addLayout(inLayout)
-        nodeLayout.addLayout(outLayout) 
-        nodeLayout.addWidget(clear_button)
-        nodeLayout.addWidget(save_button)
-
-        def _add_item():
-            node = nodeSpinBox.value()
-            nodeListBox.addItem(str(int(node)))
-        
-        def _clear_item():
-            _row = nodeListBox.currentRow()
-            nodeListBox.takeItem(_row)
-        
-        def _save_items():
-            if (nodeListBox.count() != 0):
-                _nodes = [nodeListBox.item(x).text() for x in range(nodeListBox.count())]
-                _channel = self.channelSettingsComboBox.currentText()
-                [self.__conf["channel_ports"][i] for i in [str(_channel)] if i in self.__conf["channel_ports"]][0]["Nodes"] = _nodes
-                file = config_dir + "main_cfg.yml"
-                AnalysisUtils().dump_yaml_file(file=file,
-                                               loaded=self.__conf,
-                                               directory=lib_dir)
-                self.logger.info("Saving Information to the file %s" % file)
-            else:
-                self.logger.error("No data to be saved.....")
-
-        add_button.clicked.connect(_add_item)
-        clear_button.clicked.connect(_clear_item)
-        save_button.clicked.connect(_save_items)
-        self.NodeGroup.setLayout(nodeLayout)
                 
     def BusParametersGroupBox(self, interface="Others"):
         '''
@@ -1169,7 +1111,7 @@ class MainWindow(QMainWindow):
         # Generate random indices and sub indices
         _index = np.random.randint(1000, 2500)
         _subIndex = np.random.randint(0, 5)
-        _nodeId = self.nodeComboBox.currentText()
+        _nodeId = self.nodetextBox.text()
         
         # Set the indices and the sub indices
         self.set_nodeId(_nodeId)
@@ -1220,9 +1162,9 @@ class MainWindow(QMainWindow):
             self.wrapper.write_can_message(int(_cobid_TX, 16), _bytes, flag=0, timeout=self.__timeout)
             # receive the message
             if _cobid_TX == "0x0":
-                for i in np.arange(len(self.nodeComboBox) - 1):
-                    self.read_can_message_thread(thread=True)
-                    self.wrapper.restart_channel_connection()
+               # for i in np.arange(len(self.nodetextBox) - 1):
+                self.read_can_message_thread(thread=True)
+                self.wrapper.restart_channel_connection()
             elif int(_cobid_TX, 16) >= 0x700:
                 self.read_can_message_thread(thread=False)
                 self.wrapper.restart_channel_connection()
@@ -1270,7 +1212,7 @@ class MainWindow(QMainWindow):
         self.set_textBox_message(comunication_object="newline", msg=decoded_response, cobid=None) 
         return cobid_ret, data_ret, dlc, flag, t
            
-    def device_child_window(self, childWindow,device = None): 
+    def device_child_window(self, childWindow, device=None): 
         '''
         The function will Open a special window for the device [MOPS] .
         The calling function for this is show_deviceWindow
@@ -1286,8 +1228,9 @@ class MainWindow(QMainWindow):
             _device_name = self.__deviceName
         _channel = self.get_channel()
         n_channels = 33
+        nodeItems = self.__nodeIds
         try:
-            self.wrapper.confirm_nodes(channel=int(_channel))
+            self.wrapper.confirm_nodes(channel=int(_channel),nodeIds = nodeItems)
         except Exception:
             pass
         #  Open the window
@@ -1309,9 +1252,9 @@ class MainWindow(QMainWindow):
         nodeLabel.setText("Connected nodes :")
                 
         self.deviceNodeComboBox = QComboBox()
-        nodeItems = self.__nodeIds
         self.set_nodeList(nodeItems)
         for item in list(map(str, nodeItems)): self.deviceNodeComboBox.addItem(item)
+
         def __set_bus():
             try:
                 _nodeid = self.deviceNodeComboBox.currentText()
@@ -2014,6 +1957,7 @@ class MainWindow(QMainWindow):
         self.deviceWindow.show()
        # except Exception:
        #     self.error_message("Either the channel is not activated or the CAN interface is not connected")
+
     '''
     Define set/get functions
     '''
