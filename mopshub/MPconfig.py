@@ -1,6 +1,11 @@
-import RPi.GPIO as GPIO
+import time
+
 import numpy as np
 import logging
+try:
+    import RPi.GPIO as GPIO
+except ImportError:
+    logging.warning('RPI GPIO could not be imported')
 
 
 class MPconfig():
@@ -35,43 +40,50 @@ class MPconfig():
         be read on both.
         """
         # Format of switch Table: [MPchannel, A0/B0, A1/B1, A2/B2]
-        self.switch_table = np.array([[25, GPIO.LOW, GPIO.LOW, GPIO.LOW],
-                                     [26, GPIO.HIGH, GPIO.LOW, GPIO.LOW],
-                                     [27, GPIO.LOW, GPIO.HIGH, GPIO.LOW],
-                                     [28, GPIO.HIGH, GPIO.HIGH, GPIO.LOW],
-                                     [29, GPIO.LOW, GPIO.LOW, GPIO.HIGH],
-                                     [30, GPIO.HIGH, GPIO.LOW, GPIO.HIGH],
-                                     [31, GPIO.LOW, GPIO.HIGH, GPIO.HIGH],
-                                     [32, GPIO.HIGH, GPIO.HIGH, GPIO.HIGH]])
+        self.__switch_table = np.array([[0, 0, 0],
+                                        [1, 0, 0],
+                                        [0, 1, 0],
+                                        [1, 1, 0],
+                                        [0, 0, 1],
+                                        [1, 0, 1],
+                                        [0, 1, 1],
+                                        [1, 1, 1]])
 
-        logging.basicConfig(level=logging.DEBUG)
+        self.logger = logging.getLogger('mopshub_log.multiplexer')
 
     def mp_switch(self, mp_channel, can_channel):
-
         if mp_channel is None or can_channel is None:
-            logging.error('Missing Parameter. Can not switch MP channels')
+            self.logger.error('Missing Parameter. Can not switch MP channels')
             return 0
 
-        table_offset = 25
-        __mp_channel = int(mp_channel) - table_offset
-        #indexing of switch table: [y][x]
+        if mp_channel in range(0, 8):
+            __mp_channel = mp_channel
+        elif mp_channel in range(25, 33):
+            table_offset = 25
+            __mp_channel = mp_channel - table_offset
+        else:
+            return 0
+
+        # indexing of switch table: [y][x]
+        # This needs to be improved and is not working with the cic readout at the moment!!!!!!
         try:
             if can_channel == 1:
-                GPIO.output(self.__selA0, int(self.switch_table[__mp_channel][1]))
-                GPIO.output(self.__selA1, int(self.switch_table[__mp_channel][2]))
-                GPIO.output(self.__selA2, int(self.switch_table[__mp_channel][3]))
-                logging.info('MP Channel was set to Channel %s with A0 = %s, A1 = %s, A2 = %s', mp_channel,
-                            self.switch_table[__mp_channel][1], self.switch_table[__mp_channel][2],
-                            self.switch_table[__mp_channel][3])
+                GPIO.output(self.__selA0, int(self.__switch_table[__mp_channel][0]))
+                GPIO.output(self.__selA1, int(self.__switch_table[__mp_channel][1]))
+                GPIO.output(self.__selA2, int(self.__switch_table[__mp_channel][2]))
+                self.logger.info('MP Channel was set to Channel %s with A0 = %s, A1 = %s, A2 = %s', mp_channel,
+                                 self.__switch_table[__mp_channel][0], self.__switch_table[__mp_channel][1],
+                                 self.__switch_table[__mp_channel][2])
+                return True
 
             if can_channel == 0:
-                GPIO.output(self.__selB0, int(self.switch_table[__mp_channel][1]))
-                GPIO.output(self.__selB1, int(self.switch_table[__mp_channel][2]))
-                GPIO.output(self.__selB2, int(self.switch_table[__mp_channel][3]))
-                logging.info('MP Channel was set to Channel %s with B0 = %s, B1 = %s, B2 = %s', mp_channel,
-                            self.switch_table[__mp_channel][1], self.switch_table[__mp_channel][2],
-                            self.switch_table[__mp_channel][3])
-        except:
-            logging.error('Some ERROR occurred while setting MP Channel %s', mp_channel)
-
-mp = MPconfig()
+                GPIO.output(self.__selB0, int(self.__switch_table[__mp_channel][0]))
+                GPIO.output(self.__selB1, int(self.__switch_table[__mp_channel][1]))
+                GPIO.output(self.__selB2, int(self.__switch_table[__mp_channel][2]))
+                self.logger.info('MP Channel was set to Channel %s with B0 = %s, B1 = %s, B2 = %s', mp_channel,
+                                 self.__switch_table[__mp_channel][0], self.__switch_table[__mp_channel][1],
+                                 self.__switch_table[__mp_channel][2])
+                return True
+        except Exception as e:
+            self.logger.exception(e)
+            self.logger.error('Some ERROR occurred while setting MP Channel %s', mp_channel)

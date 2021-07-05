@@ -1,13 +1,14 @@
 from logging import Logger
 import asyncua
-import asyncio
+import re
 import logging
 import sys
 from yaml import load, dump
 from itertools import product
 from asyncua import Node
-from CANWrapper import CANWrapper, wrapper
-from CICreadout import CICreadout, adc
+from PEconfig import power_signal
+from analysisUtils import AnalysisUtils
+from CANconfig import can_config
 
 try:
     from yaml import CLoader as Loader, CDumper as Dumper
@@ -16,8 +17,8 @@ except ImportError:
 sys.path.insert(0, "..")
 
 
-class MOPSHUBCrate(CANWrapper, CICreadout):
-    def __init__(self, endpoint: str = 'opc.tcp://127.0.0.1:4840/freeopcua/server/',
+class MOPSHUBCrate:
+    def __init__(self, endpoint: str = 'opc.tcp://0.0.0.0:4840/freeopcua/server/',
                  namespace: str = 'http://examples.freeopcua.github.io'):
         """Constructor for MOPSHUBCrate
 
@@ -26,14 +27,21 @@ class MOPSHUBCrate(CANWrapper, CICreadout):
         :param endpoint: The server endpoint (hint: 127.0.0.1 hosts on YOUR machine, 0.0.0.0 exposes the server to the network as well)
         :param namespace: The namespace
         """
-
         self.endpoint = endpoint
         self.namespace = namespace
         self.Server = asyncua.Server()
         self.idx = 0
         self.CICs = [None for _ in range(4)]
         self.Bus = [None for _ in range(32)]
+        self.Mops = [[None for _ in range(2)] for _ in range(len(self.Bus))]
+        self.can_attr = ['Channel', 'Bitrate', 'SamplePoint', 'SJW', 'tseg1', 'tseg2', 'Timeout']
+        self.can_config = [[None for _ in range(len(self.can_attr))] for _ in range(2)]
+
+        self.logger = logging.getLogger('mopshub_log.crate')
         self._logger: Logger = logging.getLogger('asyncua')
+
+        logging.basicConfig(level=logging.DEBUG)
+
         self.defaults = {
             "ADC Channel Default Converter": 'Raw',
             "MOPS Default Location": 'Unknown',
@@ -47,7 +55,86 @@ class MOPSHUBCrate(CANWrapper, CICreadout):
             "Temperature": (lambda x: x / 2 ** 12 * 2.4)
         }
 
-    async def init(self, config_file: str):
+    async def disable_power(self, parent):
+        logging.warning('Power OFF')
+        node = self.Server.get_node(f"{parent}")
+        browse_name = await node.read_browse_name()
+        browse_name = (str(browse_name).split("CANBus"))[-1:]
+        result = re.findall('([0-9]*)', str(browse_name))
+        try:
+            for i in range(len(result)):
+                num = str(result[i])
+                if num.isdigit():
+                    channel = int(num)
+                    # status = [status, locked_by_sys, locked_by_user]
+                    status = power_signal.check_status(channel)
+                    if bool(status[1]) is False:
+                        power_signal.addressable_latch_mode(channel, 1, True)
+                        status = power_signal.check_status(channel)
+                        self.logger.info("Power of Channel %s was switched to OFF by User(Data,Locked: %s, %s)",
+                                         channel, str(status[0]), str(status[2]))
+                    elif bool(status[1]) is True:
+                        self.logger.error("Power of the Channel was locked from sys while start up", channel)
+        except Exception as e:
+            self.logger.error(e)
+            self.logger.error("An Error occurred by switching OFF Channel")
+            return
+
+    async def enable_power(self, parent):
+        logging.warning('Power ON')
+        node = self.Server.get_node(f"{parent}")
+        browse_name = await node.read_browse_name()
+        browse_name = (str(browse_name).split("CANBus"))[-1:]
+        result = re.findall('([0-9]*)', str(browse_name))
+        try:
+            for i in range(len(result)):
+                num = str(result[i])
+                if num.isdigit():
+                    channel = int(num)
+                    # status = [status, locked_by_sys, locked_by_user]
+                    status = power_signal.check_status(channel)
+                    if bool(status[1]) is False:
+                        power_signal.addressable_latch_mode(channel, 0, False)
+                        status = power_signal.check_status(channel)
+                        self.logger.info("Power of Channel %s was switched to OFF by User(Data,Locked: %s, %s)",
+                                         channel, str(status[0]), str(status[2]))
+                    elif bool(status[1]) is True:
+                        self.logger.error("Power of Channel %s was locked from sys while start up", channel)
+                    return
+        except Exception as e:
+            self.logger.error(e)
+            self.logger.error("An Error occurred by switching ON Channel")
+            return
+
+    async def configure_can(self, parent):
+        node = self.Server.get_node(f"{parent}")
+        children = await node.get_children()
+        try:
+            for child in children:
+                desc = await child.read_description()
+                if desc.Text == "Channel":
+                    channel = await child.get_value()
+                    print(channel)
+                else:
+                    raise Exception
+        except Exception as e:
+            self.logger.exception(e)
+
+        new_config = [None for _ in range(len(self.can_attr))]
+        for attr in range(len(self.can_attr)):
+            new_config[attr] = await self.can_config[channel][attr].get_value()
+
+        config_dict = {}
+
+        for i in range(len(self.can_attr)):
+            config_dict[self.can_attr[i]] = new_config[i]
+
+        if config_dict['Channel'] == can_config.can_0_settings['Channel']:
+            can_config.can_0_settings.update(config_dict)
+        elif config_dict['Channel'] == can_config.can_1_settings['Channel']:
+            can_config.can_1_settings.update(config_dict)
+
+    async def init(self, config_file: str, can_config_file: str, directory: str):
         """Setup the server and populate the address space
 
         :type config_file: str
@@ -57,7 +144,7 @@ class MOPSHUBCrate(CANWrapper, CICreadout):
         await self.Server.init()
         self.Server.set_endpoint(self.endpoint)
         self.idx = await self.Server.register_namespace(self.namespace)
-        await self._populate(config_file)
+        await self._populate(config_file, can_config_file, directory)
 
     async def _find_in_node(self, node: Node, search_string: str):
         """Search for a variable by name in a node
@@ -88,7 +175,6 @@ class MOPSHUBCrate(CANWrapper, CICreadout):
         if logging.DEBUG >= logging.root.level:
             output = dump(data, Dumper=Dumper)
             self._logger.info(f"Configured with {config_file}")
-            self._logger.info(output)
         if "Crate ID" not in data:
             self._logger.error(f"No crate ID specified in {config_file}")
             raise KeyError(f"No crate ID specified in {config_file}")
@@ -99,24 +185,41 @@ class MOPSHUBCrate(CANWrapper, CICreadout):
                 data[k] = self.defaults[k]
         return data
 
-    async def write_adc(self, cic_index: int, mops_index: int, channel_index: int, adc_value: int):
+    async def write_adc(self, cic_index: int, bus_index: int, adc_value: int,
+                        mops_index=None, channel_index=None, cic_adc_channel=None):
         """Asynchronous write to a single ADC channel
-
         :rtype: None
         :type cic_index: int
         :param cic_index: Index of the CIC
+        :type bus_index: int
+        :param bus_index: Index of the Bus on the CIC
         :type mops_index: int
         :param mops_index: Index of the MOPS
         :type channel_index: int
         :param channel_index: Channel Index (0...31)
         :type adc_value: int
         :param adc_value: ADC value to write (int, conversion happens according to the converter field)
+        :type cic_adc_channel: int
+        :param cic_adc_channel: Channel of the ADC CIC
         """
-        adc_object = await self.find_object(f"CIC {cic_index}:MOPS {mops_index}:ADCChannel {channel_index:02}")
-        value_var = (await self._find_in_node(adc_object, "monitoringValue"))[0]
-        # converter = await (await self._find_in_node(adc_object, "Converter"))[0].get_value()
-        # await value_var.write_value(self.converters[converter](adc_value))
-        await value_var.write_value(adc_value)
+        if None not in (mops_index, channel_index):
+            if int in (type(mops_index), type(channel_index)):
+                try:
+                    adc_object = await self.find_object(
+                        f"CIC {cic_index}:CANBus {bus_index}:MOPS {mops_index}:ADCChannel {channel_index:02}")
+                    value_var = (await self._find_in_node(adc_object, "monitoringValue"))[0]
+                    await value_var.write_value(adc_value)
+                except KeyError:
+                    return 0
+        elif cic_adc_channel is not None:
+            if type(cic_adc_channel) is int:
+                try:
+                    adc_object = await self.find_object(
+                        f"CIC {cic_index}:CANBus {bus_index}:ADC CANBus {bus_index}:ADCChannel {cic_adc_channel:02}")
+                    value_var = (await self._find_in_node(adc_object, "monitoringValue"))[0]
+                    await value_var.write_value(adc_value)
+                except KeyError:
+                    return 0
 
     async def find_object(self, search_string: str) -> Node:
         """Find a server object in the node tree. Objects have to exist, otherwise a KeyError exception is raised.
@@ -146,6 +249,7 @@ class MOPSHUBCrate(CANWrapper, CICreadout):
             return string in (await node.read_browse_name()).__str__()
 
         search = search_string.split(":")
+
         cic_search = search[0]
         if "CIC" not in cic_search:
             error(cic_search)
@@ -155,115 +259,151 @@ class MOPSHUBCrate(CANWrapper, CICreadout):
         cic = self.CICs[cic_index]
         if len(search) == 1:
             return cic
-        mops_search = search[1]
+
+        bus_search = search[1]
+        if "CANBus" not in bus_search:
+            error(bus_search)
+        bus_index = int(bus_search.replace("CANBus", "")) - 1
+        if self.Bus[bus_index] is None:
+            error(bus_search)
+        bus = self.Bus[bus_index]
+        if len(search) == 2:
+            return bus
+
+        mops_search = search[2]
         # noinspection PyUnresolvedReferences
-        mops = [node for node in await cic.get_children() if (await is_string(node, mops_search))]
+        mops = [node for node in await bus.get_children() if (await is_string(node, mops_search))]
         if len(mops) != 1:
             return error(mops_search)
         mops = mops[0]
         if len(search) == 2:
-            return mops
+            return bus
         if len(search) == 3:
-            result = [node for node in await mops.get_children() if (await is_string(node, search[2]))]
+            return mops
+        if len(search) == 4:
+            result = [node for node in await mops.get_children() if (await is_string(node, search[3]))]
             if not len(result) == 1:
-                error({search[2]})
+                error({search[3]})
             else:
                 return result[0]
         error(search)
 
-    async def _populate(self, config_file: str):
+    async def _populate(self, config_file: str, can_config_file: str, directory: str):
         """Populate the address space with the server objects implied in the configuration file.
 
         :type config_file: str
         :rtype: None
         :param config_file: Configuration YAML containing active MOPS and custom init values, converter, aliases, etc.
         """
+
         # Create MOPSHUB crate object
         self.mobshub_crate_object = await self.Server.nodes.objects.add_object(self.idx, "MOPSHUB Crate")
 
         data = self.load_configuration(config_file)
+        can_settings = AnalysisUtils().open_yaml_file(file=can_config_file, directory=directory)
+
         # Create crate ID variable
         await self.mobshub_crate_object.add_variable(self.idx, "Crate ID", data["Crate ID"])
 
+        # Create Objects for configure CAN settings
+        for i in range(0, 2):
+            can_obj = await self.mobshub_crate_object.add_object(self.idx, f"Config CAN{i}")
+            for attr in range(len(self.can_attr)):
+                self.can_config[i][attr] = await can_obj.add_variable(self.idx, self.can_attr[attr],
+                                                                      int(can_settings[f'channel{i}'][
+                                                                              self.can_attr[attr]]))
+                if self.can_attr[attr] == 'Channel':
+                    await self.can_config[i][attr].set_writable(False)
+                else:
+                    await self.can_config[i][attr].set_writable(True)
+            await can_obj.add_method(self.idx, f"Configure CAN{i}", self.configure_can)
+
         # Create CIC card objects
-        for cic_id in range(4):
+        for cic_id in range(len(self.CICs)):
             if f"CIC {cic_id}" in data:
                 self.CICs[cic_id] = await self.mobshub_crate_object.add_object(self.idx, f"CIC {cic_id}")
 
         # Create Can Bus objects
-        for cic_id, bus_id in product(range(4), range(1,33)):
+        for cic_id, bus_id in product(range(len(self.CICs)), range(1, len(self.Bus) + 1)):
             if (self.CICs[cic_id] is not None) and (f"Bus {bus_id}" in data[f"CIC {cic_id}"]):
                 cic_data = data[f"CIC {cic_id}"]
-                self.Bus[bus_id-1] = await self.CICs[cic_id].add_object(self.idx, f"CANBus {bus_id}")
-                bus_data = cic_data[f"Bus {bus_id}"]
+                self.Bus[bus_id - 1] = await self.CICs[cic_id].add_object(self.idx, f"CANBus {bus_id}")
+                # bus_data = cic_data[f"Bus {bus_id}"]
 
-                cic_adc_object = await self.Bus[bus_id-1].add_object(self.idx, f"ADC CANBus {bus_id}")
+                # Create Power Enable Child for every Bus
+                pe_object = await self.Bus[bus_id - 1].add_object(self.idx, f"PE Signal CANBus {bus_id}", True)
+                await pe_object.add_variable(self.idx, "Description", f"Control of th Power of Bus {bus_id}")
+                await pe_object.add_variable(self.idx, "Current Status", "OFF")
 
-                pe_object = await cic_adc_object.add_object(self.idx, "Power Enable")
-                #await pe_object.add_variable(self.idx, "Description", "Power Enable Signal CIC.")
-                #await pe_object.add_variable(self.idx, "Datatype", "Boolean")
-                await pe_object.add_variable(self.idx, "Monitoring Value", True)
+                await pe_object.add_method(self.idx, f"Power Disable Bus {bus_id}",
+                                           self.disable_power)
 
-                current_object = await cic_adc_object.add_object(self.idx, "Current Monitoring")
-                #await current_object.add_variable(self.idx, "Description", "Current Monitoring UI = UH - UL")
-                #await current_object.add_variable(self.idx, "Physical Parameter", "V")
-                await current_object.add_variable(self.idx, "Monitoring Value UH", 0.0)
-                await current_object.add_variable(self.idx, "Monitoring Value UL", 0.0)
+                await pe_object.add_method(self.idx, f"Power Enable Bus {bus_id}",
+                                           self.enable_power)
 
-                voltage_object = await cic_adc_object.add_object(self.idx, "Voltage Monitoring")
-                #await voltage_object.add_variable(self.idx, "Description", "Voltage Monitoring")
-                #await voltage_object.add_variable(self.idx, "Physical Parameter", "V")
-                await voltage_object.add_variable(self.idx, "Monitoring Value", 0.0)
+                # Create CIC ADC Child for every Bus
+                cic_adc_object = await self.Bus[bus_id - 1].add_object(self.idx, f"ADC CANBus {bus_id}")
 
-                gnd_object = await cic_adc_object.add_object(self.idx, "GND")
-                #await gnd_object.add_variable(self.idx, "Description", "GND Monitoring")
-                await gnd_object.add_variable(self.idx, "Monitoring Value", 0.0)
+                for channel_id in range(5):
+                    channel_object = await cic_adc_object.add_object(self.idx, f"ADCChannel {channel_id:02}")
 
-                temperature_object = gnd_object = await cic_adc_object.add_object(self.idx, "Temperature")
-                #await temperature_object.add_variable(self.idx, "Description", "Temperature Monitoring")
-                #await temperature_object.add_variable(self.idx, "Physical Parameter", "V")
-                await temperature_object.add_variable(self.idx, "Monitoring Value", 0.0)
-                #await temperature_object.add_variable(self.idx, "Converted Value Unit", "°C")
-                await temperature_object.add_variable(self.idx, "Converted Value", 0.0)
+                    if channel_id == 0:
+                        await channel_object.add_variable(self.idx, "Description", "UH for Current Monitoring")
+                    elif channel_id == 1:
+                        await channel_object.add_variable(self.idx, "Description", "UL for Current Monitoring")
+                    elif channel_id == 2:
+                        await channel_object.add_variable(self.idx, "Description", "Voltage Monitoring")
+                    elif channel_id == 3:
+                        await channel_object.add_variable(self.idx, "Description", "Temperature Monitoring")
+                    elif channel_id == 4:
+                        await channel_object.add_variable(self.idx, "Description", "GND Monitoring")
 
+                    await channel_object.add_variable(self.idx, "Physical Unit", "Voltage")
+                    await channel_object.add_variable(self.idx, "monitoringValue", 0.0)
 
         # Create MOPS objects
-        for cic_id, bus_id, mops_id in product(range(4), range(1,33), range(2)):
-            if (self.CICs[cic_id] is not None) and (f"Bus {bus_id}" in data[f"CIC {cic_id}"]) and (f"MOPS {mops_id}" in data[f"CIC {cic_id}"][f"Bus {bus_id}"]):
+        for cic_id, bus_id, mops_id in product(range(len(self.CICs)), range(1, len(self.Bus) + 1), range(2)):
+            if (self.CICs[cic_id] is not None) and (f"Bus {bus_id}" in data[f"CIC {cic_id}"]) and (
+                    f"MOPS {mops_id}" in data[f"CIC {cic_id}"][f"Bus {bus_id}"]):
 
                 bus_data = data[f"CIC {cic_id}"][f"Bus {bus_id}"]
-                mops_object = await self.Bus[bus_id-1].add_object(self.idx, f"MOPS {mops_id}")
+                self.Mops[bus_id - 1][mops_id] = await self.Bus[bus_id - 1].add_object(self.idx, f"MOPS {mops_id}")
                 mops_data = bus_data[f"MOPS {mops_id}"]
 
                 # Specify location
                 if "Location" in mops_data:
-                    await mops_object.add_variable(self.idx, "location", mops_data["Location"])
+                    await self.Mops[bus_id - 1][mops_id].add_variable(self.idx, "location", mops_data["Location"])
                 else:
-                    await mops_object.add_variable(self.idx, "location", data["MOPS Default Location"])
+                    await self.Mops[bus_id - 1][mops_id].add_variable(self.idx, "location",
+                                                                      data["MOPS Default Location"])
 
                 # Status and portNumber variables
                 if "Status" in mops_data:
-                    status_var = await mops_object.add_variable(self.idx, "status", mops_data["Status"])
+                    status_var = await self.Mops[bus_id - 1][mops_id].add_variable(self.idx, "status",
+                                                                                   mops_data["Status"])
                     await status_var.set_writable()
                 else:
-                    status_var = await mops_object.add_variable(self.idx, "status", data["MOPS Default Status"])
+                    status_var = await self.Mops[bus_id - 1][mops_id].add_variable(self.idx, "status",
+                                                                                   data["MOPS Default Status"])
                     await status_var.set_writable()
                 if "Port" in mops_data:
-                    port_var = await mops_object.add_variable(self.idx, "portNumber", mops_data["Port"])
+                    port_var = await self.Mops[bus_id - 1][mops_id].add_variable(self.idx, "portNumber",
+                                                                                 mops_data["Port"])
                     await port_var.set_writable()
                 else:
-                    port_var = await mops_object.add_variable(self.idx, "portNumber", data["MOPS Default Port"])
+                    port_var = await self.Mops[bus_id - 1][mops_id].add_variable(self.idx, "portNumber",
+                                                                                 data["MOPS Default Port"])
                     await port_var.set_writable()
 
                 # Add MOPSMonitoring Object
-                monitoring_object = await mops_object.add_object(self.idx, "MOPSMonitoring")
+                monitoring_object = await self.Mops[bus_id - 1][mops_id].add_object(self.idx, "MOPSMonitoring")
                 await monitoring_object.add_variable(self.idx, "numberOfEntries", 0)
                 await monitoring_object.add_variable(self.idx, "VBANDGAP", 0.0)
                 await monitoring_object.add_variable(self.idx, "VGNDSEN", 0.0)
                 await monitoring_object.add_variable(self.idx, "VCANSEN", 0.0)
 
                 # Add MOPSConfiguration Object
-                configuration_object = await mops_object.add_object(self.idx, "MOPSConfiguration")
+                configuration_object = await self.Mops[bus_id - 1][mops_id].add_object(self.idx, "MOPSConfiguration")
                 await configuration_object.add_variable(self.idx, "readFEMonitoringValues", 0.0)
                 if "Trimming" in mops_data:
                     trimming_var = await configuration_object.add_variable(self.idx, "ADCTrimmingBits",
@@ -276,7 +416,8 @@ class MOPSHUBCrate(CANWrapper, CICreadout):
 
                 # Add ADC Channels
                 for channel_id in range(32):
-                    channel_object = await mops_object.add_object(self.idx, f"ADCChannel {channel_id:02}")
+                    channel_object = await self.Mops[bus_id - 1][mops_id].add_object(self.idx,
+                                                                                     f"ADCChannel {channel_id:02}")
 
                     if f"ADC Channel {channel_id}" in mops_data:
                         channel_data = mops_data[f"ADC Channel {channel_id}"]
@@ -307,54 +448,9 @@ class MOPSHUBCrate(CANWrapper, CICreadout):
         """
         await self.Server.start()
 
-    async def __aexit__(self, exc_type, exc_value, traceback):
+    async def __aexit__(self, exc_type=None, exc_value=None, traceback=None):
         """Stop server when exiting a context.
 
         :rtype: None
         """
         await self.Server.stop()
-
-
-async def main(config_file):
-    """Setup a MOBSHUBCrate and start the main asynchronous loop
-
-    :type config_file: str
-    :rtype: None
-    :param config_file: Configuration YAML containing active MOPS and custom init values, converter, aliases, etc.
-    """
-    _logger: Logger = logging.getLogger('asyncua')
-    mobshub_crate = MOPSHUBCrate()
-    _logger.info('Starting server!')
-    res = adc.read_adc(0, 31, 1)
-    await mobshub_crate.init(config_file)
-    async with mobshub_crate:
-        i = 0
-        while True:
-            crate_index = 0
-            cic_index = 0
-            mops_index = 1
-            mp_channel = 31
-            can_channel = 1
-            logging.info('Reading from MOPS with NodeID %s on Crate %s and CIC %s', mops_index, crate_index, cic_index)
-
-            #         SDO_TX = 0x600
-            #         SDO_RX = 0x580
-            #         nodeId = 1
-            #         wrapper.read_sdo_can_thread(nodeId, index=0x1000, subindex=0, timeout=3000, SDO_TX=SDO_TX,
-            #                                    SDO_RX=SDO_RX, cobid = SDO_TX+nodeId)
-
-            readout = wrapper.read_adc_channels("MOPS_cfg.yml", "config", mops_index, mp_channel, can_channel)
-            # This Function writes to the Nodes of the OPC UA Server
-            # cic_index: int, mops_index: int, channel_index: int, adc_value: int
-            if readout is not None:
-                for i in range(len(readout)):
-                    adc_index = readout[i][0]
-                    value = readout[i][1]
-                    print(readout[i])
-                    await mobshub_crate.write_adc(cic_index, mops_index, adc_index, value)
-            logging.info('Readout finished')
-            await asyncio.sleep(2)
-
-
-if __name__ == '__main__':
-    asyncio.run(main("config/config.yaml"), debug=True)

@@ -1,8 +1,12 @@
-import RPi.GPIO as GPIO
-import numpy as np
 import logging
-from MPconfig import MPconfig, mp
+from MPconfig import MPconfig
 import time
+
+try:
+    import RPi.GPIO as GPIO
+except ImportError:
+    logging.error(ImportError)
+    logging.warning('RPI GPIO could not be imported')
 
 
 class PEconfig(MPconfig):
@@ -15,6 +19,8 @@ class PEconfig(MPconfig):
         self.__Data = 32
         self.__Res = 33
 
+        MPconfig.__init__(self)
+
         GPIO.setmode(GPIO.BOARD)
         GPIO.setwarnings(False)
 
@@ -22,78 +28,99 @@ class PEconfig(MPconfig):
         GPIO.setup(self.__Data, GPIO.OUT)
         GPIO.setup(self.__Res, GPIO.OUT)
 
-        self.default_status_table = np.array([[25, GPIO.LOW],
-                                              [26, GPIO.LOW],
-                                              [27, GPIO.LOW],
-                                              [28, GPIO.LOW],
-                                              [29, GPIO.LOW],
-                                              [30, GPIO.LOW],
-                                              [31, GPIO.LOW],
-                                              [32, GPIO.LOW]])
+        self.power_off_table = [1, 1, 1, 1, 1, 1, 0, 1]
+        self.locked_by_user = [False for _ in range(8)]
+        self.locked_by_sys = [False for _ in range(8)]
+        self.current_status_table = [0, 0, 0, 0, 0, 0, 0, 0]
 
-        self.current_status_table = np.array([[25, GPIO.LOW],
-                                              [26, GPIO.LOW],
-                                              [27, GPIO.LOW],
-                                              [28, GPIO.LOW],
-                                              [29, GPIO.LOW],
-                                              [30, GPIO.LOW],
-                                              [31, GPIO.LOW],
-                                              [32, GPIO.LOW]])
+        self.logger = logging.getLogger('mopshub_log.power_enable_config')
 
-        self.set_default()
-        self.memory_mode()
-
-    def set_default(self):
-        for i in range(0, len(self.default_status_table)):
-            channel = self.default_status_table[i][0]
-            value = self.default_status_table[i][1]
-            status = self.addressable_latch_mode(channel, value)
-            self.current_status_table[i][1] = status
+    def set_power_off(self):
+        for i in range(0, len(self.power_off_table)):
+            value = self.power_off_table[i]
+            status = self.addressable_latch_mode(i, value)
+            self.memory_mode()
+            self.current_status_table[i] = status
 
     def reset_mode(self):
         try:
             GPIO.output(self.__Res, GPIO.LOW)
             GPIO.output(self.__CE, GPIO.HIGH)
-            logging.info('Latch was reseted')
-        except:
-            logging.error('Some Error occurred while resetting Latch')
+            self.logger.info('Latch was reseted')
+        except Exception as e:
+            self.logger.exception(e)
+            self.logger.error('Some Error occurred while resetting Latch')
 
-    def addressable_latch_mode(self, channel, data):
+    def addressable_latch_mode(self, channel, data, set_flag=None):
         try:
             GPIO.output(self.__Res, GPIO.HIGH)
             GPIO.output(self.__CE, GPIO.LOW)
-            logging.info('Latch is now in the addressable latch mode')
-        except:
-            logging.error('Some Error occurred while activating addressable latch mode')
+            self.logger.info('Latch is now in the addressable latch mode')
+        except Exception as e:
+            self.logger.exception(e)
+            self.logger.error('Some Error occurred while activating addressable latch mode')
+
+        if channel in range(0, 8):
+            __channel = channel
+        elif channel in range(25, 33):
+            table_offset = 25
+            __channel = channel - table_offset
+        else:
+            self.logger.error(f'Could not identify channel {channel}')
+            return 0
+
+        mp = self.mp_switch(__channel, 1)
 
         try:
-            mp.mp_switch(channel, 0)
-            GPIO.output(self.__Data, int(data))
-            logging.info('Write to Latch address: %s , value = %s was successful', channel, data)
-            return data
-        except:
-            logging.error('Error while writing to Latch address = %s, value = %s', channel, data)
+            if bool(self.locked_by_sys[__channel]) is False:
+                if bool(self.locked_by_user[__channel]) is False or set_flag is not None:
+                    # important Latch is connected to all Address related with A means we have to choose here channel 1
+                    # this hole channel 1 and 0 think relating to address A and B has to be improved
+                    if mp is True:
+                        GPIO.output(self.__Data, int(data))
+                        self.current_status_table[__channel] = data
+                    if set_flag is not None:
+                        self.locked_by_user[__channel] = set_flag
+                    self.logger.info('Write to Latch address: %s , value = %s was successful', channel, data)
+                    return data
+                else:
+                    logging.error('Power of Channel %s was locked by user', __channel)
+            else:
+                logging.error('Power of Channel %s was locked by sys while start up', __channel)
+        except Exception as e:
+            self.logger.exception(e)
+            self.logger.error('Error while writing to Latch address = %s, value = %s', channel, data)
+            return None
 
     def memory_mode(self):
         try:
             GPIO.output(self.__Res, GPIO.HIGH)
             GPIO.output(self.__CE, GPIO.HIGH)
-            logging.info('Latch is now in the memory mode')
-        except:
-            logging.error('Some Error occurred while activating memory mode')
+            self.logger.info('Latch is now in the memory mode')
+        except Exception as e:
+            self.logger.exception(e)
+            self.logger.error('Some Error occurred while activating memory mode')
 
-    def demultiplexer_mode(self, channel, value):
+    def demultiplexer_mode(self, channel, data):
         try:
             GPIO.output(self.__Res, GPIO.LOW)
             GPIO.output(self.__CE, GPIO.LOW)
-            logging.info('Latch is now in the demultiplexer mode')
-        except:
-            logging.error('Some Error occurred while activating demultiplexer mode')
+            self.logger.info('Latch is now in the demultiplexer mode')
+        except Exception as e:
+            self.logger.exception(e)
+            self.logger.error('Some Error occurred while activating demultiplexer mode')
 
-    def check_status(self, mp_channel):
-        table_offset = 25
-        __mp_channel = mp_channel - table_offset
-        return self.current_status_table[__mp_channel][1]
+    def check_status(self, channel):
+        if channel in range(0, 8):
+            __channel = channel
+        elif channel in range(25, 33):
+            table_offset = 25
+            __channel = channel - table_offset
+        else:
+            self.logger.error(f'Could not identify channel {channel}')
+            return 0
+
+        return self.current_status_table[__channel], self.locked_by_sys[__channel], self.locked_by_user[__channel]
 
 
-pe = PEconfig()
+power_signal = PEconfig()
