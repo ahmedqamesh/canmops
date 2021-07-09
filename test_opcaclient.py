@@ -22,7 +22,6 @@ rootdir = os.path.dirname(os.path.abspath(__file__))
 config_dir = "config/"
 lib_dir = lib_dir = rootdir[:]
 
-
 class OpcuaWindow(QMainWindow):
 
     def __init__(self):
