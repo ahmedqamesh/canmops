@@ -9,12 +9,11 @@ from additional_scripts import logger_setup
 from opcua_server.opc_server import MOPSHUBCrate
 from cic_control.cic_adc_readout import CICreadout
 from can_communication.can_wrapper import CANWrapper
-from database.db_manager import DBManager
 from cic_control.power_config import power_signal
 from can_communication.socketcan_config import can_config
 
 
-class MHfB(MOPSHUBCrate, CICreadout, CANWrapper, DBManager):
+class MHfB(MOPSHUBCrate, CICreadout, CANWrapper):
     """description of class"""
 
     def __init__(self):
@@ -24,7 +23,6 @@ class MHfB(MOPSHUBCrate, CICreadout, CANWrapper, DBManager):
         self.can_config_file = 'can_config.yml'
         self.mops_config_file = 'mops_config.yml'
 
-        DBManager.__init__(self)
         self.mopshub_crate = MOPSHUBCrate()
         self.wrapper = CANWrapper()
         self.cic_card = CICreadout()
@@ -36,7 +34,6 @@ class MHfB(MOPSHUBCrate, CICreadout, CANWrapper, DBManager):
 
     async def main(self):
 
-        self.create_table()
         self.mopshub_crate.notifier.subscribe("new_can_config", reconfigure_can)
 
         data = self.mopshub_crate.load_configuration(self.config_files_directory, self.server_config_file)
@@ -182,8 +179,8 @@ class MHfB(MOPSHUBCrate, CICreadout, CANWrapper, DBManager):
                 power_signal.locked_by_sys[i] = True
 
         self.logger.info(power_signal.current_status_table)
-        self.logger.info("Locked by sys:", power_signal.locked_by_sys)
-        self.logger.info("Locked by user:", power_signal.locked_by_user)
+        self.logger.info(f"Locked by sys: {power_signal.locked_by_sys}")
+        self.logger.info(f"Locked by user: {power_signal.locked_by_user}")
 
 
 def start():
