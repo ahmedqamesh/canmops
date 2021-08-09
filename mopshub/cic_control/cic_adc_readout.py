@@ -69,6 +69,7 @@ class CICreadout(MPconfig):
         return adc_result
 
     def dummy_read(self):
+        # for testing
         result = []
         for i in range(0, len(self.__address_byte)):
             result.append(randint(0, 100))

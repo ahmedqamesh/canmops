@@ -1,4 +1,3 @@
-from logging import Logger
 import logging
 import sys
 from asyncua import Node
@@ -18,6 +17,7 @@ class FINDNodeID:
 
         self.logger = logging.getLogger('mopshub_log.crate')
         self._logger: Logger = logging.getLogger('asyncua')
+        self._logger.setLevel(logging.DEBUG)
 
     async def find_object(self, search_string: str) -> Node:
         """Find a server object in the node tree. Objects have to exist, otherwise a KeyError exception is raised.

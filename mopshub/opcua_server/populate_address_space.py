@@ -36,6 +36,7 @@ class POPULATEAddressSpace:
 
         self.logger = logging.getLogger('mopshub_log.crate')
         self._logger: Logger = logging.getLogger('asyncua')
+        self._logger.setLevel(logging.DEBUG)
 
         self.defaults = {
             "ADC Channel Default Converter": 'Raw',
@@ -130,11 +131,11 @@ class POPULATEAddressSpace:
 
         if config_dict['Channel'] == can_config.can_0_settings['Channel']:
             can_config.can_0_settings.update(config_dict)
-            print(can_config.can_0_settings)
+            self.logger.info(can_config.can_0_settings)
             self.notifier.raise_event("new_can_config")
         elif config_dict['Channel'] == can_config.can_1_settings['Channel']:
             can_config.can_1_settings.update(config_dict)
-            print(can_config.can_1_settings)
+            self.logger.info(can_config.can_1_settings)
             self.notifier.raise_event("new_can_config")
 
     def load_configuration(self, directory: str, config_file: str):
@@ -268,6 +269,14 @@ class POPULATEAddressSpace:
                     await port_var.set_writable()
 
                 await self.Mops[bus_id - 1][mops_id].add_variable(self.idx, "NodeID", mops_id)
+
+                information_object = await self.Mops[bus_id - 1][mops_id].add_object(self.idx, "MOPSInfo")
+                await information_object.add_variable(self.idx, "Device type", "")
+                await information_object.add_variable(self.idx, "Error register", "")
+                await information_object.add_variable(self.idx, "COB-ID SYNC", "")
+                await information_object.add_variable(self.idx, "COB-ID EMCY", "")
+                await information_object.add_variable(self.idx, "Number of entries", "")
+                await information_object.add_variable(self.idx, "Vendor Id", "")
 
                 # Add MOPSMonitoring Object
                 monitoring_object = await self.Mops[bus_id - 1][mops_id].add_object(self.idx, "MOPSMonitoring")

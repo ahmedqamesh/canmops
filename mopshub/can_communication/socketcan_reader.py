@@ -14,16 +14,17 @@ class READSocketcan(Thread):
         self.receive_queue = queue.Queue()
         self.current_subindex = None
         self.current_channel = None
+        self.cobid_ret = None
 
         self.read_timeout = 2000
-        self.logger = logging.getLogger('mopshub_log:socketcan_recv_thread')
+        self.logger_thread = logging.getLogger('mopshub_log:socketcan_receive_thread')
         self.running = True
 
     def run(self):
         while self.running:
-            self.logger.info("Receive Thread is waiting")
+            self.logger_thread.info("Receive Thread is waiting")
             can_config.sem_recv_block.acquire()
-            self.logger.info("Receive Thread is running")
+            self.logger_thread.info("Receive Thread is running")
             t0 = time.perf_counter()
             break_flag = True
             while time.perf_counter() - t0 < self.read_timeout / 1000 and break_flag:
@@ -31,13 +32,14 @@ class READSocketcan(Thread):
                     can_msg = can_config.receive(self.current_channel)
                     if can_msg is not None:
                         data = can_msg.data
-                        if data[3] == self.current_subindex:
-                            self.logger.info(f"Read msg from socket: {can_msg}")
+                        if data[3] == self.current_subindex and not can_msg.is_error_frame and \
+                                can_msg.arbitration_id == self.cobid_ret:
+                            self.logger_thread.info(f"Read msg from socket: {can_msg}")
                             self.receive_queue.put(can_msg)
                             break_flag = False
                 except Exception as e:
-                    self.logger.error(f'Some Error occurred while reading Channel {self.channel}: {e}')
-            self.logger.info("Receive Thread is finished")
+                    self.logger_thread.error(f'Some Error occurred while reading Channel {self.channel}: {e}')
+            self.logger_thread.info("Receive Thread is finished")
             can_config.sem_read_block.release()
 
     def stop(self):

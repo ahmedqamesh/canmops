@@ -90,18 +90,18 @@ class CanConfig(WATCHCan):
         if channel == self.can_0_settings['Channel']:
             if self._busOn0:
                 self.ch0.shutdown()
-            # subprocess.call(['sh', './can_setup.sh', "can0", f"{self.can_0_settings['Bitrate']}",
-            #                  f"{self.can_0_settings['tseg1']}", f"{self.can_0_settings['tseg2']}",
-            #                  f"{self.can_0_settings['SJW']}", f"{self.can_0_settings['SamplePoint']}"],
-            #                 cwd='/home/pi/mopsopc-for-beginners-master/config_files')
+            subprocess.call(['sh', './can_setup.sh', "can0", f"{self.can_0_settings['Bitrate']}",
+                             f"{self.can_0_settings['tseg1']}", f"{self.can_0_settings['tseg2']}",
+                             f"{self.can_0_settings['SJW']}", f"{self.can_0_settings['SamplePoint']}"],
+                            cwd='/home/pi/mopsopc-for-beginners-master/config_files')
             self.set_channel_connection(self.can_0_settings['Channel'])
         elif channel == self.can_1_settings['Channel']:
             if self._busOn1:
                 self.ch1.shutdown()
-            # subprocess.call(['sh', './can_setup.sh', "can1", f"{self.can_1_settings['Bitrate']}",
-            #                  f"{self.can_1_settings['tseg1']}", f"{self.can_1_settings['tseg2']}",
-            #                  f"{self.can_1_settings['SJW']}", f"{self.can_1_settings['SamplePoint']}"],
-            #                 cwd='/home/pi/mopsopc-for-beginners-master/config_files')
+            subprocess.call(['sh', './can_setup.sh', "can1", f"{self.can_1_settings['Bitrate']}",
+                             f"{self.can_1_settings['tseg1']}", f"{self.can_1_settings['tseg2']}",
+                             f"{self.can_1_settings['SJW']}", f"{self.can_1_settings['SamplePoint']}"],
+                            cwd='/home/pi/mopsopc-for-beginners-master/config_files')
             self.set_channel_connection(self.can_1_settings['Channel'])
 
         self.logger.info(f"Channel {channel} was set")

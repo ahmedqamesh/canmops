@@ -23,12 +23,12 @@ class PEconfig(MPconfig):
 
         MPconfig.__init__(self)
 
-        # GPIO.setmode(GPIO.BOARD)
-        # GPIO.setwarnings(False)
-        #
-        # GPIO.setup(self.__CE, GPIO.OUT)
-        # GPIO.setup(self.__Data, GPIO.OUT)
-        # GPIO.setup(self.__Res, GPIO.OUT)
+        GPIO.setmode(GPIO.BOARD)
+        GPIO.setwarnings(False)
+
+        GPIO.setup(self.__CE, GPIO.OUT)
+        GPIO.setup(self.__Data, GPIO.OUT)
+        GPIO.setup(self.__Res, GPIO.OUT)
 
         self.power_off_table = [1, 1, 1, 1, 1, 1, 0, 1]
         self.locked_by_user = [False for _ in range(8)]
@@ -103,7 +103,7 @@ class PEconfig(MPconfig):
             self.logger.exception(e)
             self.logger.error('Some Error occurred while activating memory mode')
 
-    def demultiplexer_mode(self, channel, data):
+    def demultiplexer_mode(self):
         try:
             GPIO.output(self.__Res, GPIO.LOW)
             GPIO.output(self.__CE, GPIO.LOW)
