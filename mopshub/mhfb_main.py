@@ -86,7 +86,6 @@ class MHfB(MOPSHUBCrate, CICreadout, CANWrapper):
                                 if None not in readout_mops[i]:
                                     adc_index = readout_mops[i][0]
                                     value = readout_mops[i][1]
-                                    #
                                     # exact specification for: mops_index, channel_index, cic_adc_channel
                                     await self.mopshub_crate.write_mops_adc(cic_id, bus_id, mops_id, adc_index,
                                                                             value)
@@ -129,18 +128,9 @@ class MHfB(MOPSHUBCrate, CICreadout, CANWrapper):
         """
 
         power_signal.set_power_off()
-        power_signal.memory_mode()
-        power_signal.mp_switch(27, 1)
         for i in range(len(power_signal.current_status_table)):
             error_cnt = 0
-            # power_signal.addressable_latch_mode(i, 0)
-            if i < 6 or i == 7:
-                power_signal.addressable_latch_mode(i, 0)
-                self.logger.info(f"Power Bus {i + 25} ON")
-            elif i == 6:
-                power_signal.addressable_latch_mode(i, 1)
-                self.logger.info(f"Power Bus {i + 25} ON")
-            power_signal.memory_mode()
+            power_signal.power_on(i)
             time.sleep(0.1)
             readout_adc = self.cic_card.read_adc(0, i, 1)
             time.sleep(0.1)
@@ -150,25 +140,13 @@ class MHfB(MOPSHUBCrate, CICreadout, CANWrapper):
                         self.logger.error(f"On Bus {i + 25} the ADC Value of Channel {j} is out of "
                                           f"the recommended specification")
                         self.logger.warning(f"Going to turn power off on bus {i + 25}")
-                        # power_signal.addressable_latch_mode(i, 1)
-                        if i < 6 or i == 7:
-                            power_signal.addressable_latch_mode(i, 1)
-                            power_signal.locked_by_sys[i] = True
-                        elif i == 6:
-                            power_signal.addressable_latch_mode(i, 0)
-                            power_signal.locked_by_sys[i] = True
-                        power_signal.memory_mode()
+                        power_signal.power_off(i)
+                        power_signal.locked_by_sys[i] = True
                         error_cnt += 1
                     elif readout_adc[j] == 0 and j in range(0, len(readout_adc) - 1):
                         self.logger.warning(f"Could not connect to ADC on Bus {i + 25}")
-                        power_signal.addressable_latch_mode(i, 1)
-                        if i < 8 or i == 7:
-                            power_signal.addressable_latch_mode(i, 1)
-                            power_signal.locked_by_sys[i] = True
-                        elif i == 6:
-                            power_signal.addressable_latch_mode(i, 0)
-                            power_signal.locked_by_sys[i] = True
-                        power_signal.memory_mode()
+                        power_signal.power_off(i)
+                        power_signal.locked_by_sys[i] = True
                         error_cnt += 1
 
             if error_cnt == 0:

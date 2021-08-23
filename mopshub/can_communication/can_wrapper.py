@@ -140,34 +140,20 @@ class CANWrapper(MPconfig, READSocketcan):
 
         # Check power status
         try:
-            # status = [status, locked_by_sys, locked_by_user]
+        # status = [status, locked_by_sys, locked_by_user]
             status = power_signal.check_status(mp_channel)
-            if mp_channel != 31:
-                if status[0] == 1 and bool(status[2]) is False and bool(status[1] is False):
-                    self.logger.error(f'Power is not enabled on Channel {mp_channel}')
-                    power_signal.addressable_latch_mode(mp_channel, 0)
-                    self.logger.info(f'Power for channel {mp_channel} was enabled')
-                elif bool(status[1]) is True:
-                    self.logger.info(f'Power Channel {mp_channel} is locked by sys')
-                    self.logger.info(f'Power is disabled and can not be enabled for the channel {mp_channel}')
-                    return None
-                elif bool(status[2]) is True:
-                    self.logger.info(f'Power Channel {mp_channel} is locked by user')
-                    self.logger.info(f'Power is disabled and can not be enabled on channel {mp_channel} through this routine')
-                    return None
-            else:
-                if status[0] == 0 and bool(status[2]) is False and bool(status[1] is False):
-                    self.logger.error(f'Power is not enabled on Channel {mp_channel}')
-                    power_signal.addressable_latch_mode(mp_channel, 1)
-                    self.logger.info(f'Power for channel {mp_channel} was enabled')
-                elif bool(status[1]) is True:
-                    self.logger.info(f'Power Channel {mp_channel} is locked by sys')
-                    self.logger.info(f'Power is disabled and can not be enabled for the channel {mp_channel}')
-                    return None
-                elif bool(status[2]) is True:
-                    self.logger.info('Power Channel %s is locked by user', mp_channel)
-                    self.logger.info(f'Power is disabled and can not be enabled on channel {mp_channel} through this routine')
-                    return None
+            if status[0] == 0 and bool(status[2]) is False and bool(status[1] is False):
+                self.logger.error(f'Power is not enabled on Channel {mp_channel}')
+                power_signal.power_on(mp_channel)
+                self.logger.info(f'Power for channel {mp_channel} was enabled')
+            elif bool(status[1]) is True:
+                self.logger.info(f'Power Channel {mp_channel} is locked by sys')
+                self.logger.info(f'Power is disabled and can not be enabled for the channel {mp_channel}')
+                return None
+            elif bool(status[2]) is True:
+                self.logger.info(f'Power Channel {mp_channel} is locked by user')
+                self.logger.info(f'Power is disabled and can not be enabled on channel {mp_channel} through this routine')
+                return None
         except Exception as e:
             self.logger.exception(e)
             self.logger.error(f'Error while enabling Power of channel {mp_channel}')

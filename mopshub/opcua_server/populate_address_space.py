@@ -66,7 +66,7 @@ class POPULATEAddressSpace:
 
         status = power_signal.check_status(channel)
         if bool(status[1]) is False and status_node is not None and channel is not None:
-            power_signal.addressable_latch_mode(channel, 1, True)
+            power_signal.power_off(channel, True)
             status = power_signal.check_status(channel)
             self.logger.info("Power of Channel %s was switched to OFF by User(Data,Locked: %s, %s)",
                              channel, str(status[0]), str(status[2]))
@@ -96,7 +96,7 @@ class POPULATEAddressSpace:
 
         status = power_signal.check_status(channel)
         if bool(status[1]) is False and status_node is not None and channel is not None:
-            power_signal.addressable_latch_mode(channel, 0, False)
+            power_signal.power_on(channel, False)
             status = power_signal.check_status(channel)
             self.logger.info("Power of Channel %s was switched to ON by User(Data,Locked: %s, %s)",
                              channel, str(status[0]), str(status[2]))
