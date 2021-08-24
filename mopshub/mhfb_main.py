@@ -134,7 +134,7 @@ class MHfB(MOPSHUBCrate, CICreadout, CANWrapper):
             time.sleep(0.1)
             readout_adc = self.cic_card.read_adc(0, i, 1)
             time.sleep(0.1)
-            for j in range(len(readout_adc)):
+            for j in range(1, len(readout_adc)):
                 if error_cnt == 0:
                     if readout_adc[j] >= self.maxRatings[j] or readout_adc[j] < 0:
                         self.logger.error(f"On Bus {i + 25} the ADC Value of Channel {j} is out of "
