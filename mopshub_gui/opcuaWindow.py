@@ -431,7 +431,7 @@ class OpcuaWindow(QWidget):
     def show_deviceWindow(self, cic=None, mops=None, port=None):
         true_bus_number = self.get_true_bus_number(int(port), int(cic))
 
-        mops_readout = mops_readout_thread.READMops(self.opcua_client.client, int(cic), true_bus_number, int(mops), self.opcua_client.server_dict)
+        mops_readout = mops_readout_thread.READMops(self.opcua_client.client, int(cic), true_bus_number, int(mops), self.opcua_client.server_dict, parent=self)
         mops_readout.start()
 
         deviceWindow = QMainWindow(self)
@@ -514,14 +514,14 @@ class OpcuaWindow(QWidget):
                                 adc_value = self.cic_thread.cic_adc_readout[true_bus_number - 25][ch]
                                 if adc_value is not None:
                                     if ch == 0:
-                                        adc_value = round(adc_value*1000, 4)
+                                        adc_value = round(adc_value*1000, 3)
                                     if ch == 3:
-                                        adc_value = round((adc_value * 1000) / 20, 4)
+                                        adc_value = round((adc_value * 1000) / 20, 3)
                                     if ch == 4:
-                                        adc_value = round(((adc_value * 1000) / 10.1 * 0.4), 4)
+                                        adc_value = round(((adc_value * 1000) / 10.1 * 0.4), 3)
                                     if ch == 2:
                                         r_ntc = adc_value*(20/3.1)
-                                        adc_value = round((298.15 / (1 - (298.15 / 3435) * np.log(10 / r_ntc))) - 273.15, 4)
+                                        adc_value = round((298.15 / (1 - (298.15 / 3435) * np.log(10 / r_ntc))) - 273.15, 3)
                                     self.adc_text_box[c][b][ch].setText(str(adc_value))
                                     # This will be used later for limits
                                     if adc_value >= 90:
@@ -705,7 +705,7 @@ class OpcuaWindow(QWidget):
                         self.mops_button_ref[m][b][c].setEnabled(True)
                         mops_alarm_led = self.def_alert_leds(mops_alarm=True, cic=c, mops=m, bus=b, icon_state=True)
                         self.mops_alarm_led[c][b][m].setMovie(mops_alarm_led)
-        self.cic_thread = cic_readout_thread.READCicAdc(self.opcua_client.client, self.opcua_client.server_dict)
+        self.cic_thread = cic_readout_thread.READCicAdc(self.opcua_client.client, self.opcua_client.server_dict, parent=self)
         self.cic_thread.start()
 
 

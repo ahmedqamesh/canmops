@@ -6,14 +6,16 @@ import re
 
 class READCicAdc(Thread, OPCClient):
 
-    def __init__(self, client, server_dict):
+    def __init__(self, client, server_dict, parent):
         OPCClient.__init__(self, client=client)
         Thread.__init__(self)
+        self.parent = parent
         self.cic_adc_readout = [[None for _ in range(self.cicADCChannel_count)] for _ in range(self.maxBUS_count)]
         self.running = True
         self.server_dict = server_dict
 
     def run(self) -> None:
+        self.parent.textBox.append("CIC ADC Readout started")
         while self.running:
             for cics in self.server_dict:
                 if "CIC" in cics:
@@ -27,4 +29,5 @@ class READCicAdc(Thread, OPCClient):
             time.sleep(0.5)
 
     def stop(self):
+        self.parent.textBox.append("CIC ADC Readout finished")
         self.running = False

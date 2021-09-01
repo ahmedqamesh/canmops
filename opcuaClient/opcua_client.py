@@ -24,7 +24,7 @@ class OPCClient(BROWSEServer):
             self.parent = parent
         if client is None:
             self.server_url = url
-            self.client = opcua.Client(self.server_url)
+            self.client = opcua.Client(self.server_url, timeout=1500)
         else:
             self.client = client
         self.maxBUS_count = 8

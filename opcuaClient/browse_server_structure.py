@@ -13,6 +13,7 @@ class BROWSEServer:
         self.can0_dict = {}
         self.can1_dict = {}
         self.server_dict = {}
+        self.server_timeout = 1000
 
     def browse_server(self, client):
         crate_id_var = client.nodes.root.get_child(["0:Objects", "2:MOPSHUB Crate", "2:Crate ID"])
