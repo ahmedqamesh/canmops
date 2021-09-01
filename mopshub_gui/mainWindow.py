@@ -1,4 +1,4 @@
-from __future__ import annotations
+# from __future__ import annotations
 from matplotlib.backends.qt_compat import QtCore, QtWidgets
 import signal
 import time
@@ -19,7 +19,7 @@ from mopshub_gui          import menuWindow, childWindow, opcuaWindow, dataMonit
 from canmops.analysis       import Analysis
 from canmops.logger         import Logger 
 from canmops.analysisUtils  import AnalysisUtils
-from canmops.canWrapper     import CanWrapper
+# from canmops.canWrapper     import CanWrapper
 from PyQt5.QtWidgets import QMainWindow 
 
 rootdir = os.path.dirname(os.path.abspath(__file__)) 

@@ -327,7 +327,7 @@ class OpcuaWindow(QWidget):
         return mopsBottonLayout
 
     def def_adc_frame(self, c, b):
-        self.Adc_cic_channel = ["IMON0[mA]", "VCAN[V]", "Temp[°C]", " IMON1[mA]", "IMON2[mA]"]
+        self.Adc_cic_channel = ["I0[mA]", "VCan[V]", "Temp[°C]", " I1[mA]", "I2[mA]"]
         Adc_cic_description = ["[ADC ch0]", "[ADC ch1]", "[ADC ch2]", "[ADC ch3]", "[ADC ch4]"]
         adclabels = [ch for ch in self.Adc_cic_channel]
         ADCLayout = QGridLayout()
@@ -338,6 +338,7 @@ class OpcuaWindow(QWidget):
             adclabels[ch].setStyleSheet("QLabel { font-weight: font-size: 8px; background-color:  #eeeeec; } ")
             adclabels[ch].setText(self.Adc_cic_channel[ch])
             adclabels[ch].setStatusTip(Adc_cic_description[ch])
+            adclabels[ch].setAlignment(Qt.AlignCenter)
             ADCLayout.addWidget(adclabels[ch], 0, ch)
             ADCLayout.addWidget(self.adc_text_box[c][b][ch], 1, ch)
         ADCGroupBox.setLayout(ADCLayout)
@@ -381,7 +382,8 @@ class OpcuaWindow(QWidget):
             adctextBox[ch] = QLineEdit("")
             adctextBox[ch].setStyleSheet("background-color: white; border: 1px inset black;")
             adctextBox[ch].setReadOnly(True)
-            adctextBox[ch].setFixedWidth(40)
+            adctextBox[ch].setFixedWidth(60)
+            adctextBox[ch].setAlignment(Qt.AlignCenter)
         return adctextBox
 
     def def_bus_variables(self, cic, bus_num):
