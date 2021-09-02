@@ -191,6 +191,7 @@ class CANWrapper(MPconfig, READSocketcan):
             subindex = _channelItems[i] - 2
             data_point = await self.read_sdo_can(node_id, int(_adc_index, 16), subindex, can_channel, timeout)
             # data_point = randint(0, 100)
+            await asyncio.sleep(0.02)
             if data_point is not None:
                 adc_converted = Analysis().adc_conversion(str(_channelDesc[i]), data_point)
                 adc_converted = round(adc_converted, 3)
@@ -208,6 +209,7 @@ class CANWrapper(MPconfig, READSocketcan):
             subindex = _mon_channelItems[i]
             data_point = await self.read_sdo_can(node_id, int(_mon_index, 16), subindex, can_channel, timeout)
             # data_point = randint(0, 100)
+            await asyncio.sleep(0.02)
             if data_point is not None:
                 adc_converted = Analysis().adc_conversion(str(_channelDesc[i]), data_point)
                 adc_converted = round(adc_converted, 3)
