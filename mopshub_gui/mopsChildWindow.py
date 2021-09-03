@@ -7,6 +7,8 @@ from PyQt5 import QtGui
 from canmops.analysisUtils import AnalysisUtils
 from canmops.logger         import Logger 
 from mopshub_gui import dataMonitoring, mainWindow, menuWindow
+from datetime import date
+from datetime import datetime
 import numpy as np
 import time
 import os
@@ -305,16 +307,58 @@ class MopsChildWindow(QWidget):
         VLayout.addWidget(self.indexTextBox)
 
         HLayout = QHBoxLayout()
+
+        def saveData():
+            if readout_thread.save_flag is False:
+                dir_path = QFileDialog.getExistingDirectory(self, "Select Directory")
+                now = datetime.now()
+                current_time = now.strftime("%H-%M-%S")
+                readout_thread.data_path = dir_path + f"/TREND_M{mops}_B{port}_C{cic}_{date.today()}_{current_time}"
+                readout_thread.save_flag = True
+                save_button.setIcon(QIcon('mopshub_gui/icons/icon_close.jpg'))
+                save_button.setText("Stop Saving")
+            elif readout_thread.save_flag is True:
+                readout_thread.save_flag = False
+                readout_thread.stream.close()
+
+        def snapshot():
+            dir_path = QFileDialog.getExistingDirectory(self, "Select Directory")
+            now = datetime.now()
+            current_time = now.strftime("%H-%M-%S")
+            data_path = dir_path + f"/SNAP_M{mops}_B{port}_C{cic}_{date.today()}_{current_time}"
+            stream = open(data_path, "w")
+            stream.write("Channel No.")
+            for i in range(3, 40):
+                stream.write(f", Channel {i:02}")
+            # for i in range(len(readout_thread.readout_mon_mops)):
+            #     stream.write(f", {readout_thread.readout_mon_mops[i, 1]}")
+            stream.write("\n")
+            stream.write(f"Readout {current_time}")
+            for item in readout_thread.readout_adc_mops:
+                stream.write(f", {item}")
+            stream.close()
+
+        snapshot_button = QPushButton("Snapshot")
+        snapshot_button.setIcon(QIcon('mopshub_gui/icons/icon_new.png'))
+        snapshot_button.clicked.connect(snapshot)
+
+        save_button = QPushButton("save data")
+        save_button.setIcon(QIcon('mopshub_gui/icons/icon_trend.jpg'))
+        save_button.clicked.connect(saveData)
+
         close_button = QPushButton("close")
-        close_button.setIcon(QIcon('mopshub_gui/icons/icon_close.jpg'))
+        close_button.setIcon(QIcon('mopshub_gui/icons/icon_close.png'))
         close_button.clicked.connect(mainWindow.stop_adc_timer)
         close_button.clicked.connect(readout_thread.stop)
         close_button.clicked.connect(childWindow.close)
+
         HLayout.addSpacing(350)
+        HLayout.addWidget(snapshot_button)
+        HLayout.addWidget(save_button)
         HLayout.addWidget(close_button)
         # Add Adc channels tab [These values will be updated with the timer self.initiate_adc_timer]
         _adc_channels_reg = self.__adc_channels_reg
-        self.channelValueBox, self.trendingBox = self.adc_values_window(adc_channels_reg = _adc_channels_reg, mainWindow = mainWindow,cic = cic, port = port , mops = mops)
+        self.channelValueBox, self.trendingBox = self.adc_values_window(adc_channels_reg=_adc_channels_reg, mainWindow=mainWindow, cic=cic, port=port, mops=mops)
         self.monValueBox, monLabel = self.monitoring_values_window()
         self.confValueBox, confLabel  =  self.configuration_values_window()
         

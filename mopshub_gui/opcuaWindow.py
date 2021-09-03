@@ -14,6 +14,7 @@ import binascii
 import yaml
 import logging
 import sys
+import re
 from bs4 import BeautifulSoup
 
 try:
@@ -180,6 +181,10 @@ class OpcuaWindow(QWidget):
         # close button
         buttonLayout = QHBoxLayout()
 
+        restore_button = QPushButton("Restore last session")
+        restore_button.setIcon(QIcon('mopshub_gui/icons/icon_restart.png'))
+        restore_button.clicked.connect(self.restore_session)
+
         connect_button = QPushButton("Server Settings")
         connect_button.setIcon(QIcon('mopshub_gui/icons/icon_settings.png'))
         connect_button.clicked.connect(self.connect_to_server)
@@ -189,6 +194,7 @@ class OpcuaWindow(QWidget):
         close_button.clicked.connect(self.stop_opcua)
 
         buttonLayout.addSpacing(50)
+        buttonLayout.addWidget(restore_button)
         buttonLayout.addWidget(connect_button)
         buttonLayout.addWidget(close_button)
 
@@ -205,10 +211,13 @@ class OpcuaWindow(QWidget):
         self.stop_adc_timer()
         self.stop_mopshub_timer()
         time.sleep(1)
-        if self.server_connection:
-            self.opcua_client.close_connection()
         if self.communication_running:
             self.cic_thread.stop()
+            self.communication_running = False
+        time.sleep(1)
+        if self.server_connection:
+            self.opcua_client.close_connection()
+            self.server_connection = False
         self.logger.warning('Closing the GUI.')
         sys.exit()
 
@@ -448,7 +457,7 @@ class OpcuaWindow(QWidget):
                                                                      mainWindow=self,
                                                                      readout_thread=mops_readout)
         self.graphWidget = self.DataMonitoring.initiate_trending_figure(n_channels=adc_channels_num)
-        self.initiate_adc_timer(period=500, cic=cic, mops=mops, port=port, readout_thread=mops_readout)
+        self.initiate_adc_timer(period=250, cic=cic, mops=mops, port=port, readout_thread=mops_readout)
         deviceWindow.show()
 
     # Action windows
@@ -707,6 +716,26 @@ class OpcuaWindow(QWidget):
                         self.mops_alarm_led[c][b][m].setMovie(mops_alarm_led)
         self.cic_thread = cic_readout_thread.READCicAdc(self.opcua_client.client, self.opcua_client.server_dict, parent=self)
         self.cic_thread.start()
+
+    def restore_session(self):
+        with open("mopshub_gui/session_config/config", 'r') as fstream:
+            ip_addr = fstream.readline()
+            ip_addr = re.sub(r"\n", "", ip_addr)
+            server_file = fstream.readline()
+            server_file = re.sub(r"\n", "", server_file)
+            endpoint_url = f"opc.tcp://{ip_addr}:4840/freeopcua/server/"
+            status = self.opcua_client.start_connection(url=endpoint_url)
+            if status is True:
+                self.server_connection = True
+                self.textBox.append("Connection started")
+            else:
+                self.textBox.append("Can't restore last Session. Server is not available")
+                return
+            self.opcua_client.load_configuration(server_file)
+            self.config_file_loaded = True
+            self.textBox.append("Config File was loaded. Communication is ready to start.")
+            self.communication_running = True
+            self.start_communication()
 
 
 if __name__ == "__main__":

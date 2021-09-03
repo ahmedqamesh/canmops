@@ -33,11 +33,14 @@ class OPCClient(BROWSEServer):
         BROWSEServer.__init__(self)
 
     def start_connection(self, url=None):
-        if url is not None:
-            self.client = opcua.Client(url)
-        opcua.Client.connect(self.client)
-        if self.parent is not None:
-            self.parent.textBox.append("Connection started")
+        try:
+            if url is not None:
+                self.client = opcua.Client(url)
+            opcua.Client.connect(self.client)
+            return True
+        except Exception as e:
+            self.parent.textBox.append(f"{e}")
+            return False
 
     def close_connection(self):
         opcua.Client.disconnect(self.client)
@@ -188,6 +191,7 @@ class OPCClient(BROWSEServer):
             file_path = directory + f'/setup_Date-{date.today()}_Time-{current_time}.yml'
             with open(file_path, 'w') as ymlfile:
                 dump(self.server_dict, ymlfile, sort_keys=False)
+            return file_path
 
 # if __name__ == "__main__":
 #     gui = OPCClient()

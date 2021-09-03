@@ -94,7 +94,7 @@ class ChildWindow(QtWidgets.QMainWindow):
         
         endpointLineEdit = QLineEdit()
         endpointLineEdit.setStyleSheet("background-color: white; border: 1px inset black;")
-        endpointLineEdit.setText("IP-Address")
+        endpointLineEdit.setText("itkpix-sr1-st-mopshub-01.cern.ch")
         # endpointLineEdit.setReadOnly(False)
         endpointLineEdit.setFixedWidth(250)
         
@@ -105,31 +105,35 @@ class ChildWindow(QtWidgets.QMainWindow):
         # IPGroup = self.def_ip_server_group()
         BrowseGroup = self.def_browser_client_group()
         BrowseServerGroup = self.browse_server_group()
-        
-        # def _save_items(hi = None):
-        #     if hi:
-        #         file = config_dir + self.__device + "_cfg.yml"
-        #
-        #         self.logger.info("Saving Information to the file %s"%file)
-        #     else:
-        #         self.logger.error("No data to be saved.....")
 
         def connect_server():
             ip_addr = endpointLineEdit.text()
-            if ip_addr == "IP-Address":
+            if ip_addr == "":
                 self.parent.textBox.append("Please enter a valid IP-Address")
                 return
             server = serverTyp_cb.currentText()
             if server == "freeopcua (TCP)":
                 endpoint_url = f"opc.tcp://{ip_addr}:4840/freeopcua/server/"
-                self.parent.opcua_client.start_connection(url=endpoint_url)
-                self.parent.server_connection = True
+                status = self.parent.opcua_client.start_connection(url=endpoint_url)
+                if status is True:
+                    self.parent.textBox.append("Connection started")
+                    self.parent.server_connection = True
+                    with open("mopshub_gui/session_config/config", 'w') as fstream:
+                        fstream.write(f"{ip_addr}\n")
 
         def start_communication():
-            if self.parent.server_connection == True and self.parent.config_file_loaded == True:
+            if self.parent.server_connection is True and self.parent.config_file_loaded == True:
                 self.parent.communication_running = True
                 self.parent.start_communication()
+                childWindow.close()
 
+        def disconnect():
+            if self.parent.communication_running is True or self.parent.server_connection is True:
+                self.parent.communication_running = False
+                self.parent.config_file_loaded = False
+                self.parent.server_connection = False
+                self.parent.cic_thread.stop()
+                self.parent.opcua_client.close_connection()
 
         connect_button = QPushButton("Connect")
         connect_button.setToolTip('Tries to connect to Server')
@@ -139,19 +143,19 @@ class ChildWindow(QtWidgets.QMainWindow):
         buttonLayout = QHBoxLayout()
 
         close_button = QPushButton("Close")
-        close_button.setIcon(QIcon('graphicsUtils/icons/icon_close.png'))
+        close_button.setIcon(QIcon('graphicsUtils/icons/icon_exit.png'))
         close_button.clicked.connect(childWindow.close)
+
+        stop_button = QPushButton("Disconnect")
+        stop_button.setIcon(QIcon('graphicsUtils/icons/icon_close.png'))
+        stop_button.clicked.connect(disconnect)
 
         run_button = QPushButton("Start Communication")
         run_button.setIcon(QIcon('graphicsUtils/icons/icon_start.png'))
         run_button.clicked.connect(start_communication)
-        
-        # save_button = QPushButton("Save")
-        # save_button.setIcon(QIcon('graphicsUtils/icons/icon_true.png'))
-        # save_button.clicked.connect(_save_items)
-        # buttonLayout.addWidget(save_button)
 
         buttonLayout.addWidget(run_button)
+        buttonLayout.addWidget(stop_button)
         buttonLayout.addWidget(close_button)
         
         mainLayout.addWidget(endpointLabel, 0, 1, 1, 1)
@@ -160,7 +164,7 @@ class ChildWindow(QtWidgets.QMainWindow):
         mainLayout.addWidget(connect_button, 0, 4, 1, 1)
         mainLayout.addWidget(BrowseServerGroup, 2, 1, 1, 4)
         mainLayout.addWidget(BrowseGroup, 1, 1, 1, 4)
-        mainLayout.addLayout(buttonLayout, 3, 4)
+        mainLayout.addLayout(buttonLayout, 3, 2, 1, 3)
         self.MenuBar.create_statusBar(childWindow)
         plotframe.setLayout(mainLayout)
 
@@ -186,13 +190,16 @@ class ChildWindow(QtWidgets.QMainWindow):
             elif confLineEdit.text() == "":
                 self.parent.textBox.append("Please select a directory")
             else:
-                self.parent.opcua_client.browse_server_structure(confLineEdit.text())
+                file_path = self.parent.opcua_client.browse_server_structure(confLineEdit.text())
                 self.parent.config_file_loaded = True
-                self.parent.textBox.append(f"Config file was generated! Path: {confLineEdit.text()}")
+                self.parent.textBox.append(f"Config file was generated! Path: {file_path}")
                 self.parent.textBox.append("Communication is ready to start")
+                with open("mopshub_gui/session_config/config", 'a') as fstream:
+                    fstream.write(f"{file_path}\n")
 
         browse_button = QPushButton("Browse Server")
         browse_button.setIcon(QIcon('graphicsUtils/icons/icon_true.png'))
+        # browse_button.setEnabled(False)
         browse_button.clicked.connect(browse_server)
 
         confLayout.addWidget(confLabel)
@@ -290,8 +297,6 @@ class ChildWindow(QtWidgets.QMainWindow):
         confLineEdit.setReadOnly(True)
         confLineEdit.setFixedWidth(500)
         confLineEdit.setStatusTip('Current Configuration name of the OPCUA server')  # show when move mouse to the icon
-        # server_config_yaml = self.get_server_config_yaml()
-        # confLineEdit.setText(server_config_yaml)
                 
         directoryButton = QPushButton("")
         directoryButton.setIcon(QIcon('graphicsUtils/icons/icon_open.png'))
@@ -304,16 +309,9 @@ class ChildWindow(QtWidgets.QMainWindow):
             self.parent.opcua_client.load_configuration(server_file)
             self.parent.config_file_loaded = True
             self.parent.textBox.append("Config File was loaded. Communication is ready to start.")
-            # server_file = confLineEdit.text()
-            # client_file = self.match_client_to_server(server_config=server_file)
-            # count = 0
-            # TIME_LIMIT = 100
-            # while count < TIME_LIMIT:
-            #     count += 1
-            #     time.sleep(0.01)
-            #     self.progress.setValue(count)
-            #     if count >=90:
-            #         doneLabel.setText("Done")
+            with open("mopshub_gui/session_config/config", 'a') as fstream:
+                fstream.write(f"{server_file}\n")
+
                     
         doneLabel = QLabel()
         doneLabel.setText("          ")
@@ -322,6 +320,7 @@ class ChildWindow(QtWidgets.QMainWindow):
         # icon_spacer = QSpacerItem(10, 20, QtWidgets.QSizePolicy.Minimum, QtWidgets.QSizePolicy.Expanding)
         save_button = QPushButton("Load Server configurations")
         save_button.setIcon(QIcon('graphicsUtils/icons/icon_true.png'))
+        # save_button.setEnabled(False)
         save_button.clicked.connect(_set_yaml)   
                 
         confLayout.addWidget(confLabel)
