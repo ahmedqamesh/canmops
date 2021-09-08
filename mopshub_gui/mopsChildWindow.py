@@ -481,7 +481,7 @@ class MopsChildWindow(QWidget):
         self.deviceInfoGroupBox.setLayout(deviceInfoGridLayout)
         return self.deviceInfoGroupBox
         
-    def adc_values_window(self,adc_channels_reg = None, mainWindow =None,cic = None, port = None , mops = None):
+    def adc_values_window(self,adc_channels_reg=None, mainWindow=None, cic=None, port=None, mops=None):
         '''
         The function will create a QGroupBox for ADC Values [it is called by the function device_child_window]
         '''
@@ -512,12 +512,16 @@ class MopsChildWindow(QWidget):
                                                                                              _subIndexItems[s_correction]))  # show when move mouse to the icon
                 labelChannel[s].setText(subindex_description_item[25:29] + ":")
                 icon = QLabel(self)
-                if _adc_channels_reg[str(subindex)] == "V": 
+                bus = mainWindow.get_true_bus_number(int(port), int(cic))
+                if mainWindow.opcua_client.server_dict[f"CIC {cic}"][f"CANBus {bus}"][f"MOPS {mops}"]\
+                    [f"ADCChannel {subindex:02}"]["Converter"] == "Voltage":
                     icon_dir = 'mopshub_gui/icons/icon_voltage.png'
                 else: 
                     icon_dir = 'mopshub_gui/icons/icon_thermometer.png'
                 pixmap = QPixmap(icon_dir)
                 icon.setPixmap(pixmap.scaled(20, 20))
+                icon.setStatusTip(mainWindow.opcua_client.server_dict[f"CIC {cic}"][f"CANBus {bus}"][f"MOPS {mops}"]
+                                  [f"ADCChannel {subindex:02}"]["physicalParameter"])
                 self.trendingBotton[s] = QPushButton()
                 self.trendingBotton[s].setObjectName(str(subindex))
                 self.trendingBotton[s].setIcon(QIcon('mopshub_gui/icons/icon_trend.jpg'))

@@ -65,6 +65,19 @@ class BROWSEServer:
                                         else:
                                             variable_value = variable.get_value()
                                             channel_dict[variable_desc.Text] = variable_value
+                                            if variable_desc.Text == "ADC Channel ID":
+                                                if 3 <= int(variable_value) <= 18:
+                                                    channel_dict["Resistor1"] = 10000
+                                                    channel_dict["Resistor2"] = 33000
+                                                elif 27 <= int(variable_value) <= 31:
+                                                    channel_dict["Resistor1"] = 10000
+                                                    channel_dict["Resistor2"] = 10000
+                                                elif 32 <= int(variable_value) <= 33:
+                                                    channel_dict["Resistor1"] = 150000
+                                                    channel_dict["Resistor2"] = 47000
+                                                else:
+                                                    channel_dict["Resistor1"] = 10000
+                                                    channel_dict["Vref"] = 0.967
                                     adc_dict[grandchild_desc.Text] = channel_dict
                                 elif "MOPSMonitoring" in grandchild_desc.Text:
                                     channels = grandchild.get_variables()

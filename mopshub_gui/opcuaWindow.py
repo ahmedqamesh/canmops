@@ -622,9 +622,31 @@ class OpcuaWindow(QWidget):
 
     def read_adc_channels(self, c, b, m, readout_thread):
         readout = readout_thread.readout_adc_mops
+        bus_id = self.get_true_bus_number(b, c)
         for subindex in range(0, len(readout)):
             adc_value = readout[subindex]
+            desc = self.opcua_client.server_dict[f"CIC {c}"][f"CANBus {bus_id}"][f"MOPS {m}"][
+                                                f"ADCChannel {(subindex+3):02}"]["Converter"]
             if adc_value is not None:
+                if desc == "Voltage":
+                    resistor_1 = self.opcua_client.server_dict[f"CIC {c}"][f"CANBus {bus_id}"][f"MOPS {m}"][
+                                                f"ADCChannel {(subindex+3):02}"]["Resistor1"]
+                    resistor_2 = self.opcua_client.server_dict[f"CIC {c}"][f"CANBus {bus_id}"][f"MOPS {m}"][
+                                                f"ADCChannel {(subindex+3):02}"]["Resistor2"]
+                    adc_value = (adc_value*(resistor_1+resistor_2))/resistor_1
+                if desc == "Temperature NTC":
+                    resistor_1 = self.opcua_client.server_dict[f"CIC {c}"][f"CANBus {bus_id}"][f"MOPS {m}"][
+                                                f"ADCChannel {(subindex+3):02}"]["Resistor1"]
+                    v_ref = self.opcua_client.server_dict[f"CIC {c}"][f"CANBus {bus_id}"][f"MOPS {m}"][
+                                                f"ADCChannel {(subindex+3):02}"]["Vref"]
+                    r_ntc = resistor_1*(adc_value/(v_ref-adc_value))
+                    adc_value = round((298.15 / (1 - (298.15 / 3435) * np.log(10 / r_ntc))) - 273.15, 3)
+                if desc == "Temperature PTAT":
+                    resistor_1 = self.opcua_client.server_dict[f"CIC {c}"][f"CANBus {bus_id}"][f"MOPS {m}"][
+                        f"ADCChannel {(subindex + 3):02}"]["Resistor1"]
+                    resistor_2 = self.opcua_client.server_dict[f"CIC {c}"][f"CANBus {bus_id}"][f"MOPS {m}"][
+                        f"ADCChannel {(subindex + 3):02}"]["Resistor2"]
+                    adc_value = (adc_value*(resistor_1+resistor_2))/resistor_1
                 self.channelValueBox[c][b][m][subindex].setText(str(adc_value))
                 if self.trendingBox[c][b][m][subindex] is True:
                     if len(self.x[subindex]) >= 10:  # Monitor a window of 100 points is enough to avoid Memory issues
@@ -660,16 +682,15 @@ class OpcuaWindow(QWidget):
                                 self.confValueBox[c][b][m][i].setStyleSheet("color: black;")
 
         readout_mon = readout_thread.readout_mon_mops
-
         for i in range(len(self.mon_labelvalue[c][b][m])):
             if self.mon_labelvalue[c][b][m][i] != 0:
                 label_text = BeautifulSoup(self.mon_labelvalue[c][b][m][i].text(), features="lxml")
                 if readout_mon is not None:
                     for j in range(len(readout_mon)):
-                        if label_text.get_text() == readout_mon[j][1]:
-                            if readout_mon[j][0] is not None:
-                                self.monValueBox[c][b][m][i].setText(str(readout_mon[j][0]))
-                                if readout_mon[j][0] <= 95:
+                        if label_text.get_text() == readout_thread.mon_desc[j]:
+                            if readout_mon[j] is not None:
+                                self.monValueBox[c][b][m][i].setText(str(readout_mon[j]))
+                                if readout_mon[j] <= 95:
                                     self.monValueBox[c][b][m][i].setStyleSheet("color: black;")
                                 else:
                                     self.monValueBox[c][b][m][i].setStyleSheet(" background-color: red;")
