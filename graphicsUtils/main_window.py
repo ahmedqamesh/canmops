@@ -45,7 +45,6 @@ class MainWindow(QMainWindow):
         self.__interfaceItems = list(["AnaGate", "Kvaser", "socketcan"]) 
         self.__channelPorts = list(self.__conf["channel_ports"])
         self.__timeout = 2000
-        self.__period = 3
         self.__canId_rx = 0x580
         self.__canId_tx = 0x600
         self.__interface = None
@@ -518,7 +517,8 @@ class MainWindow(QMainWindow):
             conf = AnalysisUtils().open_yaml_file(file=config_dir + self.__devices[0] + "_cfg.yml", directory=lib_dir)
         self.__devices.append(conf["Application"]["device_name"])
         mops_child = mops_child_window.MopsChildWindow()
-        deviceName, version, icon_dir, nodeIds, dictionary_items, adc_channels_reg, self.__adc_index, self.__chipId, self.__index_items, self.__conf_index, self.__mon_index,self.__resistor_ratio  = mops_child.configure_devices(conf)
+        deviceName, version, icon_dir, nodeIds, dictionary_items, adc_channels_reg,\
+         self.__adc_index, self.__chipId, self.__index_items, self.__conf_index, self.__mon_index,self.__resistor_ratio, self.__refresh_rate  = mops_child.configure_devices(conf)
         # Load ADC calibration constants
         # adc_calibration = pd.read_csv(config_dir + "adc_calibration.csv", delimiter=",", header=0)
         # condition = (adc_calibration["chip"] == chipId)
@@ -529,7 +529,7 @@ class MainWindow(QMainWindow):
         self.set_icon_dir(icon_dir)
         self.set_nodeList(nodeIds)
         self.set_dictionary_items(dictionary_items) 
-        self.set_adc_channels_reg(adc_channels_reg)               
+        self.set_adc_channels_reg(adc_channels_reg)            
         try:
             self.deviceButton.deleteLater()
             self.configureDeviceBoxLayout.removeWidget(self.deviceButton)
@@ -922,235 +922,6 @@ class MainWindow(QMainWindow):
         decoded_response = f'------------------------------------------------------------------------'
         self.set_textBox_message(comunication_object="newline", msg=decoded_response, cobid=None) 
         return cobid_ret, data_ret, dlc, flag, t
-    #
-    # def device_child_window(self, childWindow,device = None): 
-    #     '''
-    #     The function will Open a special window for the device [MOPS] .
-    #     The calling function for this is show_deviceWindow
-    #     '''
-    #     try:
-    #         self.MenuBar.create_device_menuBar(childWindow)
-    #     except Exception:
-    #         self.MenuBar = menuWindow.MenuBar(self)
-    #         self.MenuBar.create_device_menuBar(childWindow)
-    #     if device:
-    #         _device_name = device
-    #     else:
-    #         _device_name = self.__deviceName
-    #     _channel = self.get_channel()
-    #     n_channels = 33
-    #     try:
-    #         self.wrapper.confirm_nodes(channel=int(_channel))
-    #     except Exception:
-    #         pass
-    #     #  Open the window
-    #     childWindow.setObjectName("DeviceWindow")
-    #     childWindow.setWindowTitle("Device Window [ " + _device_name + "]")
-    #     childWindow.setWindowIcon(QtGui.QIcon(self.__appIconDir))
-    #     childWindow.setGeometry(1175, 10, 200, 770)
-    #     logframe = QFrame()
-    #     logframe.setLineWidth(0.6)
-    #     childWindow.setCentralWidget(logframe)
-    #
-    #     # Initialize tab screen
-    #     tabLayout = QGridLayout()
-    #     self.devicetTabs = QTabWidget()
-    #     self.tab1 = QWidget()
-    #     self.tab2 = QWidget() 
-    #
-    #     nodeLabel = QLabel()
-    #     nodeLabel.setText("Connected nodes :")
-    #
-    #     self.deviceNodeComboBox = QComboBox()
-    #     nodeItems = self.__nodeIds
-    #     self.set_nodeList(nodeItems)
-    #     for item in list(map(str, nodeItems)): self.deviceNodeComboBox.addItem(item)
-    #     def __set_bus():
-    #         try:
-    #             _nodeid = self.deviceNodeComboBox.currentText()
-    #             self.set_nodeId(_nodeid) 
-    #             self.set_index(self.IndexListBox.currentItem().text())
-    #             self.set_subIndex(self.subIndexListBox.currentItem().text())
-    #             _sdo_tx = hex(0x600)
-    #             self.set_canId_tx(str(_sdo_tx))
-    #         except Exception:
-    #             self.error_message("Either Index or SubIndex are not defined")        
-    #
-    #     def __set_bus_timer():
-    #         _nodeid = self.deviceNodeComboBox.currentText()
-    #         self.set_nodeId(_nodeid) 
-    #         _sdo_tx = hex(0x600)
-    #         self.set_canId_tx(str(_sdo_tx))
-    #
-    #     def __restart_device():
-    #         _sdo_tx = hex(0x00)
-    #         _cobid = _sdo_tx  # There is no need to add any Node Id
-    #         self.set_cobid(_cobid)
-    #         self.set_bytes([0, 0, 0, 0, 0, 0, 0, 0]) 
-    #         self.logger.info("Restarting the %s device with a cobid of  %s" % (self.get_deviceName(), str(_cobid)))
-    #         self.write_can_message()
-    #
-    #     def __reset_device():
-    #          # Apply bus settings
-    #         _nodeid = self.deviceNodeComboBox.currentText()
-    #         _nodeid = int(_nodeid, 16)
-    #         _sdo_tx = hex(0x700)
-    #         _cobid = hex(0x700 + _nodeid)
-    #         self.set_cobid(_cobid)
-    #         self.set_bytes([0, 0, 0, 0, 0, 0, 0, 0]) 
-    #         self.logger.info("Resetting the %s device with a cobid of %s" % (self.get_deviceName(), str(_cobid)))
-    #         self.write_can_message()
-    #
-    #     def __get_subIndex_description(): 
-    #         dictionary = self.__dictionary_items
-    #         index = self.IndexListBox.currentItem().text()
-    #         if self.subIndexListBox.currentItem() is not None:
-    #             subindex = self.subIndexListBox.currentItem().text()
-    #             self.subindex_description_items = AnalysisUtils().get_subindex_description_yaml(dictionary=dictionary, index=index, subindex=subindex)
-    #             description_text = self.index_description_items + "<br>" + self.subindex_description_items
-    #             self.indexTextBox.setText(description_text) 
-    #
-    #     def __get_subIndex_items():
-    #         index = self.get_index()
-    #         dictionary = self.__dictionary_items
-    #         subIndexItems = list(AnalysisUtils().get_subindex_yaml(dictionary=dictionary, index=index, subindex="subindex_items"))
-    #         self.subIndexListBox.clear()
-    #         for item in subIndexItems: self.subIndexListBox.addItem(item)
-    #
-    #     def __get_index_description():
-    #         dictionary = self.__dictionary_items
-    #         if self.IndexListBox.currentItem() is not None:
-    #             index = self.IndexListBox.currentItem().text()
-    #             self.index_description_items = AnalysisUtils().get_info_yaml(dictionary=dictionary , index=index, subindex="description_items")
-    #             self.indexTextBox.setText(self.index_description_items)
-    #
-    #     self.GridLayout = QGridLayout()
-    #     self.deviceGroupBox()
-    #     BottonHLayout = QVBoxLayout()
-    #     startButton = QPushButton("")
-    #     startButton.setIcon(QIcon('graphicsUtils/icons/icon_start.png'))
-    #     startButton.setStatusTip('Send CAN message')  # show when move mouse to the icon
-    #     startButton.clicked.connect(__set_bus)
-    #     startButton.clicked.connect(self.read_sdo_can_thread)
-    #
-    #     resetButton = QPushButton()
-    #     resetButton.setIcon(QIcon('graphicsUtils/icons/icon_reset.png'))
-    #     _cobid_index = hex(0x700)
-    #     resetButton.setStatusTip('Reset the chip [The %s chip should reply back with a cobid index %s]' % (self.get_deviceName(), str(_cobid_index)))
-    #     resetButton.clicked.connect(__reset_device)
-    #
-    #     restartButton = QPushButton()
-    #     restartButton.setIcon(QIcon('graphicsUtils/icons/icon_restart.png'))
-    #     restartButton.setStatusTip('Restart the chip [The %s chip should reply back with a cobid 0x00]' % self.get_deviceName())
-    #     restartButton.clicked.connect(__restart_device)
-    #
-    #     BottonHLayout.addWidget(startButton)
-    #     BottonHLayout.addWidget(resetButton)
-    #     BottonHLayout.addWidget(restartButton)
-    #
-    #     firstVLayout = QVBoxLayout()
-    #     firstVLayout.addWidget(self.deviceInfoGroupBox)        
-    #     firstVLayout.addLayout(BottonHLayout)
-    #     firstVLayout.addSpacing(400)
-    #     VLayout = QVBoxLayout()
-    #     self.indexTextBox = QTextEdit()
-    #     self.indexTextBox.setStyleSheet("background-color: white; border: 2px inset black; min-height: 150px; min-width: 400px;")
-    #     self.indexTextBox.LineWrapMode(1)
-    #     self.indexTextBox.setReadOnly(True)       
-    #     VLayout.addWidget(self.indexTextBox)
-    #
-    #     indexLabel = QLabel()
-    #     indexLabel.setText("   Index   ")
-    #     self.IndexListBox = QListWidget()
-    #     indexItems = self.__index_items
-    #     self.IndexListBox.setFixedWidth(70)
-    #
-    #     for item in indexItems: self.IndexListBox.addItem(item)
-    #     self.IndexListBox.currentItemChanged.connect(self.set_index_value) 
-    #     self.IndexListBox.currentItemChanged.connect(__get_subIndex_items)
-    #     self.IndexListBox.currentItemChanged.connect(__get_index_description)  
-    #
-    #     subIndexLabel = QLabel()
-    #     subIndexLabel.setText("SubIndex")
-    #     self.subIndexListBox = QListWidget()
-    #     self.subIndexListBox.setFixedWidth(60)
-    #     self.subIndexListBox.currentItemChanged.connect(self.set_subIndex_value)  
-    #     self.subIndexListBox.currentItemChanged.connect(__get_subIndex_description)  
-    #
-    #     self.GridLayout.addWidget(indexLabel, 0, 1)
-    #     self.GridLayout.addWidget(subIndexLabel, 0, 2)
-    #     self.GridLayout.addLayout(firstVLayout, 1, 0)
-    #     self.GridLayout.addWidget(self.IndexListBox, 1, 1)
-    #     self.GridLayout.addWidget(self.subIndexListBox, 1, 2)
-    #     self.GridLayout.addLayout(VLayout, 0, 3, 0, 4)
-    #     self.tab1.setLayout(self.GridLayout)        
-    #
-    #     HLayout = QHBoxLayout()
-    #     close_button = QPushButton("close")
-    #     close_button.setIcon(QIcon('graphicsUtils/icons/icon_close.jpg'))
-    #     close_button.clicked.connect(self.stop_adc_timer)
-    #     close_button.clicked.connect(childWindow.close)
-    #     HLayout.addSpacing(350)
-    #     HLayout.addWidget(close_button)
-    #
-    #     # Add Adc channels tab [These values will be updated with the timer self.initiate_adc_timer]
-    #     self.adc_values_window()
-    #     self.monitoring_values_window()
-    #     self.deviceGroupBox()
-    #     self.configuration_values_window()
-    #
-    #     # initiate a PlotWidget [data holder] for all ADC channels for later trending
-    #     self.initiate_trending_figure(n_channels=n_channels)
-    #
-    #     nodeHLayout = QHBoxLayout()
-    #     nodeHLayout.addWidget(nodeLabel)
-    #     nodeHLayout.addWidget(self.deviceNodeComboBox)
-    #     nodeHLayout.addSpacing(400)
-    #
-    #     tabLayout.addLayout(nodeHLayout, 1, 0)
-    #     # tabLayout.addLayout(codidLayout, 2, 0)
-    #     tabLayout.addWidget(self.devicetTabs, 3, 0)
-    #     tabLayout.addLayout(HLayout, 4, 0)
-    #
-    #     self.devicetTabs.addTab(self.tab2, "Device Channels") 
-    #     self.devicetTabs.addTab(self.tab1, "Object Dictionary")
-    #
-    #     mainLayout = QGridLayout()     
-    #     HBox = QHBoxLayout()
-    #     send_button = QPushButton("run ")
-    #     send_button.setIcon(QIcon('graphicsUtils/icons/icon_start.png'))
-    #     send_button.clicked.connect(__set_bus_timer)
-    #     send_button.clicked.connect(self.initiate_adc_timer)
-    #
-    #     stop_button = QPushButton("stop ")
-    #     stop_button.setIcon(QIcon('graphicsUtils/icons/icon_stop.png'))
-    #     stop_button.clicked.connect(self.stop_adc_timer)
-    #
-    #     # update a progress bar for the bus statistics
-    #     progressLabel = QLabel()
-    #     progressLabel.setText("   ")  # Timer load")
-    #     self.progressBar = QProgressBar()
-    #     self.progressBar.setRange(0, n_channels)
-    #     self.progressBar.setValue(0)
-    #     self.progressBar.setTextVisible(False)
-    #     progressHLayout = QHBoxLayout()
-    #     progressHLayout.addWidget(progressLabel)
-    #     progressHLayout.addWidget(self.progressBar)
-    #
-    #     HBox.addWidget(send_button)
-    #     HBox.addWidget(stop_button)
-    #     mainLayout.addWidget(self.ADCGroupBox      , 0, 0, 4, 2)
-    #     mainLayout.addWidget(self.deviceInfoGroupBox , 0, 3, 1, 2)
-    #     mainLayout.addWidget(self.ThirdGroupBox      , 1, 3, 2, 2) 
-    #     mainLayout.addWidget(self.SecondGroupBox     , 3, 3, 1, 2) 
-    #
-    #     mainLayout.addLayout(HBox , 5, 0)
-    #     mainLayout.addLayout(progressHLayout, 5, 1)
-    #     self.tab2.setLayout(mainLayout)
-    #     self.MenuBar.create_statusBar(childWindow)
-    #     logframe.setLayout(tabLayout)
-    #
-
 
     '''
     Update blocks with data
@@ -1179,7 +950,8 @@ class MainWindow(QMainWindow):
             writer = csv.DictWriter(self.out_file_csv, fieldnames=fieldnames)
             writer.writeheader()            
             eventTimer = mops_child_window.EventTimer()
-            self.adc_timer = eventTimer.initiate_timer(self.__period)
+            self.adc_timer = eventTimer.initiate_timer()
+            self.adc_timer.setInterval(self.__refresh_rate)
             self.adc_timer.timeout.connect(self.update_adc_channels)
             self.adc_timer.timeout.connect(self.update_monitoring_values)
             self.adc_timer.timeout.connect(self.update_configuration_values)

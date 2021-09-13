@@ -44,7 +44,9 @@ class MopsChildWindow(QWidget):
         self.__mon_index = dev["adc_channels_reg"]["mon_index"] 
         self.__conf_index = dev["adc_channels_reg"]["conf_index"] 
         self.__resistor_ratio = dev["Hardware"]["resistor_ratio"]
-        return  self.__deviceName, self.__version, self.__appIconDir,self.__nodeIds, self.__dictionary_items, self.__adc_channels_reg, self.__adc_index, self.__chipId, self.__index_items, self.__conf_index, self.__mon_index, self.__resistor_ratio
+        self.__refresh_rate = dev["Application"]["refresh_rate"] #millisecondsrefresh_rate
+        return  self.__deviceName, self.__version, self.__appIconDir,self.__nodeIds, self.__dictionary_items, self.__adc_channels_reg,\
+            self.__adc_index, self.__chipId, self.__index_items, self.__conf_index, self.__mon_index, self.__resistor_ratio, self.__refresh_rate
                
             
     def define_object_dict_window(self,connected_node = None, mainWindow = None):
@@ -623,8 +625,6 @@ class EventTimer(QWidget):
         The function will  update the GUI with the ADC data ach period in ms.
         '''  
         self.timer = QtCore.QTimer()     
-        self.timer.setInterval(period)
-        #self.timer.timeout.connect(lambda: self.read_adc_channels(int(cic),int(port),int(mops)))
         self.timer.start()
         return  self.timer    
     

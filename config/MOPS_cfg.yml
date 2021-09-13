@@ -3,6 +3,8 @@ Application:
   device_name: MOPS
   device_version: v1.2
   icon_dir: graphicsUtils/icons/icon_mops.png
+  refresh_rate: 100 #milliseconds
+  
   index_items:
     '0x1000':
       description_items: <html><b> Device type</b> [Default 191(hex)]</b></html>
@@ -115,8 +117,10 @@ Application:
   nodeIds:
   - '1'
   - '2'
+  
 Hardware:
   resistor_ratio: '40'
+
 adc_channels_reg:
   adc_channels:
     '3': V
