@@ -1,0 +1,24 @@
+2021-09-13 18:32:40,443 - CANWrapper -  [INFO   ] - Updating settings channel:0 bitrate:111111  sjw:4 tseg1:5 tseg2:6 IP Address:None
+2021-09-13 18:32:40,443 - CANWrapper -  [NOTICE ] - Going in 'Bus On' state ...
+2021-09-13 18:32:40,444 - CANWrapper -  [INFO   ] - socketcan: Using socketcan channel 'can0', Bitrate:111111
+2021-09-13 18:32:40,445 - CANWrapper -  [SUCCESS] - ....Done Initialization!
+2021-09-13 18:32:56,516 - CANWrapper -  [INFO   ] - Updating settings channel:0 bitrate:111111  sjw:4 tseg1:5 tseg2:6 IP Address:None
+2021-09-13 18:32:56,516 - CANWrapper -  [NOTICE ] - Going in 'Bus On' state ...
+2021-09-13 18:32:56,517 - CANWrapper -  [INFO   ] - socketcan: Using socketcan channel 'can0', Bitrate:111111
+2021-09-13 18:32:56,517 - CANWrapper -  [SUCCESS] - ....Done Initialization!
+2021-09-13 18:33:00,427 - CANWrapper -  [INFO   ] - Updating settings channel:0 bitrate:111111  sjw:4 tseg1:5 tseg2:6 IP Address:None
+2021-09-13 18:33:00,427 - CANWrapper -  [NOTICE ] - Going in 'Bus On' state ...
+2021-09-13 18:33:00,427 - CANWrapper -  [INFO   ] - socketcan: Using socketcan channel 'can0', Bitrate:111111
+2021-09-13 18:33:00,428 - CANWrapper -  [SUCCESS] - ....Done Initialization!
+2021-09-13 18:33:17,529 - CANWrapper -  [INFO   ] - Updating settings channel:0 bitrate:111111  sjw:4 tseg1:5 tseg2:6 IP Address:None
+2021-09-13 18:33:17,530 - CANWrapper -  [NOTICE ] - Going in 'Bus On' state ...
+2021-09-13 18:33:17,531 - CANWrapper -  [INFO   ] - socketcan: Using socketcan channel 'can0', Bitrate:111111
+2021-09-13 18:33:17,531 - CANWrapper -  [SUCCESS] - ....Done Initialization!
+2021-09-13 18:33:24,301 - CANWrapper -  [INFO   ] - Updating settings channel:0 bitrate:111111  sjw:4 tseg1:5 tseg2:6 IP Address:None
+2021-09-13 18:33:24,301 - CANWrapper -  [NOTICE ] - Going in 'Bus On' state ...
+2021-09-13 18:33:24,302 - CANWrapper -  [INFO   ] - socketcan: Using socketcan channel 'can0', Bitrate:111111
+2021-09-13 18:33:24,302 - CANWrapper -  [SUCCESS] - ....Done Initialization!
+2021-09-13 18:33:26,331 - CANWrapper -  [INFO   ] - Updating settings channel:0 bitrate:111111  sjw:4 tseg1:5 tseg2:6 IP Address:None
+2021-09-13 18:33:26,331 - CANWrapper -  [NOTICE ] - Going in 'Bus On' state ...
+2021-09-13 18:33:26,332 - CANWrapper -  [INFO   ] - socketcan: Using socketcan channel 'can0', Bitrate:111111
+2021-09-13 18:33:26,332 - CANWrapper -  [SUCCESS] - ....Done Initialization!

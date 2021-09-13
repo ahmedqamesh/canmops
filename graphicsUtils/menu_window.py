@@ -4,20 +4,21 @@ from PyQt5.QtCore    import *
 from PyQt5.QtGui     import *
 from PyQt5.QtWidgets import *
 import logging
-from graphicsUtils import mainWindow
-from canmops.analysisUtils import AnalysisUtils
-from canmops.logger import Logger 
+from graphicsUtils import main_window, child_window
+from canmops.analysis_utils import AnalysisUtils
+from canmops.logger_main import Logger 
+from PyQt5.QtWidgets import QMainWindow
 import os
 import numpy as np
 rootdir = os.path.dirname(os.path.abspath(__file__)) 
 config_dir = "config/"
 lib_dir = rootdir[:-13]
-class MenuBar(QWidget):  
+class MenuWindow(QWidget):  
     
-    def __init__(self, parent=mainWindow):
-        super(MenuBar, self).__init__(parent)
-        self.MainWindow = mainWindow.MainWindow()
-        self.logger = Logger().setup_main_logger(name = __name__,console_loglevel=logging.INFO)
+    def __init__(self, parent=main_window):
+        super(MenuWindow, self).__init__(parent)
+        self.MainWindow = main_window.MainWindow()
+        self.logger = Logger().setup_main_logger(name = "Menu GUI",console_loglevel=logging.INFO)
     
     def stop(self):
         return self.MainWindow.stop_server()
@@ -25,50 +26,93 @@ class MenuBar(QWidget):
     def create_device_menuBar(self, mainwindow):
         menuBar = mainwindow.menuBar()
         menuBar.setNativeMenuBar(False)  # only for MacOS   
-        self._settingsMenu(menuBar, mainwindow)
+        self.set_device_settings_menu(menuBar, mainwindow)
+        self.set_plotting_menu(menuBar, mainwindow)
         
-    def create_menuBar(self, mainwindow):
+    def create_opcua_menuBar(self,mainwindow):
+        menuBar = mainwindow.menuBar()
+        menuBar.setNativeMenuBar(False)  # only for MacOS 
+        self.set_file_menu(menuBar, mainwindow)  
+        self.set_opcua_settings_menu(menuBar, mainwindow)
+        self.set_help_main_menu(menuBar, mainwindow)         
+       
+    
+    def create_main_menuBar(self, mainwindow):
         menuBar = mainwindow.menuBar()
         menuBar.setNativeMenuBar(False)  # only for MacOS
-        self._fileMenu(menuBar, mainwindow)
-        #self._viewMenu(menuBar, mainwindow)
-        self._interfaceMenu(menuBar, mainwindow)
-        self._helpMenu(menuBar, mainwindow)
+        self.set_file_menu(menuBar, mainwindow)
+        self.set_interface_menu(menuBar, mainwindow)
+        self.set_help_main_menu(menuBar, mainwindow)
         
     # 1. File menu
-    def _fileMenu(self, menuBar, mainwindow):
+    def set_file_menu(self, menuBar, mainwindow):
                
         fileMenu = menuBar.addMenu('&File')
         exit_action = QAction(QIcon('graphicsUtils/icons/icon_exit.png'), '&Exit', mainwindow)
         exit_action.setShortcut('Ctrl+Q')
         exit_action.setStatusTip('Exit program')
-        # exit_action.triggered.connect(self.stop)
+        exit_action.triggered.connect(self.stop)
         exit_action.triggered.connect(qApp.quit)
         fileMenu.addAction(exit_action)
     
-    # 2. View menu
-    def _viewMenu(self, menuBar, mainwindow):
-               
-        viewMenu = menuBar.addMenu('&View')
-        view_action = QAction(QIcon('graphicsUtils/icons/icon_view.png'), '&View', mainwindow)
-        view_action.setShortcut('Ctrl+V')
-        view_action.setStatusTip('Exit program')
-        # exit_action.triggered.connect(self.stop)
-        #view_action.triggered.connect(qApp.quit)
-        viewMenu.addAction(view_action)
-  
             
     # 1. setting menu
-    def _settingsMenu(self, menuBar, mainwindow):      
+    def set_plotting_menu(self, menuBar, mainwindow):
+        plottingMenu = menuBar.addMenu('&plotting')
+
+        def show_adc_plotting_window():
+            self.plotWindow = QMainWindow()
+            plottingWindow = childWindow.ChildWindow(parent = self.plotWindow)
+            plottingWindow.plot_adc_window(adcItems=[str(k) for k in np.arange(35)],
+                                        name_prefix="adc_data_1",
+                                        plot_prefix="adc_data")
+            plottingWindow.show()
+                    
+        plotADC = QAction(QIcon('graphicsUtils/icons/icon_curve.png'),'Plot ADC', mainwindow)
+        plotADC.setStatusTip("Plot ADC channels")
+        plotADC.triggered.connect(show_adc_plotting_window)
+        plottingMenu.addAction(plotADC) 
+
+    def set_opcua_settings_menu(self, menuBar, mainwindow):      
+        settingsMenu = menuBar.addMenu('&settings')
+        self.MainWindow.update_device_box()    
+        self.__device = self.MainWindow.get_deviceName()
+        conf = AnalysisUtils().open_yaml_file(file=config_dir + self.__device + "_cfg.yml" , directory=lib_dir)
+        self.__appIconDir = conf["Application"]["icon_dir"]
+                
+        def _show_browse_client_child_window():
+            self.BrowseClientWindow = QMainWindow()
+            BrowseWindow = childWindow.ChildWindow(parent = self.BrowseClientWindow)
+            BrowseWindow.browse_client_child_window(self.BrowseClientWindow, conf)
+            self.BrowseClientWindow.show()
+            
+        def _show_browse_server_child_window():
+            self.BrowseServerWindow = QMainWindow()
+            BrowseWindow = childWindow.ChildWindow(parent = self.BrowseServerWindow)
+            BrowseWindow.browse_server_child_window(self.BrowseServerWindow ,conf)
+            self.BrowseServerWindow.show()
+            
+        BrowseServer = QAction(QIcon('graphics_Utils/icons/icon_nodes.png'),'Browse Server', mainwindow)
+        BrowseServer.setStatusTip("Configure OPCUA Server [IP address, server nodes, etc..")
+        BrowseServer.triggered.connect(_show_browse_server_child_window)
+        
+        BrowseClient = QAction(QIcon('graphics_Utils/icons/icon_nodes.png'),'Browse Client', mainwindow)
+        BrowseClient.setStatusTip("Configure OPCUA node browser [IP address, server nodes, etc..")
+        BrowseClient.triggered.connect(_show_browse_client_child_window)
+        
+        settingsMenu.addAction(BrowseServer)
+        settingsMenu.addAction(BrowseClient)
+                
+    def set_device_settings_menu(self, menuBar, mainwindow):      
         settingsMenu = menuBar.addMenu('&settings')
         self.MainWindow.update_device_box()    
         self.__device = self.MainWindow.get_deviceName()
         conf = AnalysisUtils().open_yaml_file(file=config_dir + self.__device + "_cfg.yml" , directory=lib_dir)
         self.__appIconDir = conf["Application"]["icon_dir"]
         
-        def show_add_node():
+        def show_edit_device_settings():
             self.NodeWindow = QMainWindow()
-            self.add_node(self.NodeWindow, conf)
+            self.edit_device_settings(self.NodeWindow, conf)
             self.NodeWindow.show()
         
         def show_edit_adc():            
@@ -76,28 +120,45 @@ class MenuBar(QWidget):
             self.edit_adc(self.adcWindow, conf)
             self.adcWindow.show()
 
-        DeviceSettings = QAction(QIcon('graphics_Utils/icons/icon_nodes.png'),'Device settings', mainwindow)
+        DeviceSettings = QAction(QIcon('graphics_Utils/icons/icon_nodes.png'),'Edit Device Settings', mainwindow)
         DeviceSettings.setStatusTip("Add Nodes to the Node menu")
-        DeviceSettings.triggered.connect(show_add_node)
+        DeviceSettings.triggered.connect(show_edit_device_settings)
 
-        ADCNodes = QAction(QIcon('graphics_Utils/icons/icon_nodes.png'),'MOPS ADC settings', mainwindow)
-        ADCNodes.setStatusTip("Edit ADC settings")
+        ADCNodes = QAction(QIcon('graphics_Utils/icons/icon_nodes.png'),'Edit MOPS ADC Settings', mainwindow)
+        ADCNodes.setStatusTip("Edit ADC settings [e.g. Parameters]")
         ADCNodes.triggered.connect(show_edit_adc)
+
+        def list_info():
+            msg ="<b><h3>CANMoPS:</h3></b> A graphical user interface GUI to read the channels of MOPS chip.<br />"\
+            " The package can communicate with a CAN interface and talks CANopen with the connected Controllers."\
+            "Currently only CAN interfaces from AnaGate (Ethernet),  Kvaser (USB) and SocketCAN drivers are supported.<br />"\
+            "<b>Author</b>: Ahmed Qamesh<br />"\
+            "<b>Contact</b>: ahmed.qamesh@cern.ch<br />"\
+            "<b>Organization</b>: Bergische Universität Wuppertal<br />"\
+            "<b>Gitlab path</b>: <a href='https://gitlab.cern.ch/aqamesh/canmops'>https://gitlab.cern.ch/aqamesh/canmops</a><br />"\
+            "<b>Software twiki</b>: <a href='https://gitlab.cern.ch/aqamesh/canmops/-/wikis/home'>https://gitlab.cern.ch/aqamesh/canmops/-/wikis/home</a><br />"
+            self.list_device_info(msg)
+            
+            
+        about_action = QAction(QIcon('graphics_Utils/icons/icon_application-settings.png'),'List Bus Info', mainwindow)
+        about_action.setStatusTip("List all info about the device")
+        about_action.triggered.connect(list_info)
         
+        settingsMenu.addAction(about_action)        
         settingsMenu.addAction(DeviceSettings)
         settingsMenu.addAction(ADCNodes)  
         
     # 4. Help menu
-    def _helpMenu(self, menuBar, mainwindow):
+    def set_help_main_menu(self, menuBar, mainwindow):
         helpmenu = menuBar.addMenu("&Help")
 
         about_action = QAction('&About', mainwindow)
         about_action.setStatusTip("About")
-        about_action.triggered.connect(self.about)
+        about_action.triggered.connect(self.list_device_info)
         helpmenu.addAction(about_action)
         
     # 5. Interface menu
-    def _interfaceMenu(self, menuBar, mainwindow):
+    def set_interface_menu(self, menuBar, mainwindow):
         interfaceMenu = menuBar.addMenu("&Interface")
         SocketMenu = interfaceMenu.addMenu("&SocketCAN")
         KvaserMenu = interfaceMenu.addMenu("&Kvaser")
@@ -189,13 +250,27 @@ class MenuBar(QWidget):
         status.showMessage(msg)
         mainwindow.setStatusBar(status)
         
-    def about(self):
-        QMessageBox.about(self, "About", "CANMoPS is a graphical user interface GUI to read the channels of MOPS chip.\n"+
-                                         " The package can communicate with a CAN interface and talks CANopen with the connected Controllers. Currently only CAN interfaces from AnaGate (Ethernet),  Kvaser (USB) and SocketCAN drivers are supported.\n"+
-                                         "Author: Ahmed Qamesh\n"+
-                                         "Contact: ahmed.qamesh@cern.ch\n"+
-                                         "Organization: Bergische Universität Wuppertal")
-                            
+
+    def list_device_info(self, msg = None, info = "Get Software Info"):
+        msgBox = QMessageBox()
+        msgBox.setWindowTitle(info) 
+        start = "\033[1m"
+        end = "\033[0;0m"
+        if msg != None:
+            msg ="<b><h3>CANMoPS:</h3></b> A graphical user interface GUI to read the channels of MOPS chip.<br />"\
+            " The package can communicate with a CAN interface and talks CANopen with the connected Controllers."\
+            "Currently only CAN interfaces from AnaGate (Ethernet),  Kvaser (USB) and SocketCAN drivers are supported.<br />"\
+            "<b>Author</b>: Ahmed Qamesh<br />"\
+            "<b>Contact</b>: ahmed.qamesh@cern.ch<br />"\
+            "<b>Organization</b>: Bergische Universität Wuppertal<br />"\
+            "<b>Gitlab path</b>: <a href='https://gitlab.cern.ch/aqamesh/canmops'>https://gitlab.cern.ch/aqamesh/canmops</a><br />"\
+            "<b>Software twiki</b>: <a href='https://gitlab.cern.ch/aqamesh/canmops/-/wikis/home'>https://gitlab.cern.ch/aqamesh/canmops/-/wikis/home</a><br />"
+            msgBox.setText(msg);
+        else:
+            msgBox.setText(msg)
+        msgBox.setStandardButtons(QMessageBox.Close)
+        msgBox.exec()
+    
     def edit_adc(self, childWindow, conf):
         #check the conf file
         ADCGroup= QGroupBox("ADC details")
@@ -344,14 +419,14 @@ class MenuBar(QWidget):
         SocketGroup.setLayout(mainLayout)
         plotframe.setLayout(mainLayout) 
                      
-    def add_node(self, childWindow, conf):
+    def edit_device_settings(self, childWindow, conf):
         #check the conf file
         NodeGroup= QGroupBox("Node Info")
         ChipGroup= QGroupBox("Chip Info")
         HardwareGroup= QGroupBox("Hardware Info")
         self.__appIconDir = conf["Application"]["icon_dir"]
         childWindow.setObjectName("Edit Device Settings")
-        childWindow.setWindowTitle("Device Settings")
+        childWindow.setWindowTitle("Edit Device Settings")
         childWindow.setWindowIcon(QtGui.QIcon(self.__appIconDir))
         childWindow.setGeometry(200, 200, 100, 100)
         

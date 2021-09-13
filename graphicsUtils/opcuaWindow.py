@@ -14,7 +14,7 @@ try:
     from graphicsUtils          import menuWindow
     from canmops.analysis       import Analysis
     from canmops.logger         import Logger 
-    from canmops.analysisUtils  import AnalysisUtils
+    from canmops.analysis_utils  import AnalysisUtils
 except:
     pass
 rootdir = os.path.dirname(os.path.abspath(__file__)) 

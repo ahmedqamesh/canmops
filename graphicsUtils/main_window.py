@@ -17,11 +17,11 @@ from PyQt5.QtGui            import *
 from PyQt5.QtWidgets        import *
 from typing                 import *
 from random                 import randint
-from graphicsUtils          import menuWindow, opcuaWindow
+from graphicsUtils          import menu_window, opcuaWindow,child_window, data_monitoring, mops_child_window
 from canmops.analysis       import Analysis
-from canmops.logger         import Logger 
-from canmops.analysisUtils  import AnalysisUtils
-from canmops.canWrapper     import CanWrapper
+from canmops.logger_main         import Logger 
+from canmops.analysis_utils  import AnalysisUtils
+from canmops.can_wrapper_main     import CanWrapper
 
 rootdir = os.path.dirname(os.path.abspath(__file__)) 
 lib_dir = rootdir[:-13]
@@ -32,7 +32,7 @@ class MainWindow(QMainWindow):
     def __init__(self, console_loglevel=logging.INFO):
         super(MainWindow, self).__init__(None)
         """:obj:`~logging.Logger`: Main logger for this class"""
-        self.logger = Logger().setup_main_logger(name=__name__, console_loglevel=console_loglevel)
+        self.logger = Logger().setup_main_logger(name=" Main  GUI ", console_loglevel=console_loglevel)
         # Start with default settings
         # Read configurations from a file    
         self.__conf = AnalysisUtils().open_yaml_file(file=config_dir + "main_cfg.yml", directory=lib_dir)
@@ -56,7 +56,7 @@ class MainWindow(QMainWindow):
         self.__subIndex = None
         self.wrapper = None
         
-    def Ui_ApplicationWindow(self):
+    def Ui_ApplicationWindow(self, opcua =None):
         '''
         The function Will start the main graphical interface with its main components
         1. The menu bar
@@ -70,9 +70,11 @@ class MainWindow(QMainWindow):
         '''
         self.logger.info("Initializing The Graphical Interface")
         # create MenuBar
-        self.MenuBar = menuWindow.MenuBar(self)
-        self.MenuBar.create_menuBar(self)
-
+        self.MenuBar = menu_window.MenuWindow(self)
+        self.MenuBar.create_main_menuBar(self)
+        
+        #
+        self.DataMonitoring = data_monitoring.DataMonitoring(self)
         # create statusBar
         self.MenuBar.create_statusBar(self)
         
@@ -80,20 +82,28 @@ class MainWindow(QMainWindow):
         toolBar = self.addToolBar("tools")
         self.show_toolBar(toolBar, self)
         
-        # Opcua child window
-        self.opcuaWindow = opcuaWindow.OpcuaWindow()
+
         # 1. Window settings
         self.setWindowTitle(self.__appName + "_" + self.__appVersion)
         self.setWindowIcon(QtGui.QIcon(self.__appIconDir))
-        self.adjustSize()
-        self.setGeometry(10, 10, 900, 770)
+        #self.adjustSize()
+        self.setFixedSize(950, 850)
+        self.setGeometry(10, 10, 900, 700)
+        
+        logo_layout = QHBoxLayout()
+        uni_logo_label = QLabel()
+        pixmap = QPixmap("graphicsUtils/icons/icon_wuppertal_banner.png")
+        uni_logo_label.setPixmap(pixmap.scaled(150, 50)) 
+        icon_spacer = QSpacerItem(250, 50, QtWidgets.QSizePolicy.Minimum, QtWidgets.QSizePolicy.Expanding)
+        logo_layout.addItem(icon_spacer) 
+        logo_layout.addWidget(uni_logo_label)    
         
         self.defaultSettingsWindow()
         self.default_message_window()
         self.textOutputWindow()
         self.tableOutputWindow()
         self.configure_device_box()
-        self.configure_cic_box()
+        
         # Create a frame in the main menu for the gridlayout
         mainFrame = QFrame()
         mainFrame.setLineWidth(0.6)
@@ -101,12 +111,19 @@ class MainWindow(QMainWindow):
             
         # SetLayout
         mainLayout = QGridLayout()
-        mainLayout.addWidget(self.defaultSettingsGroupBox, 0, 0)
-        mainLayout.addWidget(self.defaultMessageGroupBox, 1, 0)  
-        mainLayout.addWidget(self.textGroupBox, 0, 1, 2, 1)
+        mainLayout.addLayout(logo_layout,0,1)
+        mainLayout.addWidget(self.defaultSettingsGroupBox, 1, 0)
+        mainLayout.addWidget(self.defaultMessageGroupBox, 2, 0)  
+        mainLayout.addWidget(self.textGroupBox, 1, 1, 2, 1)
         mainLayout.addWidget(self.monitorGroupBox, 3, 0, 2, 2)
-        mainLayout.addWidget(self.configureDeviceBoxGroupBox, 5, 0,1,1)
-        mainLayout.addWidget(self.configureCICBoxGroupBox   ,5, 1,1,1)
+        mainLayout.addWidget(self.configureDeviceBoxGroupBox, 5, 0, 1, 1)
+
+        # Opcua child window
+        if opcua is not None:   
+            self.opcuaWindow = opcuaWindow.OpcuaWindow()
+            self.configure_cic_box()
+            mainLayout.addWidget(self.configureCICBoxGroupBox, 5, 1, 1, 1)
+            
         mainFrame.setLayout(mainLayout)
         # 3. Show
         self.show()
@@ -156,18 +173,6 @@ class MainWindow(QMainWindow):
             _channel = self.channelComboBox.currentText()
             self.set_interface(_interface)
             self.set_channel(int(_channel))
-            try:
-                _nodeItems = AnalysisUtils().get_info_yaml(dictionary=self.__conf['channel_ports'], index=str(_channel), subindex="Nodes")
-            except Exception:
-                self.logger.warning("No Nodes found in the settings file")
-                pass
-            try:
-                self.nodeComboBox.clear()
-                self.nodeComboBox.addItems(list(map(str, _nodeItems)))
-            except Exception:
-                self.logger.warning("No interface connected to the selected port")
-                self.nodeComboBox.clear()
-                pass
 
         self.channelComboBox.setCurrentIndex(0)
         self.connectButton.clicked.connect(on_channelComboBox_currentIndexChanged)
@@ -201,9 +206,9 @@ class MainWindow(QMainWindow):
         defaultMessageWindowLayout = QGridLayout()                        
         nodeLabel = QLabel()
         nodeLabel.setText("NodeId [dec]")
-        self.nodeComboBox = QComboBox()
-        self.nodeComboBox.setStatusTip('Connected CAN Nodes as defined in the main_cfg.yml file')
-        self.nodeComboBox.setFixedSize(70, 25)
+        self.nodetextBox = QLineEdit("1")
+        self.nodetextBox.setStatusTip('Connected CAN Nodes as defined in the main_cfg.yml file')
+        self.nodetextBox.setFixedSize(70, 25)
         
         oDLabel = QLabel()
         oDLabel.setText("   CAN Id   ")
@@ -226,7 +231,7 @@ class MainWindow(QMainWindow):
             try:
                 self.set_index(self.mainIndexTextBox.text())
                 self.set_subIndex(self.mainSubIndextextbox.text())
-                self.set_nodeId(self.nodeComboBox.currentText())
+                self.set_nodeId(self.nodetextBox.text())
                 self.set_canId_tx(self.CANIdComboBox.currentText())
             except Exception:
                 self.error_message(text="Make sure that the CAN interface is connected")
@@ -237,7 +242,7 @@ class MainWindow(QMainWindow):
         self.startButton.clicked.connect(__set_bus)
         self.startButton.clicked.connect(self.read_sdo_can_thread)                 
         defaultMessageWindowLayout.addWidget(nodeLabel, 3, 0)
-        defaultMessageWindowLayout.addWidget(self.nodeComboBox, 4, 0)   
+        defaultMessageWindowLayout.addWidget(self.nodetextBox, 4, 0)   
         
         defaultMessageWindowLayout.addWidget(oDLabel, 3, 1)
         defaultMessageWindowLayout.addWidget(self.CANIdComboBox, 4, 1)
@@ -268,7 +273,6 @@ class MainWindow(QMainWindow):
         self.setCentralWidget(plotframe)
         plotframe.setLayout(textOutputWindowLayout)
         self.textGroupBox.setLayout(textOutputWindowLayout)
-        
     def tableOutputWindow(self):
         '''
         The function defines the GroupBox output table for Bytes monitoring for RX and TX messages
@@ -278,7 +282,7 @@ class MainWindow(QMainWindow):
         plotframe.setStyleSheet("QWidget { background-color: #eeeeec; }")
         plotframe.setLineWidth(0.6)
         self.setCentralWidget(plotframe)
-        
+        #self.monitorGroupBox.setFixedSize(900, 350)
         def __graphic_view():
             byteLabel = QLabel()
             byteLabel.setText("Bytes")
@@ -325,6 +329,7 @@ class MainWindow(QMainWindow):
         self.hexRXTable.setVerticalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
         self.hexRXTable.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
         self.hexRXTable.setEditTriggers(QAbstractItemView.NoEditTriggers)
+        
         self.decRXTable = QTableWidget()  # Create a table
         self.decRXTable.setColumnCount(1)  # Set n columns
         self.decRXTable.setRowCount(n_bytes)  # and n rows
@@ -356,7 +361,7 @@ class MainWindow(QMainWindow):
         self.RXTable.setVisible(True)
         
         line = QFrame()
-        line.setGeometry(QRect(320, 150, 118, 3))
+        line.setGeometry(QtCore.QRect(320, 150, 118, 3))
         line.setFrameShape(QFrame.VLine)
         line.setFrameShadow(QFrame.Sunken)
         
@@ -374,6 +379,7 @@ class MainWindow(QMainWindow):
         self.hexTXTable.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
         self.hexTXTable.clearContents()  # clear cells
         self.hexTXTable.setEditTriggers(QAbstractItemView.NoEditTriggers)
+        
         self.decTXTable = QTableWidget(self)  # Create a table
         self.decTXTable.setColumnCount(1)  # Set n columns
         self.decTXTable.setRowCount(n_bytes)  # and n rows
@@ -463,23 +469,18 @@ class MainWindow(QMainWindow):
         '''
         The function provides a frame for the configured devices  according to the file main_cfg.yml
         '''
-        self.configureCICBoxGroupBox = QGroupBox("OPCUA Devices")
-        plotframe = QFrame()
-        plotframe.setStyleSheet("QWidget { background-color: #eeeeec; }")
-        plotframe.setLineWidth(0.6)
+        self.configureCICBoxGroupBox = QGroupBox("OPCUA Client")
         self.configureCICBoxGroupBoxLayout = QHBoxLayout()
         opcuaLabel = QLabel()
         self.opcuaButton = QPushButton("")
         self.opcuaButton.setStatusTip('Open OPCUA window')
         opcuaLabel.setText("")
         self.opcuaButton.setIcon(QIcon('graphicsUtils/icons/icon_opcua.png'))
-        self.opcuaButton.clicked.connect(self.opcuaWindow.update_opcua_config_box)
-        self.opcuaButton.clicked.connect(self.opcuaWindow.show_cicWindow)
+        self.opcuaButton.clicked.connect(self.opcuaWindow.Ui_ApplicationWindow)
         self.configureCICBoxGroupBoxLayout.addWidget(self.opcuaButton)
         self.configureCICBoxGroupBoxLayout.addWidget(opcuaLabel)
-        self.setCentralWidget(plotframe)
-        plotframe.setLayout(self.configureCICBoxGroupBoxLayout)
         self.configureCICBoxGroupBox.setLayout(self.configureCICBoxGroupBoxLayout)
+        
         
     def configure_device_box(self):
         '''
@@ -503,7 +504,6 @@ class MainWindow(QMainWindow):
             self.update_device_box()
         self.configureDeviceBoxLayout.addWidget(deviceLabel)
         self.configureDeviceBoxLayout.addWidget(self.deviceButton)
-        self.setCentralWidget(plotframe)
         plotframe.setLayout(self.configureDeviceBoxLayout)
         self.configureDeviceBoxGroupBox.setLayout(self.configureDeviceBoxLayout)
 
@@ -516,7 +516,8 @@ class MainWindow(QMainWindow):
         else:
             conf = AnalysisUtils().open_yaml_file(file=config_dir + self.__devices[0] + "_cfg.yml", directory=lib_dir)
         self.__devices.append(conf["Application"]["device_name"])
-        deviceName, version, icon_dir, nodeIds, dictionary_items, adc_channels_reg, _ , _, chipId = self.configure_devices(conf)
+        mops_child = mops_child_window.MopsChildWindow()
+        deviceName, version, icon_dir, nodeIds, dictionary_items, adc_channels_reg, self.__adc_index, self.__chipId, self.__index_items, self.__conf_index, self.__mon_index,self.__resistor_ratio  = mops_child.configure_devices(conf)
         # Load ADC calibration constants
         # adc_calibration = pd.read_csv(config_dir + "adc_calibration.csv", delimiter=",", header=0)
         # condition = (adc_calibration["chip"] == chipId)
@@ -538,25 +539,22 @@ class MainWindow(QMainWindow):
         except:
             pass
          
-    def configure_devices(self, dev):
-        '''
-        The function provides all the configuration parameters stored in the configuration file of the device [e.g. MOPS] stored in the config_dir
-        '''
-        self.__deviceName = dev["Application"]["device_name"] 
-        self.__version = dev['Application']['device_version']
-        self.__appIconDir = dev["Application"]["icon_dir"]
-        self.__chipId = dev["Application"]["chipId"]
-        self.__nodeIds = dev["Application"]["nodeIds"]
-        self.__dictionary_items = dev["Application"]["index_items"]
-        self.__index_items = list(self.__dictionary_items.keys())
-        self.__adc_channels_reg = dev["adc_channels_reg"]["adc_channels"]
-        self.__adc_index = dev["adc_channels_reg"]["adc_index"]
-        self.__mon_index = dev["adc_channels_reg"]["mon_index"] 
-        self.__conf_index = dev["adc_channels_reg"]["conf_index"] 
-        self.__resistor_ratio = dev["Hardware"]["resistor_ratio"]
-        
-        return  self.__deviceName, self.__version, self.__appIconDir, self.__nodeIds, self.__dictionary_items, self.__adc_channels_reg, self.__adc_index, self.__resistor_ratio, self.__chipId
-        
+    def load_settings_file(self, interface = None, channel = None):
+        filename = lib_dir + config_dir + interface + "_CANSettings.yml"
+        filename = os.path.join(lib_dir, config_dir + interface + "_CANSettings.yml")
+        test_date = time.ctime(os.path.getmtime(filename))
+        # Load settings from CAN settings file
+        self.logger.notice("Loading CAN settings from the file %s produced on %s" % (filename, test_date))
+        _canSettings = AnalysisUtils().open_yaml_file(file=config_dir + interface + "_CANSettings.yml", directory=lib_dir)
+        _channel = _canSettings['channel' + str(channel)]["channel"]
+        _ipAddress = _canSettings['channel' + str(channel)]["ipAddress"]
+        _bitrate = _canSettings['channel' + str(channel)]["bitrate"]
+        _samplePoint = _canSettings['channel' + str(channel)]["samplePoint"]
+        _sjw = _canSettings['channel' + str(channel)]["SJW"]
+        _tseg1 = _canSettings['channel' + str(channel)]["tseg1"]
+        _tseg2 = _canSettings['channel' + str(channel)]["tseg2"] 
+        return _channel,_ipAddress, _bitrate,_samplePoint, _sjw,_tseg1, _tseg2
+                     
     def connect_server(self):
         '''
         The function is starts calling the CANWrapper [called by the connectButton].
@@ -570,19 +568,7 @@ class MainWindow(QMainWindow):
             _default_channel = self.get_channel()
             try: 
                 # Default settings from yml file
-                filename = lib_dir + config_dir + _interface + "_CANSettings.yml"
-                filename = os.path.join(lib_dir, config_dir + _interface + "_CANSettings.yml")
-                test_date = time.ctime(os.path.getmtime(filename))
-                # Load settings from CAN settings file
-                _canSettings = AnalysisUtils().open_yaml_file(file=config_dir + _interface + "_CANSettings.yml", directory=lib_dir)
-                self.logger.notice("Loading CAN settings from the file %s produced on %s" % (filename, test_date))
-                _channel = _canSettings['channel' + str(_default_channel)]["channel"]
-                _ipAddress = _canSettings['channel' + str(_default_channel)]["ipAddress"]
-                _bitrate = _canSettings['channel' + str(_default_channel)]["bitrate"]
-                _samplePoint = _canSettings['channel' + str(_default_channel)]["samplePoint"]
-                _sjw = _canSettings['channel' + str(_default_channel)]["SJW"]
-                _tseg1 = _canSettings['channel' + str(_default_channel)]["tseg1"]
-                _tseg2 = _canSettings['channel' + str(_default_channel)]["tseg2"]                   
+                _channel,_ipAddress, _bitrate,_samplePoint, _sjw,_tseg1, _tseg2 =  self.load_settings_file(interface = _interface, channel = _default_channel)              
                 # Update settings
                 self.set_channelPorts(list(_channel))         
                 # Update buttons
@@ -596,10 +582,6 @@ class MainWindow(QMainWindow):
                                           tseg2=_tseg2,
                                           ipAddress=_ipAddress,
                                           channel=int(_channel))
-                if self.__deviceName == "MOPS":
-                    self.wrapper.confirm_nodes(channel=int(_channel))
-                else:
-                    pass
                 self.control_logger = self.wrapper.logger
             except:
                 self.logger.error("Cannot Connect to the CAN bus")
@@ -634,7 +616,6 @@ class MainWindow(QMainWindow):
             _sjw = self.get_sjw()
             _tseg1 = self.get_tseg1()
             _tseg2 = self.get_tseg2()
-            _nodeItems = AnalysisUtils().get_info_yaml(dictionary=self.__conf['channel_ports'], index=str(_channels[0]), subindex="Nodes")
             _timeout = 500
             if _interface == "AnaGate":
                  self.set_ipAddress(self.firsttextbox.text()) 
@@ -648,8 +629,6 @@ class MainWindow(QMainWindow):
             self.interfaceComboBox.addItems([_interface])
             self.channelComboBox.clear()
             self.channelComboBox.addItems([str(_channel)])
-            self.nodeComboBox.clear()
-            self.nodeComboBox.addItems(list(map(str, _nodeItems)))
             
             # Save the settings into a file
             dict_file = {"CAN_Interfaces": _interface,
@@ -663,7 +642,7 @@ class MainWindow(QMainWindow):
                                                  "timeout":_timeout}                             
                                                          }
             self.logger.info("Saving CAN settings to the file %s" % lib_dir + config_dir + _interface + "_CANSettings.yml") 
-            self.logger.info("Please restart your bus from the tools menu (Interface >> %s >> Reset_%s_interface )to apply the new settings "%(_interface,_interface))
+            self.logger.info("Please restart your bus from the tools menu (Interface >> %s >> Reset_%s_interface )to apply the new settings " % (_interface, _interface))
             AnalysisUtils().dump_yaml_file(directory=lib_dir + config_dir , file=_interface + "_CANSettings.yml", loaded=dict_file)
             # Apply the settings to the main server
             self.wrapper = CanWrapper(interface=_interface,
@@ -686,7 +665,7 @@ class MainWindow(QMainWindow):
             # the the connect button to checked
             self.connectButton.setChecked(True)
         except Exception:
-          self.error_message(text="Please choose an interface or close the window")
+            self.error_message(text="Please choose an interface or close the window")
  
     def set_canchannel(self, arg=None, interface=None, default_channel=None):
         '''
@@ -694,18 +673,8 @@ class MainWindow(QMainWindow):
         '''
         try:
             if interface is not None: 
-                _channel = default_channel
-                filename = lib_dir + config_dir + interface + "_CANSettings.yml"
-                filename = os.path.join(lib_dir, config_dir + interface + "_CANSettings.yml")
-                test_date = time.ctime(os.path.getmtime(filename))
-                # Load settings from CAN settings file
-                _canSettings = AnalysisUtils().open_yaml_file(file=config_dir + interface + "_CANSettings.yml", directory=lib_dir)
-                _bitrate = _canSettings['channel' + str(_channel)]["bitrate"]
-                _samplePoint = _canSettings['channel' + str(_channel)]["samplePoint"]
-                _sjw = _canSettings['channel' + str(_channel)]["SJW"]
-                _tseg1 = _canSettings['channel' + str(_channel)]["tseg1"]
-                _tseg2 = _canSettings['channel' + str(_channel)]["tseg2"]
-                _ipAddress = _canSettings['channel' + str(_channel)]["ipAddress"]
+                #_channel = default_channel
+                _channel,_ipAddress, _bitrate,_samplePoint, _sjw,_tseg1, _tseg2 =  self.load_settings_file(interface = interface, channel = default_channel) 
                 if (arg == "socketcan" and interface == "socketcan"):
                     _bus_type = "can"
                     _can_channel = _bus_type + str(_channel)
@@ -750,39 +719,7 @@ class MainWindow(QMainWindow):
     '''
     Define all child windows
     '''        
-              
-    def dump_child_window(self, ChildWindow):
-        ChildWindow.setObjectName("Bus Messages")
-        ChildWindow.setWindowTitle("Bus Messages")
-        ChildWindow.setGeometry(915, 490, 600, 400)
-        mainLayout = QGridLayout()
-        # Define a frame for that group
-        
-        plotframe = QFrame()
-        plotframe.setLineWidth(0.6)
-        ChildWindow.setCentralWidget(plotframe)
-        # Define dumpGroupBox
-        dumpGroupBox = QGroupBox()
-        self.dumptextBox = QTextEdit()
-        self.dumptextBox.setReadOnly(True)
-        textOutputWindowLayout = QGridLayout()
-        textOutputWindowLayout.addWidget(self.dumptextBox, 0, 0)
-        dumpGroupBox.setLayout(textOutputWindowLayout)
-        
-        # dump can messages
-        self.initiate_dump_can_timer(5000)
-        
-        buttonBox = QHBoxLayout()
-        close_button = QPushButton("close")
-        close_button.setIcon(QIcon('graphicsUtils/icons/icon_close.jpg'))
-        close_button.clicked.connect(ChildWindow.close)
-        buttonBox.addWidget(close_button)
-                 
-        mainLayout.addWidget(dumpGroupBox , 0, 0)
-        mainLayout.addLayout(buttonBox , 2, 0)
-        plotframe.setLayout(mainLayout) 
-        QtCore.QMetaObject.connectSlotsByName(ChildWindow)
-        
+
     def can_message_child_window(self, ChildWindow):
         ChildWindow.setObjectName("CAN Message")
         ChildWindow.setWindowTitle("CAN Message")
@@ -863,213 +800,10 @@ class MainWindow(QMainWindow):
         plotframe.setLayout(mainLayout) 
         self.MenuBar.create_statusBar(ChildWindow)
         QtCore.QMetaObject.connectSlotsByName(ChildWindow)
-                      
-    def can_settings_child_window(self, ChildWindow):
-        ChildWindow.setObjectName("CAN Settings")
-        ChildWindow.setWindowTitle("CAN Settings")
-        ChildWindow.setGeometry(915, 10, 250, 100)
-        # ChildWindow.resize(250, 400)  # w*h
-        mainLayout = QGridLayout()
-        _channelList = self.__channelPorts
-        # Define a frame for that group
-        plotframe = QFrame(ChildWindow)
-        plotframe.setLineWidth(0.6)
-        ChildWindow.setCentralWidget(plotframe)
-        
-        # Define First Group
-        
-        # Define the second group
-        SecondGroupBox = QGroupBox("Bus Configuration")
-        SecondGridLayout = QGridLayout()        
-        # comboBox and label for channel
-        chLabel = QLabel()
-        chLabel.setText("CAN Interface    :")
-        
-        interfaceLayout = QHBoxLayout()
-        __interfaceItems = [""] + self.__interfaceItems
-        interfaceComboBox = QComboBox()
-        for item in __interfaceItems: interfaceComboBox.addItem(item)
-        interfaceComboBox.activated[str].connect(self.set_interface)
-        
-        interfaceLayout.addWidget(interfaceComboBox)
-        # Another group will be here for Bus parameters
-        self.BusParametersGroupBox()
-        self.NodeParameters()
-        
-        channelLabel = QLabel()
-        channelLabel.setText("CAN Bus: ")
-        self.channelSettingsComboBox = QComboBox()
-        for item in _channelList: self.channelSettingsComboBox.addItem(str(item))
-        self.channelSettingsComboBox.activated[str].connect(self.set_channel)
-
-        # FirstButton
-        clear_button = QPushButton("Clear")
-        clear_button.clicked.connect(ChildWindow.close)
-        
-        SecondGroupBox.setLayout(SecondGridLayout)
-        SecondGridLayout.addWidget(chLabel, 0, 0)
-        SecondGridLayout.addLayout(interfaceLayout, 1, 0)
-        SecondGridLayout.addWidget(channelLabel, 2, 0)
-        SecondGridLayout.addWidget(self.channelSettingsComboBox, 3, 0)
-        SecondGridLayout.addWidget(self.NodeGroup, 5 , 0)
-
-        def _interfaceParameters():
-            SecondGridLayout.removeWidget(self.SubSecondGroupBox)
-            self.SubSecondGroupBox.deleteLater()
-            self.SubSecondGroupBox = None
-            _interface = interfaceComboBox.currentText()
-            _channel = self.channelSettingsComboBox.currentText()
-            self.set_channel(_channel)
-            self.set_interface(_interface)
-            self.BusParametersGroupBox(interface=_interface)
-            SecondGridLayout.addWidget(self.SubSecondGroupBox, 4, 0)        
-
-        interfaceComboBox.activated[str].connect(_interfaceParameters)
-        # Define Third Group
-        ThirdGridLayout = QHBoxLayout()
-        close_button = QPushButton("close")
-        close_button.setIcon(QIcon('graphicsUtils/icons/icon_close.png'))
-        close_button.clicked.connect(ChildWindow.close)
-        ThirdGridLayout.addSpacing(100)
-        ThirdGridLayout.addWidget(close_button)
-         
-        mainLayout.addWidget(SecondGroupBox, 1, 0)
-       
-        mainLayout.addLayout(ThirdGridLayout, 3, 0)
-        plotframe.setLayout(mainLayout) 
-        self.MenuBar.create_statusBar(ChildWindow)
-        plotframe.setStatusTip("")
-        QtCore.QMetaObject.connectSlotsByName(ChildWindow)                
-    
-    def NodeParameters(self):
-        self.NodeGroup = QGroupBox("Node Info")
-        nodeLayout = QVBoxLayout()
-        # Inputs
-        inLayout = QHBoxLayout()  
-        nodeSpinBox = QSpinBox()
-        
-        add_button = QPushButton("Add")
-        add_button.setIcon(QIcon('graphicsUtils/icons/icon_add.png'))
-
-        clear_button = QPushButton("Clear")
-        clear_button.setIcon(QIcon('graphicsUtils/icons/icon_clear.png'))
-        
-        save_button = QPushButton("Save")
-        save_button.setIcon(QIcon('graphicsUtils/icons/icon_true.png'))
-                    
-        inLayout.addWidget(nodeSpinBox)
-        inLayout.addWidget(add_button)
-        
-        # outputs
-        outLayout = QVBoxLayout()
-        nodeLabel = QLabel()
-        nodeLabel.setText("Added  Nodes [dec]")    
-        nodeListBox = QListWidget()
-        outLayout.addWidget(nodeLabel)
-        outLayout.addWidget(nodeListBox)
-        nodeLayout.addLayout(inLayout)
-        nodeLayout.addLayout(outLayout) 
-        nodeLayout.addWidget(clear_button)
-        nodeLayout.addWidget(save_button)
-
-        def _add_item():
-            node = nodeSpinBox.value()
-            nodeListBox.addItem(str(int(node)))
-        
-        def _clear_item():
-            _row = nodeListBox.currentRow()
-            nodeListBox.takeItem(_row)
-        
-        def _save_items():
-            if (nodeListBox.count() != 0):
-                _nodes = [nodeListBox.item(x).text() for x in range(nodeListBox.count())]
-                _channel = self.channelSettingsComboBox.currentText()
-                [self.__conf["channel_ports"][i] for i in [str(_channel)] if i in self.__conf["channel_ports"]][0]["Nodes"] = _nodes
-                file = config_dir + "main_cfg.yml"
-                AnalysisUtils().dump_yaml_file(file=file,
-                                               loaded=self.__conf,
-                                               directory=lib_dir)
-                self.logger.info("Saving Information to the file %s" % file)
-            else:
-                self.logger.error("No data to be saved.....")
-
-        add_button.clicked.connect(_add_item)
-        clear_button.clicked.connect(_clear_item)
-        save_button.clicked.connect(_save_items)
-        self.NodeGroup.setLayout(nodeLayout)
-                
-    def BusParametersGroupBox(self, interface="Others"):
-        '''
-        The window holds all the parameters needed  for the target bus, the CAN bus properties must be configured first[e.g bitrate, sample_point, SJW]
-        '''
-        # Define subGroup
-        self.SubSecondGroupBox = QGroupBox("Bus Parameters")
-        SubSecondGridLayout = QGridLayout()
-        ipLabel = QLabel("ipLabel")
-        sjwLabel = QLabel("sjwLabel")
-        bitSpeedLabel = QLabel("bitSpeedLabel")
-        sampleLabel = QLabel("sampleLabel")
-        tseg1Label = QLabel("tseg1Label")
-        tseg2Label = QLabel("tseg2Label")
-        firstComboBox = QComboBox()
-        bitSpeedTextBox = QLineEdit("125000")
-        bitSpeedTextBox.setFixedSize(70, 25)              
-        sjwLabel.setText("SJW:")
-        sjwItems = ["1", "2", "3", "4"]
-        sjwComboBox = QComboBox()
-        sjwComboBox.setStatusTip("Synchronization Jump Width, it  adjusts the bit clock by a specific time in 1-4 times the Time Quanta (TQ)")
-        for item in sjwItems: sjwComboBox.addItem(item)
-        bitSpeedLabel.setText("Bit Speed [bit/s]:")
-        sampleLabel.setText("Sample point [%]:")
-        sampleTextBox = QLineEdit("50")
-        sampleTextBox.setStatusTip('The location of Sample point in percentage inside each bit period')                  
-
-        tseg1Label.setText("tseg1:")
-        tseg1TextBox = QLineEdit("0")
-        tseg1TextBox.setStatusTip('Time Segment 1 = [Prop_Seg + Phase_Seg1]')   
-        
-        tseg2Label.setText("tseg2:")
-        tseg2TextBox = QLineEdit("0")
-        tseg2TextBox.setStatusTip('Time Segment2 = [Phase_Seg2]')   
-        
-        if (interface == "AnaGate"):
-            ipLabel.setText("IP address:")
-            self.firsttextbox = QLineEdit('192.168.1.254')
-            SubSecondGridLayout.addWidget(ipLabel, 0, 0)
-            SubSecondGridLayout.addWidget(self.firsttextbox, 0, 1)
-        else:
-            pass                  
-        
-        def _set_bus():
-            self.set_sjw(sjwComboBox.currentText())
-            self.set_bitrate(bitSpeedTextBox.text())  
-            self.set_sample_point(sampleTextBox.text())
-            self.set_tseg1(tseg1TextBox.text())
-            self.set_tseg2(tseg2TextBox.text())
-            
-        set_button = QPushButton("Set in all")
-        set_button.setStatusTip('The button will apply the same settings for all CAN controllers')  # show when move mouse to the icon
-        set_button.setIcon(QIcon('graphicsUtils/icons/icon_true.png'))
-        set_button.clicked.connect(_set_bus)
-        set_button.clicked.connect(self.set_bus_settings)
-        
-        SubSecondGridLayout.addWidget(sjwLabel, 1, 0)
-        SubSecondGridLayout.addWidget(sjwComboBox, 1, 1)
-        SubSecondGridLayout.addWidget(bitSpeedLabel, 2, 0)
-        SubSecondGridLayout.addWidget(bitSpeedTextBox, 2, 1)
-        SubSecondGridLayout.addWidget(sampleLabel, 3, 0)
-        SubSecondGridLayout.addWidget(sampleTextBox, 3, 1)
-        SubSecondGridLayout.addWidget(tseg1Label, 4, 0)
-        SubSecondGridLayout.addWidget(tseg1TextBox, 4, 1)
-        SubSecondGridLayout.addWidget(tseg2Label, 5, 0)
-        SubSecondGridLayout.addWidget(tseg2TextBox, 5, 1) 
-        SubSecondGridLayout.addWidget(set_button, 6, 1) 
-        self.SubSecondGroupBox.setLayout(SubSecondGridLayout)
          
     '''
     Define can communication messages
     '''
-
     def read_sdo_can(self):
         """Read an object via |SDO| with message validity check
         1. Request the SDO message parameters [e.g.  Index, subindex and _nodeId]
@@ -1987,16 +1721,22 @@ class MainWindow(QMainWindow):
             else:
                 self.read_can_message_thread(print_sdo=False)
         else:
-            pass
-        # self.MessageWindow = QMainWindow()
-        # self.dump_child_window(self.MessageWindow)
-        # self.MessageWindow.show()
-                  
+            #pass
+            self.DumpMessageWindow = QMainWindow()
+            child = childWindow.ChildWindow(parent = self.DumpMessageWindow)
+            self.dumptextBox = self.dump_child_window(self.DumpMessageWindow, mainWindow = self)
+            self.MessageWindow.show()
+         
     def show_CANSettingsWindow(self):
         self.SettingsWindow = QMainWindow()
-        self.can_settings_child_window(self.SettingsWindow)
+        _interfaceItems = self.__interfaceItems
+        _channelList = self.__channelPorts
+        child = child_window.ChildWindow(parent = self.SettingsWindow)
+        self.interfaceComboBox, self.channelSettingsComboBox , self.ipBox = child.can_settings_child_window(self.SettingsWindow, 
+                                                                                                                    interfaceItems = _interfaceItems,
+                                                                                                                    channelPorts = _channelList,
+                                                                                                                    mainWindow = self)
         self.SettingsWindow.show()
-
     def show_trendWindow(self):
         trend = QMainWindow(self)
         subindex = self.sender().objectName()

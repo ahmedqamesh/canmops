@@ -16,25 +16,22 @@ from configparser import ConfigParser
 from typing import *
 import time
 import datetime
-import numba
+#import numba
 import sys
 import os
-from PyQt5.QtCore    import *
-from PyQt5.QtGui     import *
-from PyQt5.QtWidgets import *
 from threading import Thread, Event, Lock
 import numpy as np
 from pip._internal.cli.cmdoptions import pre
 from lxml.html.builder import PRE
 try:
     from .analysis import Analysis
-    from .logger import Logger
-    from .__version__ import __version__
-    from .analysisUtils import AnalysisUtils
+    from .logger_main import Logger
+    #from .__version__ import __version__
+    from .analysis_utils import AnalysisUtils
 except (ImportError, ModuleNotFoundError):
     from analysis import Analysis
-    from logger   import Logger
-    from __version__ import __version__
+    from logger_main   import Logger
+   # from __version__ import __version__
     from analysisUtils import AnalysisUtils
     
 # Third party modules
@@ -42,36 +39,29 @@ from collections import deque, Counter
 from tqdm import tqdm
 import ctypes as ct
 import logging
-from termcolor import colored
 import csv
-from csv import writer
-from colorama import init
-init()
+#from csv import writer
+logger = Logger().setup_main_logger(name = " Lib Check ",console_loglevel=logging.INFO, logger_file = False)
 # Import Socketcan for Socketcan
 try:
     import can
 except:
-    print (colored("Warning: SocketCAN Package is not installed.......", 'red'), 
-           colored("Please ignore the warning if you are not using any SocketCAN drivers.", "green"))
+     logger.warning("SocketCAN Package is not installed....."+"[Please ignore the warning if No SocketCAN drivers used.]")
 
 # Import canlib for Kvaser
 try:
     from canlib import canlib, Frame
     from canlib.canlib.exceptions import CanGeneralError
-    from canlib.canlib import ChannelData
+    #from canlib.canlib import ChannelData
 except:
-    class CanGeneralError():
-        pass
-    print (colored("Warning: Canlib Package is not installed.......", 'red'), 
-           colored("Please ignore the warning if you are not using any CANLib packages (in case SocketCAN is used)", "green"))
     
+    logger.warning("Canlib  Package is not installed....."+"[Please ignore the warning if CANLib packages are not required (in case SocketCAN is used)]")
+     
 # Import analib for AnaGate
 try:
     import analib
 except:
-    class CanGeneralError():
-        pass
-    print (colored("Warning: AnaGate Package is not installed.......", 'red'), colored("Please ignore the warning if you are not using any AnaGate controllers.", "green"))
+    logger.warning("AnaGate Package is not installed....."+"[Please ignore the warning if No AnaGate controllers used.]")
 
 rootdir = os.path.dirname(os.path.abspath(__file__))
 config_dir = "config/"
@@ -85,11 +75,11 @@ class CanWrapper(object):
                  sjw=None,ipAddress=None,
                  tseg1 = None, tseg2 = None,
                  conf_file="main_cfg.yml",
+                 file_loglevel=logging.INFO, 
+                 logdir=None,
                  console_loglevel=logging.INFO):
        
         super(CanWrapper, self).__init__()  # super keyword to call its methods from a subclass:
-        """:obj:`~logging.Logger`: Main logger for this class"""
-        self.logger = Logger().setup_main_logger(name = __name__,console_loglevel=console_loglevel)
         # Read configurations from a file
         self.__conf = AnalysisUtils().open_yaml_file(file=config_dir + conf_file, directory=rootdir[:-8])
         self.__channelPorts = self.__conf["channel_ports"]
@@ -99,6 +89,18 @@ class CanWrapper(object):
         test_date = time.ctime(os.path.getmtime(filename))
         # Load settings from CAN settings file
         _canSettings = AnalysisUtils().open_yaml_file(file=config_dir + interface + "_CANSettings.yml", directory=lib_dir)
+
+        """:obj:`~logging.Logger`: Main logger for this class"""
+        if logdir is None:
+            #'Directory where log files should be stored'
+            logdir = os.path.join(lib_dir, 'log')
+                            
+        ts = os.path.join(logdir, time.strftime('%Y-%m-%d_%H-%M-%S_CAN_Wrapper.'))
+        self.logger = Logger().setup_main_logger(name = "CAN Wrapper",console_loglevel=console_loglevel, logger_file = False)
+        
+        self.logger_file = Logger().setup_file_logger(name = "CANWrapper",console_loglevel=console_loglevel, logger_file = ts)#for later usage
+        self.logger.info(f'Existing logging Handler: {ts}'+'log')
+        
         if bitrate is None:
             self.logger.notice("Loading CAN settings from the file %s produced on %s" % (filename, test_date))
             _default_channel = self.__channel
@@ -108,8 +110,7 @@ class CanWrapper(object):
             self.__samplePoint = _canSettings['channel'+str(_default_channel)]["samplePoint"]
             self.__sjw = _canSettings['channel'+str(_default_channel)]["SJW"]
             self.__tseg1 = _canSettings['channel'+str(_default_channel)]["tseg2"]   
-            self.__tseg2 =_canSettings['channel'+str(_default_channel)]["tseg2"]   
-
+            self.__tseg2 =_canSettings['channel'+str(_default_channel)]["tseg2"]     
         # Initialize default arguments
         """:obj:`str` : Internal attribute for the interface"""
         self.__interface = interface
@@ -129,10 +130,10 @@ class CanWrapper(object):
         
         if tseg2 is not None:
             self.__tseg2 = tseg2
-             
+
         """:obj:`int` : Internal attribute for the IP Address"""  
         if ipAddress is not None:
-             self.__ipAddress = ipAddress
+             self.__ipAddress = ipAddress        
         # Initialize library and set connection parameters
         self.__cnt = Counter()
         """:obj:`bool` : If communication is established"""
@@ -140,17 +141,27 @@ class CanWrapper(object):
         """:obj:`int` : Internal attribute for the channel index"""
         if channel is not None:
             self.__channel = channel
+        
+        self.logger_file.info("Updating settings channel:%s bitrate:%s  sjw:%s tseg1:%s tseg2:%s IP Address:%s"%(self.__channel,
+                                                                                                                               self.__bitrate, 
+                                                                                                                             #  self.__samplepoint,
+                                                                                                                               self.__sjw, 
+                                                                                                                               self.__tseg1, 
+                                                                                                                               self.__tseg2,
+                                                                                                                               self.__ipAddress))
         """Internal attribute for the |CAN| channel"""
         self.__ch = None
         self.set_channel_connection(interface=self.__interface)
+        
         """Internal attribute for the |CAN| channel"""
         self.__busOn = True
         self.__canMsgQueue = deque([], 100)  # queue with a size of 100 to queue all the messages in the bus
         self.__pill2kill = Event()
         self.__lock = Lock()
         self.__kvaserLock = Lock()
-        self.logger.success('... Done!')
-    
+        self.logger.success('....Done Initialization!')
+        self.logger_file.success('....Done Initialization!')
+        
     def __str__(self):
         if self.__interface == 'Kvaser':
             num_channels = canlib.getNumberOfChannels()
@@ -159,16 +170,18 @@ class CanWrapper(object):
                 chdataname = chdata.channel_name #device_name
                 #chdata_EAN = chdata.card_upc_no
                 #chdata_serial = chdata.card_serial_no
+                self.logger_file.info(f'{self.__interface}:Using {chdataname}, Bitrate:{self.__bitrate}') 
                 return f'Using {chdataname}, Bitrate:{self.__bitrate}'
         if self.__interface == 'AnaGate':
-            ret = analib.wrapper.dllInfo()  # DLL version
-            return f'{self.__ch}, Bitrate:{self.__bitrate}'
+            self.logger_file.info(f'{self.__interface}:Using {self.__ch}, Bitrate:{self.__bitrate}') 
+            return f'Using {self.__ch}, Bitrate:{self.__bitrate}'
         else:
-            return f'{self.__ch.channel_info}, Bitrate:{self.__bitrate}'
+            self.logger_file.info(f'{self.__interface}: Using {self.__ch.channel_info}, Bitrate:{self.__bitrate}') 
+            return f'Using {self.__ch.channel_info}, Bitrate:{self.__bitrate}'
                     
-    def confirm_nodes(self, channel=0, timeout=100):
+    def confirm_nodes(self, channel=0, timeout=100,nodeIds = ["1","2"]):
         self.logger.notice('Checking MOPS status ...')
-        _nodeIds = AnalysisUtils().get_info_yaml(dictionary=self.__conf['channel_ports'], index=str(channel), subindex="Nodes")
+        _nodeIds = nodeIds 
         self.set_nodeList(_nodeIds)
         self.logger.info(f'Connection to channel {channel} has been verified.')
         for nodeId in _nodeIds: 
@@ -196,9 +209,11 @@ class CanWrapper(object):
             interface: String
         """
         self.logger.notice('Going in \'Bus On\' state ...')
+        self.logger_file.notice('Going in \'Bus On\' state ...')
         try:
             if interface == 'Kvaser':
-                self.__ch = canlib.openChannel(int(self.__channel), canlib.canOPEN_ACCEPT_VIRTUAL)
+                
+                self.__ch = canlib.openChannel(int(self.__channel), canlib.canOPEN_ACCEPT_VIRTUAL) 
                 self.__ch.setBusOutputControl(canlib.Driver.NORMAL)  # New from tutorial
                 self.__ch.setBusParams(freq = int(self.__bitrate), sjw =int(self.__sjw), tseg1=int(self.__tseg1), tseg2=int(self.__tseg2))
                 self.__ch.busOn()
@@ -213,6 +228,7 @@ class CanWrapper(object):
                 self.__ch = can.interface.Bus(bustype=interface, channel=channel, bitrate=self.__bitrate)   
         except Exception:
             self.logger.error("TCP/IP or USB socket error in %s interface" % interface)
+            self.logger_file.error("Channel definition is %s with interface %s " % (self.__ch,interface)) 
         self.logger.success(str(self))        
     
     def start_channel_connection(self, interface =None):
@@ -258,7 +274,6 @@ class CanWrapper(object):
         """     
         dev = AnalysisUtils().open_yaml_file(file=file, directory=directory)
         # yaml file is needed to get the object dictionary items
-        dictionary_items = dev["Application"]["index_items"]
         _adc_channels_reg = dev["adc_channels_reg"]["adc_channels"]
         _adc_index = list(dev["adc_channels_reg"]["adc_index"])[0]
         _channelItems = [int(channel) for channel in list(_adc_channels_reg)]
@@ -320,8 +335,7 @@ class CanWrapper(object):
             elif _interface == 'AnaGate': 
                 self.__ch.close()
             else:
-                self.__ch.shutdown()
-                channel = "can" + str(self.__channel)              
+                self.__ch.shutdown()            
         self.__busOn = False
         self.set_channel_connection(interface = _interface)
         self.__pill2kill = Event()
@@ -353,7 +367,7 @@ class CanWrapper(object):
                 self.__ch.close()
             else:
                 self.__ch.shutdown()
-                channel = "can" + str(self.__channel)
+                #channel = "can" + str(self.__channel)
                         
         self.__busOn = False
         self.logger.warning('Stopping the server.')
@@ -406,7 +420,6 @@ class CanWrapper(object):
         messageValid = False
         errorResponse = False
         errorReset = False
-        resetResponse = False
         while time.perf_counter() - t0 < timeout / 1000:
             with self.__lock:
                 # check the message validity [nodid, msg size,...]
@@ -431,6 +444,7 @@ class CanWrapper(object):
                              f' {index:04X}:{subindex:02X})')
             self.cnt['SDO read response timeout'] += 1
             return None, None
+        self.__canMsgThread.join()#Dominic to join the thread with Pill 2 kill 
         
         # Check command byte
         if ret[0] == (0x80):
@@ -880,7 +894,6 @@ class CanWrapper(object):
         |CAN| interface."""
         return self.__ch
 
-#     
     @property
     def bitRate(self):
         """:obj:`int` : Currently used bit rate. When you try to change it
@@ -973,7 +986,7 @@ def main():
     
     # Start the server
     wrapper = CanWrapper(**vars(args))
-    wrapper.confirm_nodes()
+    wrapper.confirm_nodes(nodeIds = ["1","2"])
     wrapper.stop()     
     
 if __name__ == "__main__":
