@@ -5,8 +5,8 @@ from datetime import datetime
 import coloredlogs
 
 _logger = logging.getLogger('mopshub_log')
-_logger.setLevel(logging.DEBUG)
-coloredlogs.install(level='DEBUG', logger=_logger)
+_logger.setLevel(logging.WARNING)
+# coloredlogs.install(level='DEBUG', logger=_logger)
 
 now = datetime.now()
 current_time = now.strftime("%H-%M-%S")

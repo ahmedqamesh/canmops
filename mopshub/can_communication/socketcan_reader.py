@@ -18,7 +18,10 @@ class READSocketcan(Thread):
 
         self.read_timeout = 2000
         self.logger_thread = logging.getLogger('mopshub_log:socketcan_receive_thread')
+        self.logger_thread.setLevel(logging.WARNING)
         self.running = True
+        self.err_counter = 0
+        self.good_frames = 0
 
     def run(self):
         while self.running:
@@ -32,10 +35,13 @@ class READSocketcan(Thread):
                     can_msg = can_config.receive(self.current_channel)
                     if can_msg is not None:
                         data = can_msg.data
+                        if can_msg.is_error_frame:
+                            self.err_counter += 1
                         if data[3] == self.current_subindex and not can_msg.is_error_frame and \
                                 can_msg.arbitration_id == self.cobid_ret:
                             self.logger_thread.info(f"Read msg from socket: {can_msg}")
                             self.receive_queue.put(can_msg)
+                            self.good_frames += 1
                             break_flag = False
                 except Exception as e:
                     self.logger_thread.error(f'Some Error occurred while reading Channel {self.channel}: {e}')

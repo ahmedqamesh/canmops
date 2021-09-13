@@ -29,6 +29,7 @@ class MHfB(MOPSHUBCrate, CICreadout, CANWrapper):
         self.maxRatings = [100, 100, 100, 100, 100]
         self.minRatings = [-1, -1, -1, -1, -1]
         self.confirmed_nodes = [[None for _ in range(2)] for _ in range(len(self.mopshub_crate.Bus))]
+        self.avg_time = 0
 
         self.logger = logging.getLogger('mopshub_log.opc')
 
@@ -52,6 +53,8 @@ class MHfB(MOPSHUBCrate, CICreadout, CANWrapper):
         await self.check_nodes()
 
         async with self.mopshub_crate:
+            counter = 0
+            total_time = 0
             while True:
                 for cic_id, bus_id, mops_id in product(range(4), range(1, 33), range(2)):
                     if (self.mopshub_crate.CICs[cic_id] is not None) and (
@@ -60,15 +63,19 @@ class MHfB(MOPSHUBCrate, CICreadout, CANWrapper):
                             power_signal.locked_by_sys[bus_id - 25] is False) and (
                             power_signal.locked_by_user[bus_id - 25] is False) and (
                             self.confirmed_nodes[bus_id - 1][mops_id] is True):
-
+                        counter += 1
                         can_channel = 1  # it is important to specify when we want to use which can channel as
                         # there is no difference between can0 and can1 at the end
 
                         # exact specification for: mops_index, channel_index, adc_value, cic_adc_channel, cic_adc_value
+                        start = time.time()
                         readout_mops, monitoring_mops = await self.wrapper.read_adc_channels(self.mops_config_file,
                                                                                              self.config_files_directory,
                                                                                              mops_id, bus_id,
                                                                                              can_channel)
+                        end = time.time()
+                        total_time += (end-start)
+                        self.avg_time = total_time/counter
                         # readout_adc = self.cic_card.dummy_read()
                         readout_adc = self.cic_card.read_adc(0, bus_id, 1)
 
@@ -99,6 +106,9 @@ class MHfB(MOPSHUBCrate, CICreadout, CANWrapper):
                                     await self.mopshub_crate.write_cic_adc(cic_id, bus_id, adc_channel, value)
 
                         self.logger.info(f"Readout MOPS {mops_id} finished")
+                        print(self.wrapper.good_frames)
+                        print(self.wrapper.err_counter)
+                        print(self.avg_time)
                 self.logger.info('Readout finished')
                 await asyncio.sleep(0.5)
 

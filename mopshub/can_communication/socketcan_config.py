@@ -37,6 +37,7 @@ class CanConfig(WATCHCan):
         self.ch1 = None
         self._busOn0 = False
         self._busOn1 = False
+        can.util.set_logging_level('warning')
 
         for channel in self._can_channels:
             for value in _canSettings[channel]:
@@ -118,12 +119,14 @@ class CanConfig(WATCHCan):
                 channel = "can" + str(self.can_0_settings['Channel'])
                 self.ch0 = can.interface.Bus(bustype=self._interface, channel=channel,
                                              bitrate=self.can_0_settings['Bitrate'])
+                self.ch0.RECV_LOGGING_LEVEL = 0
                 self._busOn0 = True
                 self.logger.info(f'Setting of channel {channel} worked.')
             elif channel == self.can_1_settings['Channel']:
                 channel = "can" + str(self.can_1_settings['Channel'])
                 self.ch1 = can.interface.Bus(bustype=self._interface, channel=channel,
                                              bitrate=self.can_1_settings['Bitrate'])
+                self.ch1.RECV_LOGGING_LEVEL = 0
                 self._busOn1 = True
                 self.logger.info(f'Setting of channel {channel} worked.')
             else:

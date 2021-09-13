@@ -38,7 +38,7 @@ class MOPSHUBCrate(POPULATEAddressSpace, FINDNodeID, BROWSEServer):
 
         self.logger = logging.getLogger('mopshub_log.crate')
         self._logger: Logger = logging.getLogger('asyncua')
-        self._logger.setLevel(logging.DEBUG)
+        self._logger.setLevel(logging.WARNING)
 
         logging.basicConfig(level=logging.DEBUG)
 
