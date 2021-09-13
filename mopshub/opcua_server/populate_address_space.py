@@ -277,10 +277,11 @@ class POPULATEAddressSpace:
                 await information_object.add_variable(self.idx, "COB-ID EMCY", "")
                 await information_object.add_variable(self.idx, "Number of entries", "")
                 await information_object.add_variable(self.idx, "Vendor Id", "")
+                await information_object.add_variable(self.idx, "ADC trimming bits", "")
 
                 # Add MOPSMonitoring Object
                 monitoring_object = await self.Mops[bus_id - 1][mops_id].add_object(self.idx, "MOPSMonitoring")
-                await monitoring_object.add_variable(self.idx, "Number of entries", 0)
+                await monitoring_object.add_variable(self.idx, "Number of entries", 0.0)
                 await monitoring_object.add_variable(self.idx, "VBANDGAP", 0.0)
                 await monitoring_object.add_variable(self.idx, "VGNDSEN", 0.0)
                 await monitoring_object.add_variable(self.idx, "VCANSEN", 0.0)
@@ -313,7 +314,7 @@ class POPULATEAddressSpace:
                         await channel_object.add_variable(self.idx, "Converter", channel_data["Converter"])
                         await channel_object.add_variable(self.idx, "physicalParameter", channel_data["Alias"])
                         if channel_data["Converter"] == 'Raw':
-                            await channel_object.add_variable(self.idx, "monitoringValue", 0)
+                            await channel_object.add_variable(self.idx, "monitoringValue", 0.0)
                         else:
                             await channel_object.add_variable(self.idx, "monitoringValue", 0.0)
                     else:
@@ -321,6 +322,6 @@ class POPULATEAddressSpace:
                         await channel_object.add_variable(self.idx, "physicalParameter",
                                                           data["ADC Channel Default Converter"])
                         if data["ADC Channel Default Converter"] == 'Raw':
-                            await channel_object.add_variable(self.idx, "monitoringValue", 0)
+                            await channel_object.add_variable(self.idx, "monitoringValue", 0.0)
                         else:
                             await channel_object.add_variable(self.idx, "monitoringValue", 0.0)

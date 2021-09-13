@@ -73,11 +73,11 @@ class MHfB(MOPSHUBCrate, CICreadout, CANWrapper):
                                                                                              self.config_files_directory,
                                                                                              mops_id, bus_id,
                                                                                              can_channel)
+                        # readout_adc = self.cic_card.dummy_read()
+                        readout_adc = self.cic_card.read_adc(0, bus_id, 1)
                         end = time.time()
                         total_time += (end-start)
                         self.avg_time = total_time/counter
-                        # readout_adc = self.cic_card.dummy_read()
-                        readout_adc = self.cic_card.read_adc(0, bus_id, 1)
 
                         if monitoring_mops is not None:
                             self.logger.info('Writing MOPS monitoring data to their nodes')

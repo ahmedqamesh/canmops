@@ -114,7 +114,7 @@ class MOPSHUBCrate(POPULATEAddressSpace, FINDNodeID, BROWSEServer):
                         try:
                             node = (self.server_dict[entry][f"CANBus {bus_id}"][f"MOPS {node_id}"]["MOPSInfo"]
                                     [index])
-                            await node.write_value(value)
+                            await node.write_value(str(value))
                         except KeyError as e:
                             self.logger.error(e)
 
