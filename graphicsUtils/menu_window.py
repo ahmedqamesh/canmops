@@ -62,7 +62,7 @@ class MenuWindow(QWidget):
 
         def show_adc_plotting_window():
             self.plotWindow = QMainWindow()
-            plottingWindow = childWindow.ChildWindow(parent = self.plotWindow)
+            plottingWindow = child_window.ChildWindow(parent = self.plotWindow)
             plottingWindow.plot_adc_window(adcItems=[str(k) for k in np.arange(35)],
                                         name_prefix="adc_data_1",
                                         plot_prefix="adc_data")
@@ -387,7 +387,6 @@ class MenuWindow(QWidget):
         SocketGroup= QGroupBox("Reset SocketCAN ")
         childWindow.setObjectName("Reset SocketCAN ")
         childWindow.setWindowTitle("Reset SocketCAN")
-        #childWindow.setWindowIcon(QtGui.QIcon(self.__appIconDir))
         childWindow.setGeometry(200, 200, 100, 100)
         mainLayout = QGridLayout()
         # Define a frame for that group
@@ -396,13 +395,34 @@ class MenuWindow(QWidget):
         childWindow.setCentralWidget(plotframe)
         mainLayout = QGridLayout()
         buttonLayout = QHBoxLayout()  
-        _channelPorts =  range(0,8)
+        _channelPorts =  range(0,2)
         _arg = arg
         _interface = interface
-
+        _channel,_ipAddress, _bitrate,_samplePoint, _sjw,_tseg1, _tseg2 =  self.MainWindow.load_settings_file(interface = _interface, channel = str(0)) 
+        _ipAddress_msg = "<br /><b>IP Address</b>: %s"%(_ipAddress)
+        msg ="<b><h3>Bus Info:</h3></b><b>Interface</b>: %s<br /><b>Channel</b>:%s\
+         <br /><b>Bitrate</b>: %s<br /><b>SamplePoint</b>: %s<br /><b>SJW</b>:%s\
+         <br /><b>tseg1</b>: %s<br /><b>tseg2</b>: %s"%(_interface,_channel,_bitrate,_samplePoint,_sjw,_tseg1,_tseg2)
+        VLayout = QVBoxLayout()
+        busInfoBox = QTextEdit()
+        busInfoBox.setStyleSheet("background-color: white; border: 2px inset black; min-height: 150px; min-width: 400px;")
+        busInfoBox.LineWrapMode(1)
+        busInfoBox.setReadOnly(True)      
+        busInfoBox.setText(msg)  
+        VLayout.addWidget(busInfoBox)
         busComboBox = QComboBox()
+        busComboBox.addItem("")
         for item in _channelPorts: busComboBox.addItem(str(item))
         
+        def _busComboBox_changed():
+            channel = busComboBox.currentText()
+            _channel,_ipAddress, _bitrate,_samplePoint, _sjw,_tseg1, _tseg2 =  self.MainWindow.load_settings_file(interface = _interface, channel = channel) 
+            _ipAddress_msg = "<br /><b>IP Address</b>: %s"%(_ipAddress)
+            msg ="<b><h3>Bus Info:</h3></b><b>Interface</b>: %s<br /><b>Channel</b>:%s\
+             <br /><b>Bitrate</b>: %s<br /><b>SamplePoint</b>: %s<br /><b>SJW</b>:%s\
+             <br /><b>tseg1</b>: %s<br /><b>tseg2</b>: %s"%(_interface,_channel,_bitrate,_samplePoint,_sjw,_tseg1,_tseg2)
+            busInfoBox.setText(msg)  
+        busComboBox.currentTextChanged.connect(_busComboBox_changed)
         def _set():
             _default_channel = busComboBox.currentText()
             self.MainWindow.set_canchannel(arg = _arg, interface = _interface,default_channel =_default_channel )        
@@ -414,8 +434,9 @@ class MenuWindow(QWidget):
         close_button.clicked.connect(childWindow.close)
         buttonLayout.addWidget(add_button)  
         buttonLayout.addWidget(close_button) 
-        mainLayout.addWidget(busComboBox ,0,0)
-        mainLayout.addLayout(buttonLayout ,1,0)
+        mainLayout.addLayout(VLayout,0,0)
+        mainLayout.addWidget(busComboBox ,1,0)
+        mainLayout.addLayout(buttonLayout ,2,0)
         SocketGroup.setLayout(mainLayout)
         plotframe.setLayout(mainLayout) 
                      

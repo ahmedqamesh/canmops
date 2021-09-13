@@ -81,7 +81,6 @@ class MopsChildWindow(QWidget):
         def __get_subIndex_description(): 
             dictionary = self.__dictionary_items
             index = self.IndexListBox.currentItem().text()
-            
             if self.subIndexListBox.currentItem() is not None:
                 subindex = self.subIndexListBox.currentItem().text()
                 self.subindex_description_items = AnalysisUtils().get_subindex_description_yaml(dictionary=dictionary, index=index, subindex=subindex)
@@ -180,10 +179,10 @@ class MopsChildWindow(QWidget):
         try:
             self.MenuBar.create_device_menuBar(childWindow)
         except Exception:
-            self.MenuBar = menuWindow.MenuWindow(self)
+            self.MenuBar = menu_window.MenuWindow(self)
             self.MenuBar.create_device_menuBar(childWindow)
             
-        self.DataMonitoring = dataMonitoring.DataMonitoring(self)    
+        self.DataMonitoring = data_monitoring.DataMonitoring(self)    
         if device:
             _device_name = device
         else:
@@ -251,8 +250,8 @@ class MopsChildWindow(QWidget):
 
             self.deviceNodeComboBox.currentIndexChanged.connect(_set_default_file)
                         
-            GridLayout = self.define_object_dict_window(connected_node = _connectedNode, mainWindow = mainWindow)
-            self.tab1.setLayout(GridLayout) 
+            objectDictLayout = self.define_object_dict_window(connected_node = _connectedNode, mainWindow = mainWindow)
+            self.tab1.setLayout(objectDictLayout) 
             nodeHLayout = QHBoxLayout()
             nodeHLayout.addWidget(nodeLabel)
             nodeHLayout.addWidget(self.deviceNodeComboBox)
@@ -290,19 +289,7 @@ class MopsChildWindow(QWidget):
             self.progressBar = None               
             self.device_info_box(device=device, cic = cic, port = port , mops = mops)
             self.graphWidget = self.DataMonitoring.initiate_trending_figure(n_channels=n_channels)
-                        
 
-
-        firstVLayout = QVBoxLayout()
-        firstVLayout.addWidget(self.deviceInfoGroupBox)        
-        
-        firstVLayout.addSpacing(400)
-        VLayout = QVBoxLayout()
-        self.indexTextBox = QTextEdit()
-        self.indexTextBox.setStyleSheet("background-color: white; border: 2px inset black; min-height: 150px; min-width: 400px;")
-        self.indexTextBox.LineWrapMode(1)
-        self.indexTextBox.setReadOnly(True)       
-        VLayout.addWidget(self.indexTextBox)
 
         HLayout = QHBoxLayout()
         close_button = QPushButton("close")
@@ -477,8 +464,11 @@ class MopsChildWindow(QWidget):
                 self.trendingBotton[s].setObjectName(str(subindex))
                 self.trendingBotton[s].setIcon(QIcon('graphicsUtils/icons/icon_trend.jpg'))
                 self.trendingBotton[s].setStatusTip('Data Trending for %s' % subindex_description_item[25:29])
-                
-                self.trendingBotton[s].clicked.connect(lambda: mainWindow.show_trendWindow(int(cic),int(port),int(mops)))
+                if cic is not None:
+                    self.trendingBotton[s].clicked.connect(lambda: mainWindow.show_trendWindow(int(cic),int(port),int(mops)))
+                else:
+                    self.trendingBotton[s].clicked.connect(lambda: mainWindow.show_trendWindow())
+                    
 #                 self.trendingBox[s] = QCheckBox("")
 #                 self.trendingBox[s].setChecked(False)
                 col_len = int(len(_subIndexItems) / 2)
