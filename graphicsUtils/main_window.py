@@ -799,7 +799,7 @@ class MainWindow(QMainWindow):
             # print decoded response
             converted_response = Analysis().adc_conversion("V", response_from_node, int(self.__resistor_ratio))
             decoded_response = f'{response_from_node:03X}'
-            self.set_textBox_message(comunication_object="Decoded", msg=decoded_response, cobid=str(hex(cobid_RX) + ": dec. value = "))
+            self.set_textBox_message(comunication_object="Decoded", msg=decoded_response, cobid=str(hex(cobid_RX) + ": Hex value = "))
             self.set_textBox_message(comunication_object="ADC", msg=f'{round(converted_response,3)}', cobid=str(hex(cobid_RX) + ": ADC value = "))
         else:
             RX_response = "No Response Message"

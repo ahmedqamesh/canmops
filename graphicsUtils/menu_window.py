@@ -18,7 +18,7 @@ class MenuWindow(QWidget):
     def __init__(self, parent=main_window):
         super(MenuWindow, self).__init__(parent)
         self.MainWindow = main_window.MainWindow()
-        self.logger = Logger().setup_main_logger(name = "Menu GUI",console_loglevel=logging.INFO)
+        self.logger = Logger().setup_main_logger(name = " Menu  GUI ",console_loglevel=logging.INFO)
     
     def stop(self):
         return self.MainWindow.stop_server()
@@ -127,24 +127,7 @@ class MenuWindow(QWidget):
         ADCNodes = QAction(QIcon('graphics_Utils/icons/icon_nodes.png'),'Edit MOPS ADC Settings', mainwindow)
         ADCNodes.setStatusTip("Edit ADC settings [e.g. Parameters]")
         ADCNodes.triggered.connect(show_edit_adc)
-
-        def list_info():
-            msg ="<b><h3>CANMoPS:</h3></b> A graphical user interface GUI to read the channels of MOPS chip.<br />"\
-            " The package can communicate with a CAN interface and talks CANopen with the connected Controllers."\
-            "Currently only CAN interfaces from AnaGate (Ethernet),  Kvaser (USB) and SocketCAN drivers are supported.<br />"\
-            "<b>Author</b>: Ahmed Qamesh<br />"\
-            "<b>Contact</b>: ahmed.qamesh@cern.ch<br />"\
-            "<b>Organization</b>: Bergische Universität Wuppertal<br />"\
-            "<b>Gitlab path</b>: <a href='https://gitlab.cern.ch/aqamesh/canmops'>https://gitlab.cern.ch/aqamesh/canmops</a><br />"\
-            "<b>Software twiki</b>: <a href='https://gitlab.cern.ch/aqamesh/canmops/-/wikis/home'>https://gitlab.cern.ch/aqamesh/canmops/-/wikis/home</a><br />"
-            self.list_device_info(msg)
-            
-            
-        about_action = QAction(QIcon('graphics_Utils/icons/icon_application-settings.png'),'List Bus Info', mainwindow)
-        about_action.setStatusTip("List all info about the device")
-        about_action.triggered.connect(list_info)
-        
-        settingsMenu.addAction(about_action)        
+    
         settingsMenu.addAction(DeviceSettings)
         settingsMenu.addAction(ADCNodes)  
         
@@ -154,7 +137,7 @@ class MenuWindow(QWidget):
 
         about_action = QAction('&About', mainwindow)
         about_action.setStatusTip("About")
-        about_action.triggered.connect(self.list_device_info)
+        about_action.triggered.connect(lambda: self.list_device_info(msg = None))
         helpmenu.addAction(about_action)
         
     # 5. Interface menu
@@ -162,7 +145,11 @@ class MenuWindow(QWidget):
         interfaceMenu = menuBar.addMenu("&Interface")
         SocketMenu = interfaceMenu.addMenu("&SocketCAN")
         KvaserMenu = interfaceMenu.addMenu("&Kvaser")
-        AnagateMenu = interfaceMenu.addMenu("&AnaGate")
+        
+        #bus Info
+        def list_info(channel =  0, interface = None):
+            msg = self.load_bus_settings_file(interface = interface, channel = str(channel))
+            self.list_device_info(msg = msg)
         
         # Set the bus
         def _set_socketchannel():
@@ -179,6 +166,19 @@ class MenuWindow(QWidget):
             _default_channel = "0"
             self.MainWindow.set_canchannel(arg = _arg, interface = _interface, default_channel =_default_channel)
                     
+        #######################Socketcan settings#############################
+        can0_info = QAction('can0', mainwindow)
+        can0_info.setStatusTip("can0")
+        can0_info.triggered.connect(lambda: list_info(channel = 0, interface = "socketcan"))
+        
+        can1_info = QAction('can1', mainwindow)
+        can1_info.setStatusTip("can1")
+        can1_info.triggered.connect(lambda: list_info(channel = 1, interface = "socketcan"))
+        
+        list_socketinfo_menu = SocketMenu.addMenu('List Bus Info')        
+        list_socketinfo_menu.addAction(can0_info)
+        list_socketinfo_menu.addAction(can1_info)
+                   
         #SetSocketcan = SocketMenu.addMenu('Set CAN Bus')
         
         SetSocketCAN = QAction(QIcon('graphics_Utils/icons/icon_start.png'),'Reset SocketCAN', mainwindow)
@@ -188,22 +188,8 @@ class MenuWindow(QWidget):
         SetVirtualSocketcan = QAction(QIcon('graphics_Utils/icons/icon_start.png'),'Reset Virtual', mainwindow)
         SetVirtualSocketcan.setStatusTip("Set VirtualCAN")
         SetVirtualSocketcan.triggered.connect(_Set_virtual_socketchannel)
-        
-                    
         SocketMenu.addAction(SetSocketCAN)
-        #SetSocketcan.addAction(SetVirtualSocketcan)# to be used later 
-
-        def _restart_kvaserchannel():
-            _arg = "restart"
-            _interface = "Kvaser"
-            self.MainWindow.set_canchannel(arg = _arg, interface = _interface,default_channel =_default_channel)
-            
-        RestartKvaser = QAction(QIcon('graphics_Utils/icons/icon_reset.png'),'Restart Kvaser Interface', mainwindow)
-        RestartKvaser.setStatusTip("Restart Kvaser interface")
-        RestartKvaser.triggered.connect(_restart_kvaserchannel)
-        
-        KvaserMenu.addAction(RestartKvaser)
-            
+        #SetSocketcan.addAction(SetVirtualSocketcan)# to be used later         
         # Restart the bus
         def _restart_socketchannel():
             _arg = "restart"
@@ -225,9 +211,8 @@ class MenuWindow(QWidget):
         
         def _dump_vcan0():
             self.MainWindow.dump_socketchannel(vcan0.text())
-            
-            
-        DumpSocketcan = SocketMenu.addMenu('Dump SocketCAN')
+
+        DumpSocketcan = SocketMenu.addMenu('Dump SocketCAN msg')
         can0 = QAction('can0', mainwindow)
         can0.setStatusTip("can0")
         can0.triggered.connect(_dump_can0)
@@ -243,6 +228,33 @@ class MenuWindow(QWidget):
         DumpSocketcan.addAction(can0)
         DumpSocketcan.addAction(can1)
         #DumpSocketcan.addAction(vcan0)
+                   
+
+        #######################Kvaser settings#############################
+        can0_kvinfo = QAction('can0', mainwindow)
+        can0_kvinfo.setStatusTip("can0")
+        can0_kvinfo.triggered.connect(lambda: list_info(channel = 0, interface = "Kvaser"))
+        
+        can1_kvinfo = QAction('can1', mainwindow)
+        can1_kvinfo.setStatusTip("can1")
+        can1_kvinfo.triggered.connect(lambda: list_info(channel = 1, interface = "Kvaser"))
+        
+        list_kvaserinfo_menu = KvaserMenu.addMenu('List Bus Info')        
+        list_kvaserinfo_menu.addAction(can0_kvinfo)
+        list_kvaserinfo_menu.addAction(can1_kvinfo)
+        
+        def _restart_kvaserchannel():
+            _arg = "restart"
+            _interface = "Kvaser"
+            self.MainWindow.set_canchannel(arg = _arg, interface = _interface,default_channel =_default_channel)
+            
+        RestartKvaser = QAction(QIcon('graphics_Utils/icons/icon_reset.png'),'Restart Kvaser Interface', mainwindow)
+        RestartKvaser.setStatusTip("Restart Kvaser interface")
+        RestartKvaser.triggered.connect(_restart_kvaserchannel)
+        
+        KvaserMenu.addAction(RestartKvaser)
+            
+
         
         
     def create_statusBar(self, mainwindow, msg=" "):
@@ -250,13 +262,19 @@ class MenuWindow(QWidget):
         status.showMessage(msg)
         mainwindow.setStatusBar(status)
         
-
+                
+    def load_bus_settings_file(self, interface = None, channel = None):
+        _channel,_ipAddress, _bitrate,_samplePoint, _sjw,_tseg1, _tseg2 = self.MainWindow.load_settings_file(interface = interface, channel = channel) 
+        _ipAddress_msg = "<br /><b>IP Address</b>: %s"%(_ipAddress)
+        msg ="<b><h3>Bus Info:</h3></b><b>Interface</b>: %s<br /><b>Channel</b>:%s\
+         <br /><b>Bitrate</b>: %s<br /><b>SamplePoint</b>: %s<br /><b>SJW</b>:%s\
+         <br /><b>tseg1</b>: %s<br /><b>tseg2</b>: %s"%(interface,_channel,_bitrate,_samplePoint,_sjw,_tseg1,_tseg2) 
+        return msg
+    
     def list_device_info(self, msg = None, info = "Get Software Info"):
         msgBox = QMessageBox()
         msgBox.setWindowTitle(info) 
-        start = "\033[1m"
-        end = "\033[0;0m"
-        if msg != None:
+        if msg == None:
             msg ="<b><h3>CANMoPS:</h3></b> A graphical user interface GUI to read the channels of MOPS chip.<br />"\
             " The package can communicate with a CAN interface and talks CANopen with the connected Controllers."\
             "Currently only CAN interfaces from AnaGate (Ethernet),  Kvaser (USB) and SocketCAN drivers are supported.<br />"\
@@ -276,7 +294,9 @@ class MenuWindow(QWidget):
         ADCGroup= QGroupBox("ADC details")
         childWindow.setObjectName("Edit ADC settings")
         childWindow.setWindowTitle("ADC Settings")
-        #childWindow.setWindowIcon(QtGui.QIcon(self.__appIconDir))
+        def_refreshRate = conf["Application"]["refresh_rate"]
+        def_adc_channels = list(conf["adc_channels_reg"]["adc_channels"])
+        childWindow.setWindowIcon(QtGui.QIcon(self.__appIconDir))
         childWindow.setGeometry(200, 200, 100, 100)
         mainLayout = QGridLayout()
         # Define a frame for that group
@@ -323,6 +343,14 @@ class MenuWindow(QWidget):
         channelListBox = QListWidget()
         fullListBox = QListWidget()
         parameterListBox = QListWidget()
+        #set the default values
+        for i in range(len(def_adc_channels)):
+            def_channel =str(i+3)
+            def_parameter = conf["adc_channels_reg"]["adc_channels"][def_adc_channels[i]]
+            channelListBox.addItem(def_channel)
+            parameterListBox.addItem(def_parameter)
+            fullListBox.addItem(def_channel+" : "+def_parameter)
+            
         clearLayout= QHBoxLayout()  
         clear_button = QPushButton("Clear")
         clear_button.setIcon(QIcon('graphicsUtils/icons/icon_clear.png'))
@@ -334,7 +362,7 @@ class MenuWindow(QWidget):
         adc_mainLayout.addLayout(inLayout)
         adc_mainLayout.addLayout(outLayout)       
         adc_mainLayout.addLayout(clearLayout)
-        
+
         def _add_item():
             adc_channel = adcComboBox.currentText()
             parameter_channel = parametersComboBox.currentText()
@@ -351,6 +379,8 @@ class MenuWindow(QWidget):
             fullListBox.takeItem(_full)
             
         def _save_items():
+            _refreshRate = refreshLineEdit.text()
+            conf["Application"]["refresh_rate"] = _refreshRate 
             if (channelListBox.count() != 0 or parameterListBox.count() != 0):
                 _adc_channels = [channelListBox.item(x).text() for x in range(channelListBox.count())]
                 _parameters = [parameterListBox.item(x).text() for x in range(parameterListBox.count())]
@@ -362,10 +392,20 @@ class MenuWindow(QWidget):
                                                directory=lib_dir)
                 self.logger.info("Saving Information to the file %s"%file)
             else:
-                self.logger.error("No data to be saved.....")
+                self.logger.error("No ADC Info to be saved.....")
         add_button.clicked.connect(_add_item)
         clear_button.clicked.connect(_clear_item)
-        
+       
+               
+        refreshLayout = QHBoxLayout()
+        refreshLabel = QLabel()
+        refreshLabel.setText("Refresh Rate:")
+        refreshLineEdit = QLineEdit()
+        refreshLineEdit.setFixedSize(70, 25)
+        refreshLineEdit.setText(str(def_refreshRate))
+        refreshLayout.addWidget(refreshLabel)
+        refreshLayout.addWidget(refreshLineEdit)
+         
         buttonLayout = QHBoxLayout()
         close_button = QPushButton("Close")
         close_button.setIcon(QIcon('graphicsUtils/icons/icon_close.png'))
@@ -378,68 +418,11 @@ class MenuWindow(QWidget):
         buttonLayout.addWidget(close_button)
 
         mainLayout.addWidget(ADCGroup , 0,0)
-        mainLayout.addLayout(buttonLayout ,1, 0)
+        mainLayout.addLayout(refreshLayout,1,0)
+        mainLayout.addLayout(buttonLayout ,2, 0)
         ADCGroup.setLayout(adc_mainLayout)
         plotframe.setLayout(mainLayout) 
-        
-    def set_socketcan(self,childWindow, arg, interface):
-        #check the conf file
-        SocketGroup= QGroupBox("Reset SocketCAN ")
-        childWindow.setObjectName("Reset SocketCAN ")
-        childWindow.setWindowTitle("Reset SocketCAN")
-        childWindow.setGeometry(200, 200, 100, 100)
-        mainLayout = QGridLayout()
-        # Define a frame for that group
-        plotframe = QFrame()
-        plotframe.setLineWidth(0.6)
-        childWindow.setCentralWidget(plotframe)
-        mainLayout = QGridLayout()
-        buttonLayout = QHBoxLayout()  
-        _channelPorts =  range(0,2)
-        _arg = arg
-        _interface = interface
-        _channel,_ipAddress, _bitrate,_samplePoint, _sjw,_tseg1, _tseg2 =  self.MainWindow.load_settings_file(interface = _interface, channel = str(0)) 
-        _ipAddress_msg = "<br /><b>IP Address</b>: %s"%(_ipAddress)
-        msg ="<b><h3>Bus Info:</h3></b><b>Interface</b>: %s<br /><b>Channel</b>:%s\
-         <br /><b>Bitrate</b>: %s<br /><b>SamplePoint</b>: %s<br /><b>SJW</b>:%s\
-         <br /><b>tseg1</b>: %s<br /><b>tseg2</b>: %s"%(_interface,_channel,_bitrate,_samplePoint,_sjw,_tseg1,_tseg2)
-        VLayout = QVBoxLayout()
-        busInfoBox = QTextEdit()
-        busInfoBox.setStyleSheet("background-color: white; border: 2px inset black; min-height: 150px; min-width: 400px;")
-        busInfoBox.LineWrapMode(1)
-        busInfoBox.setReadOnly(True)      
-        busInfoBox.setText(msg)  
-        VLayout.addWidget(busInfoBox)
-        busComboBox = QComboBox()
-        busComboBox.addItem("")
-        for item in _channelPorts: busComboBox.addItem(str(item))
-        
-        def _busComboBox_changed():
-            channel = busComboBox.currentText()
-            _channel,_ipAddress, _bitrate,_samplePoint, _sjw,_tseg1, _tseg2 =  self.MainWindow.load_settings_file(interface = _interface, channel = channel) 
-            _ipAddress_msg = "<br /><b>IP Address</b>: %s"%(_ipAddress)
-            msg ="<b><h3>Bus Info:</h3></b><b>Interface</b>: %s<br /><b>Channel</b>:%s\
-             <br /><b>Bitrate</b>: %s<br /><b>SamplePoint</b>: %s<br /><b>SJW</b>:%s\
-             <br /><b>tseg1</b>: %s<br /><b>tseg2</b>: %s"%(_interface,_channel,_bitrate,_samplePoint,_sjw,_tseg1,_tseg2)
-            busInfoBox.setText(msg)  
-        busComboBox.currentTextChanged.connect(_busComboBox_changed)
-        def _set():
-            _default_channel = busComboBox.currentText()
-            self.MainWindow.set_canchannel(arg = _arg, interface = _interface,default_channel =_default_channel )        
-        add_button = QPushButton("Reset")
-        add_button.setIcon(QIcon('graphicsUtils/icons/icon_start.png'))
-        add_button.clicked.connect(_set)
-        close_button = QPushButton("Close")
-        close_button.setIcon(QIcon('graphicsUtils/icons/icon_close.png'))
-        close_button.clicked.connect(childWindow.close)
-        buttonLayout.addWidget(add_button)  
-        buttonLayout.addWidget(close_button) 
-        mainLayout.addLayout(VLayout,0,0)
-        mainLayout.addWidget(busComboBox ,1,0)
-        mainLayout.addLayout(buttonLayout ,2,0)
-        SocketGroup.setLayout(mainLayout)
-        plotframe.setLayout(mainLayout) 
-                     
+
     def edit_device_settings(self, childWindow, conf):
         #check the conf file
         NodeGroup= QGroupBox("Node Info")
@@ -450,7 +433,8 @@ class MenuWindow(QWidget):
         childWindow.setWindowTitle("Edit Device Settings")
         childWindow.setWindowIcon(QtGui.QIcon(self.__appIconDir))
         childWindow.setGeometry(200, 200, 100, 100)
-        
+        def_chipId = conf["Application"]["chipId"]
+        def_resistorRatio = conf["Hardware"]["resistor_ratio"]
         mainLayout = QGridLayout()
         # Define a frame for that group
         plotframe = QFrame()
@@ -474,7 +458,7 @@ class MenuWindow(QWidget):
         #outputs
         outLayout = QVBoxLayout()
         nodeLabel = QLabel()
-        nodeLabel.setText("Added  Nodes [dec]")    
+        nodeLabel.setText("Added Nodes [dec]")    
         nodeListBox = QListWidget()
         outLayout.addWidget(nodeLabel)
         outLayout.addWidget(nodeListBox)
@@ -495,17 +479,20 @@ class MenuWindow(QWidget):
         chipLayout = QHBoxLayout()
         chipIdLabel = QLabel()
         chipIdLabel.setText("Chip Id:")
-        chipIdSpinBox = QSpinBox()
+        chipIdLineEdit = QLineEdit()
+        chipIdLineEdit.setText(def_chipId)
         chipLayout.addWidget(chipIdLabel)
-        chipLayout.addWidget(chipIdSpinBox)
+        chipLayout.addWidget(chipIdLineEdit)
         chipLayout.addSpacing(60)
 
         hardwareLayout = QHBoxLayout()
         hardwareLabel = QLabel()
         hardwareLabel.setText("Resistor ratio")
-        hardwareIdSpinBox = QSpinBox()
+        hardwareLineEdit = QLineEdit()
+        
+        hardwareLineEdit.setText(def_resistorRatio)
         hardwareLayout.addWidget(hardwareLabel)
-        hardwareLayout.addWidget(hardwareIdSpinBox)
+        hardwareLayout.addWidget(hardwareLineEdit)
                     
         infoLayout.addLayout(iconLayout)
         infoLayout.addLayout(chipLayout)
@@ -519,20 +506,20 @@ class MenuWindow(QWidget):
             nodeListBox.takeItem(_row)
         
         def _save_items():
+            _chipId = str(chipIdLineEdit.text())
+            _resistorRatio = str(hardwareLineEdit.text())
+            conf["Application"]["chipId"] = _chipId
+            conf["Hardware"]["resistor_ratio"] = _resistorRatio
             if (nodeListBox.count() != 0):
                 _nodes = [nodeListBox.item(x).text() for x in range(nodeListBox.count())]
-                _chipId = str(chipIdSpinBox.value())
-                _resistorRatio = str(hardwareIdSpinBox.value())
                 conf["Application"]["nodeIds"] = _nodes
-                conf["Application"]["chipId"] = _chipId
-                conf["Hardware"]["resistor_ratio"] = _resistorRatio
                 file = config_dir + self.__device + "_cfg.yml"
                 AnalysisUtils().dump_yaml_file(file=file,
                                                loaded = conf,
                                                directory=lib_dir)
                 self.logger.info("Saving Information to the file %s"%file)
             else:
-                self.logger.error("No data to be saved.....")
+                self.logger.error("No Node Info to be saved.....")
                 
         add_button.clicked.connect(_add_item)
         clear_button.clicked.connect(_clear_item)
@@ -555,6 +542,61 @@ class MenuWindow(QWidget):
         ChipGroup.setLayout(infoLayout)
         HardwareGroup.setLayout(hardwareLayout)
         plotframe.setLayout(mainLayout) 
+
+                   
+    def set_socketcan(self,childWindow, arg, interface):
+        #check the conf file
+        SocketGroup= QGroupBox("Reset SocketCAN ")
+        childWindow.setObjectName("Reset SocketCAN ")
+        childWindow.setWindowTitle("Reset SocketCAN")
+        childWindow.setGeometry(200, 200, 100, 100)
+        mainLayout = QGridLayout()
+        # Define a frame for that group
+        plotframe = QFrame()
+        plotframe.setLineWidth(0.6)
+        childWindow.setCentralWidget(plotframe)
+        mainLayout = QGridLayout()
+        buttonLayout = QHBoxLayout()  
+        _channelPorts =  range(0,2)
+        _arg = arg
+        _interface = interface
+        msg =  self.load_bus_settings_file(interface = _interface, channel = str(0)) 
+        VLayout = QVBoxLayout()
+        busInfoBox = QTextEdit()
+        busInfoBox.setStyleSheet("background-color: white; border: 2px inset black; min-height: 150px; min-width: 400px;")
+        busInfoBox.LineWrapMode(1)
+        busInfoBox.setReadOnly(True)      
+        busInfoBox.setText(msg)  
+        VLayout.addWidget(busInfoBox)
+        busComboBox = QComboBox()
+        busComboBox.addItem("")
+        for item in _channelPorts: busComboBox.addItem(str(item))
+        
+        def _busComboBox_changed():
+            channel = busComboBox.currentText()
+            msg =  self.load_bus_settings_file(interface = _interface, channel = channel) 
+            busInfoBox.setText(msg)  
+        
+        def _set():
+            _default_channel = busComboBox.currentText()
+            self.MainWindow.set_canchannel(arg = _arg, interface = _interface,default_channel =_default_channel )        
+        
+        busComboBox.currentTextChanged.connect(_busComboBox_changed)
+        add_button = QPushButton("Reset")
+        add_button.setIcon(QIcon('graphicsUtils/icons/icon_start.png'))
+        add_button.clicked.connect(_set)
+        close_button = QPushButton("Close")
+        close_button.setIcon(QIcon('graphicsUtils/icons/icon_close.png'))
+        close_button.clicked.connect(childWindow.close)
+        buttonLayout.addWidget(add_button)  
+        buttonLayout.addWidget(close_button) 
+        mainLayout.addLayout(VLayout,0,0)
+        mainLayout.addWidget(busComboBox ,1,0)
+        mainLayout.addLayout(buttonLayout ,2,0)
+        SocketGroup.setLayout(mainLayout)
+        plotframe.setLayout(mainLayout) 
+                     
+
                
 if __name__ == "__main__":
     pass

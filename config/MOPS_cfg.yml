@@ -1,10 +1,9 @@
 Application:
-  chipId: '4'
+  chipId: '3'
   device_name: MOPS
   device_version: v1.2
   icon_dir: graphicsUtils/icons/icon_mops.png
-  refresh_rate: 100 #milliseconds
-  
+  refresh_rate: '100'
   index_items:
     '0x1000':
       description_items: <html><b> Device type</b> [Default 191(hex)]</b></html>
@@ -116,14 +115,11 @@ Application:
         '20': <html><u>subindex 20</u>:Ch34</html>
   nodeIds:
   - '1'
-  - '2'
-  
 Hardware:
   resistor_ratio: '40'
-
 adc_channels_reg:
   adc_channels:
-    '3': V
+    '3': T
     '4': V
     '5': T
     '6': V
@@ -149,7 +145,7 @@ adc_channels_reg:
     '26': V
     '27': T
     '28': V
-    '29': V  
+    '29': V
     '30': V
     '31': V
     '32': V

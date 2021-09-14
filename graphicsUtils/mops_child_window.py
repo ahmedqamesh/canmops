@@ -417,7 +417,7 @@ class MopsChildWindow(QWidget):
         chipIdTextBox = QLabel()
         newfont = QFont("OldEnglish", 12, QtGui.QFont.Bold)
         chipIdTextBox.setFont(newfont)
-        chipIdTextBox.setText("chip 1 ")        
+        chipIdTextBox.setText(self.__chipId)        
         chipLayout.addWidget(chipIdLabel)
         chipLayout.addWidget(chipIdTextBox)
         deviceInfoGridLayout.addLayout(iconLayout, 0, 0)
