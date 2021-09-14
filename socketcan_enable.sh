@@ -2,10 +2,12 @@
 # variables
 n_buses=0
 echo "Initializing SocketCAN...."
-BITRATE=125000
+BITRATE=111111
 CHANNEL="can"
-SAMPLEPOINT=0.5
+SAMPLEPOINT=0.3
 SJW=4
+PHASESEG1 = 0
+PHASESEG2 = 0
 echo "Setting the bus to a bitrate of $BITRATE [Sample Point $SAMPLEPOINT]"
 
 #echo "Unloading all the kernel modules if on"
@@ -30,13 +32,13 @@ do
    sudo -S ip link set down $CHANNEL$i
 	
 	echo "Configuring the SocketCAN interface to bitrate of" $BITRATE
-	sudo -S ip link set $CHANNEL$i type can bitrate $BITRATE sample-point $SAMPLEPOINT	sjw $SJW
+	sudo -S ip link set $CHANNEL$i type can bitrate $BITRATE sample-point $SAMPLEPOINT sjw $SJW phase-seg1 $PHASESEG1 phase-seg2 $PHASESEG2
 	
 	echo "Bringing the  can$i driver  up"
 	sudo -S ip link set up $CHANNEL$i
 done
 for i in range 0 $n_buses 
 do 
-	ip -details link show $CHANNEL$i
+   ip -details link show $CHANNEL$i
 done
 

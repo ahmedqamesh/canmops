@@ -17,7 +17,8 @@ then
 	sudo -S ip link set down $4
 	now=$(date +'%Y-%m-%d'" %T")
 	echo -e "\e[1;31m$now -  [NOTICE   ] - Configuring the SocketCAN interface to bitrate of $1 [Sample Point $2, SJW $3] \e[0m"
-	sudo -S ip link set $4 type can bitrate $1 sample-point $2 sjw $3
+	sudo -S ip link set $4 type can bitrate $1 sample-point $2 sjw $3 
+	#phase-seg1 $6 phase-seg2 $7
 	now=$(date +'%Y-%m-%d'" %T")
 	echo -e "\e[1;31m$now -  [NOTICE   ] - Bringing the  $4 driver  up \e[0m"
 	sudo -S ip link set up $4

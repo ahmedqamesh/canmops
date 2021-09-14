@@ -17,7 +17,7 @@ If you are using an AnaGate Ethernet CAN interface you will probably need to man
 It has happened that the USB port was not correctly reset after the Kvaser interface has been disconnected so that the connection to other USB devices could not be established. As a workaround I recommend rebooting the system.
 
 ## Documentation
-Documentation can be found under: https://gitlab.cern.ch/aqamesh/canmops/-/wikis/home </br>
+Documentation can be found under: https://gitlab.cern.ch/aqamesh/canmops/-/wikis/home . </br>
 Under development: https://canmops.readthedocs.io/en/latest/installation.html
 
 ### Installation and usage

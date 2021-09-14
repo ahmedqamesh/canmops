@@ -56,7 +56,7 @@ def test():
 
 
 if __name__=='__main__':
-    #wrapper = canWrapper.CanWrapper(interface = "AnaGate")
-    wrapper = CanWrapper(interface = "socketcan")
-    #wrapper =  CanWrapper(interface = "Kvaser")
+    #wrapper = canWrapper.CanWrapper(interface = "AnaGate",channel = 0)
+    wrapper = CanWrapper(interface = "socketcan",channel = 0)
+    #wrapper =  CanWrapper(interface = "Kvaser",channel = 0)
     test()
