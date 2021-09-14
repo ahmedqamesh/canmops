@@ -246,6 +246,7 @@ class MenuWindow(QWidget):
         def _restart_kvaserchannel():
             _arg = "restart"
             _interface = "Kvaser"
+            _default_channel = 0
             self.MainWindow.set_canchannel(arg = _arg, interface = _interface,default_channel =_default_channel)
             
         RestartKvaser = QAction(QIcon('graphics_Utils/icons/icon_reset.png'),'Restart Kvaser Interface', mainwindow)

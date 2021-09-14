@@ -3,7 +3,7 @@ channel0:
   bitrate: 111111
   channel: '0'
   samplePoint: 0.5
-  SJW: 1
+  SJW: 4
   tseg1: 5
   tseg2: 6
   ipAddress: None

@@ -12,17 +12,28 @@ class DesignDiagram(object):
 
     def __init__(self, console_loglevel=logging.INFO, file_path = None, file_name = None):
        super().__init__()
-       self.output_file = open(file_path+"/"+file_name+".dot","w+")
+       if sys.platform == 'win32':
+        full_path =file_path+"\\"+file_name
+       else:
+        full_path =file_path+"/"+file_name 
+       self.output_file = open(full_path+".dot","w+")
        self.uniq_id = 1
        
     def create_visualization(self,path =None, file_name =None):
-        with open(path+"/"+file_name+".dot") as f:
+       if sys.platform == 'win32':
+        full_path =path+"\\"+file_name
+        del_command = "del "
+       else:
+        full_path =path+"/"+file_name 
+        del_command = "rm "
+        
+        with open(full_path+".dot") as f:
             dot_graph = f.read()
         graph=Source(dot_graph)
         graph.render(path+"/"+file_name,format = 'png', view=False)
-        os.system("rm "+path+"/"+file_name+'.dot')
-        os.system("rm "+path+"/"+file_name)
-        return path+"/"+file_name+'.png'
+        os.system(del_command+full_path+'.dot')
+        os.system(del_command+full_path)
+        return full_path+'.png'
     
     def output_to_dot (self,s):
         self.output_file.write(s)
@@ -89,7 +100,11 @@ class DesignDiagram(object):
             
 
     def process_yaml(self,path = None, file_name = None, graphid_name= None, file_end = ".yaml"):
-        with open(path+"/"+file_name+file_end, 'r') as stream:
+        if sys.platform == 'win32':
+            full_path =path+"\\"+file_name+file_end
+        else:
+           full_path =path+"/"+file_name+file_end 
+        with open(full_path, 'r') as stream:
             ast = yaml.safe_load(stream)
             self.output_to_dot ("digraph graphid_name {\n")
             self.map_render(ast)
@@ -102,7 +117,6 @@ if   __name__  == "__main__":
     test_file = "/home/dcs/git/canmops/config/opcua_config.yaml"
     file_name = os.path.basename(test_file)
     file_path= file_path = os.path.dirname(os.path.realpath(test_file))
-    
     design = DesignDiagram(file_path =file_path, file_name = file_name[:-5])
     design.process_yaml(path=file_path,file_name =file_name[:-5],graphid_name = "MopsHub",file_end = ".yaml")
 

@@ -704,8 +704,8 @@ class ChildWindow(QtWidgets.QMainWindow):
         file_path = os.path.dirname(os.path.realpath(self.filetextboxValue))
         file_name = os.path.basename(self.filetextboxValue)
         
-        self.adcPlotGridLayout.removeItem(self.itemSpacer)     
-        if yaml_or_yml =="yaml":   
+        self.adcPlotGridLayout.removeItem(self.itemSpacer)   
+        if "yaml" in  file_name:  
             design = design_diagram.DesignDiagram(file_path =file_path, file_name = file_name[:-5])
             fig_path = design.process_yaml(path=file_path,file_name =file_name[:-5],graphid_name = "MopsHub", file_end = ".yaml")
         else:
@@ -723,7 +723,7 @@ class ChildWindow(QtWidgets.QMainWindow):
         scroll.setFixedSize(800,800)
         scroll.setAlignment(Qt.AlignCenter)
         scroll.setWidget(fig)
-        return scroll
+        self.adcPlotGridLayout.addWidget(scroll,5,1,4,4)
         
     def plot_adc_file(self,plot_prefix = "adc_data"):    
         self.filetextboxValue = self.filetextbox.text()

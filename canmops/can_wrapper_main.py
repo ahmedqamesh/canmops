@@ -32,7 +32,7 @@ except (ImportError, ModuleNotFoundError):
     from analysis import Analysis
     from logger_main   import Logger
    # from __version__ import __version__
-    from analysisUtils import AnalysisUtils
+    from analysis_utils import AnalysisUtils
     
 # Third party modules
 from collections import deque, Counter
@@ -74,6 +74,7 @@ class CanWrapper(object):
                  bitrate=None, samplePoint=None,
                  sjw=None,ipAddress=None,
                  tseg1 = None, tseg2 = None,
+                 nodeid =None,
                  conf_file="main_cfg.yml",
                  file_loglevel=logging.INFO, 
                  logdir=None,
@@ -133,7 +134,8 @@ class CanWrapper(object):
 
         """:obj:`int` : Internal attribute for the IP Address"""  
         if ipAddress is not None:
-             self.__ipAddress = ipAddress        
+             self.__ipAddress = ipAddress
+              
         # Initialize library and set connection parameters
         self.__cnt = Counter()
         """:obj:`bool` : If communication is established"""
@@ -162,6 +164,10 @@ class CanWrapper(object):
         self.logger.success('....Done Initialization!')
         self.logger_file.success('....Done Initialization!')
         
+        if nodeid is not None:
+            self.confirm_nodes(nodeIds = [str(nodeid)])
+            self.stop() 
+            
     def __str__(self):
         if self.__interface == 'Kvaser':
             num_channels = canlib.getNumberOfChannels()
@@ -972,7 +978,10 @@ def main():
                         default=0,
                         help='Time Segment2')
             
-    
+    cGroup.add_argument('-nodeid', '--nodeid', metavar='nodeid',
+                        default=0,
+                        help='Node Id of the MOPS chip under test')
+        
     # Logging configuration
     lGroup = parser.add_argument_group('Logging settings')
     lGroup.add_argument('-cl', '--console_loglevel',
@@ -985,9 +994,7 @@ def main():
     args = parser.parse_args()
     
     # Start the server
-    wrapper = CanWrapper(**vars(args))
-    wrapper.confirm_nodes(nodeIds = ["1","2"])
-    wrapper.stop()     
+    wrapper = CanWrapper(**vars(args))  
     
 if __name__ == "__main__":
     main()      

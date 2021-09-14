@@ -12,7 +12,7 @@ def set_channelConnection(channel=0,
                  tseg2 =6):
     ch = canlib.openChannel(channel, openFlags)
     print("Using channel: %s, EAN: %s" % (
-        canlib.ChannelData(channel).device_name,
+        canlib.ChannelData(channel).channel_name,
         canlib.ChannelData(channel).card_upc_no))
     ch.setBusOutputControl(outputControl)
     ch.setBusParams(freq = bitrate,sjw =sjw,tseg1 =tseg1, tseg2 = tseg2)

@@ -3,8 +3,8 @@ import sys
 import os
 import time
 import numpy as np
-from canmops.analysisUtils import AnalysisUtils
-from canmops.canWrapper   import CanWrapper
+from canmops.analysis_utils import AnalysisUtils
+from canmops.can_wrapper_main   import CanWrapper
 rootdir = os.path.dirname(os.path.abspath(__file__)) 
 # All the can configurations of the CAN controller should be set first from $HOME/config/main_cfg.yml
 def test():
