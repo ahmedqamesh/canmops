@@ -408,8 +408,7 @@ class MopsChildWindow(QWidget):
             dataLayout.addWidget(self.saveDirCheckBox)  
             deviceInfoGridLayout.addLayout(deviceLayout, 1, 0)
             deviceInfoGridLayout.addLayout(dataLayout, 6, 0)
-            
-                        
+                    
         # Chip ID
         chipLayout = QHBoxLayout()
         chipIdLabel = QLabel()
