@@ -8,6 +8,9 @@ import pandas as pd
 import csv
 from pathlib import Path
 import coloredlogs as cl
+import socket
+import ipaddress
+
 class AnalysisUtils(object):
     
     def __init__(self):
@@ -37,7 +40,13 @@ class AnalysisUtils(object):
                 os.mkdir(directory)
         filename = os.path.join(directory, outname)    
         df.to_csv(filename, index=True)
-          
+
+    def read_csv_file(self, file=None):
+        """ This function will read the data using pandas
+        """
+        data_file = pd.read_csv(file,encoding = 'utf-8').fillna(0)
+        return data_file
+                
     def open_h5_file(self,outname=None, directory=None):
         filename = os.path.join(directory, outname)
         with tb.open_file(filename, 'r') as in_file:
@@ -89,3 +98,17 @@ class AnalysisUtils(object):
         File.create_array(File.root, 'ADC results', ADC_results, "ADC results")
         File.close()
         logging.info("Start creating table")     
+    
+    def get_ip_device_address(self):
+        s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        s.connect(("8.8.8.8", 80))
+        return s.getsockname()[0]
+        s.close()
+    
+    def get_ip_from_subnet(self, ip_subnet):
+        #https://realpython.com/python-ipaddress-module/
+        ips= ipaddress.ip_network(ip_subnet)
+        ip_list=[str(ip) for ip in ips]
+        return ip_list
+
+    

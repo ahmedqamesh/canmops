@@ -1,6 +1,6 @@
 CAN_Interfaces: socketcan
 channel0:
-  bitrate: 111111
+  bitrate: 125000
   channel: '0'
   samplePoint: 0.5
   SJW: 4

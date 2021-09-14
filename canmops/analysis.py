@@ -9,11 +9,11 @@ class Analysis(object):
     def __init__(self):
         pass
     # Conversion functions
-    def adc_conversion(self, adc_channels_reg="V", value=None,resistor_ratio = 1):
+    def adc_conversion(self, adc_channels_reg="V", value=None,resistor_ratio = 1,ref_voltage = 1.226):
         '''
         the function will convert each ADC value into a reasonable physical quantity in volt
         > MOPS has 12 bits ADC value ==> 2^12 = 4096 (this means that we can read from 0 -> 4096 different decimal values)
-        > The full 12 bits ADC covers up to 850mV
+        > The full 12 bits ADC covers up to 850mV [or ref_voltage]
         >This means that each ADC value corresponds to 850/4096 = 0.207 mV for 1 bit this is the resolution of the ADC)
         > The true voltage on each ADC is V = value * resistance
         Example: 
@@ -23,11 +23,11 @@ class Analysis(object):
         '''
         if value is not None:
             if adc_channels_reg == "V":
-                value = value * 0.850/4096  *resistor_ratio
+                value = value * ref_voltage/4096  *resistor_ratio
             elif adc_channels_reg == "T":
-                value = value * 0.850/4096 * resistor_ratio
+                value = value * ref_voltage/4096 * resistor_ratio
             else:
-                value = value * 0.850/4096 * resistor_ratio
+                value = value * ref_voltage/4096 * resistor_ratio
         return value
     def convertion(self,value =None):
         return value

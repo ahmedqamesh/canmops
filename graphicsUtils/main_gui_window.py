@@ -17,7 +17,7 @@ from PyQt5.QtGui            import *
 from PyQt5.QtWidgets        import *
 from typing                 import *
 from random                 import randint
-from graphicsUtils          import menu_window, opcuaWindow,child_window, data_monitoring, mops_child_window
+from graphicsUtils          import menu_window, opcua_window,child_window, data_monitoring, mops_child_window, multi_device_window
 from canmops.analysis       import Analysis
 from canmops.logger_main         import Logger 
 from canmops.analysis_utils  import AnalysisUtils
@@ -40,6 +40,7 @@ class MainWindow(QMainWindow):
         self.__appVersion = self.__conf['Application']['app_version']
         self.__appIconDir = self.__conf["Application"]["app_icon_dir"]
         self.__devices = self.__conf["Application"]["Devices"]
+        self.multi_mode = self.__conf["Application"]["multi_mode"]
         self.__CANID_list = ['0x600'] 
         self.__bytes = ["40", "0", "10", "0", "0", "0", "0", "0"]
         self.__interfaceItems = list(["AnaGate", "Kvaser", "socketcan"]) 
@@ -54,8 +55,8 @@ class MainWindow(QMainWindow):
         self.__sample_point = None
         self.index_description_items = None
         self.__subIndex = None
-        self.wrapper = None
-        
+        self.wrapper = None      
+          
     def Ui_ApplicationWindow(self, opcua =None):
         '''
         The function Will start the main graphical interface with its main components
@@ -118,12 +119,19 @@ class MainWindow(QMainWindow):
         mainLayout.addWidget(self.monitorGroupBox, 3, 0, 2, 2)
         mainLayout.addWidget(self.configureDeviceBoxGroupBox, 5, 0, 1, 1)
 
+        
+        if self.multi_mode is True:
+            self.multi_window = multi_device_window.MultiDeviceWindow()
+            self.multi_device_box()
+            mainLayout.addWidget(self.configureMultiBoxGroupBox, 5, 1, 1, 1)
+            
         # Opcua child window
         if opcua is not None:   
             self.opcuaWindow = opcuaWindow.OpcuaWindow()
             self.configure_cic_box()
-            mainLayout.addWidget(self.configureCICBoxGroupBox, 5, 1, 1, 1)
-            
+            mainLayout.addWidget(self.configureCICBoxGroupBox, 5, 2, 1, 1)
+
+                            
         mainFrame.setLayout(mainLayout)
         # 3. Show
         self.show()
@@ -470,18 +478,35 @@ class MainWindow(QMainWindow):
         The function provides a frame for the configured devices  according to the file main_cfg.yml
         '''
         self.configureCICBoxGroupBox = QGroupBox("OPCUA Client")
-        self.configureCICBoxGroupBoxLayout = QHBoxLayout()
+        configureCICBoxGroupBoxLayout = QHBoxLayout()
         opcuaLabel = QLabel()
         self.opcuaButton = QPushButton("")
         self.opcuaButton.setStatusTip('Open OPCUA window')
         opcuaLabel.setText("")
         self.opcuaButton.setIcon(QIcon('graphicsUtils/icons/icon_opcua.png'))
         self.opcuaButton.clicked.connect(self.opcuaWindow.Ui_ApplicationWindow)
-        self.configureCICBoxGroupBoxLayout.addWidget(self.opcuaButton)
-        self.configureCICBoxGroupBoxLayout.addWidget(opcuaLabel)
-        self.configureCICBoxGroupBox.setLayout(self.configureCICBoxGroupBoxLayout)
+        configureCICBoxGroupBoxLayout.addWidget(self.opcuaButton)
+        configureCICBoxGroupBoxLayout.addWidget(opcuaLabel)
+        self.configureCICBoxGroupBox.setLayout(configureCICBoxGroupBoxLayout)
+        
+    def multi_device_box(self):
+        '''
+        The function provides a frame for the configured devices  according to the file main_cfg.yml
+        '''
+        self.configureMultiBoxGroupBox = QGroupBox("CAN network")
+        configureCICBoxGroupBoxLayout = QHBoxLayout()
+        opcuaLabel = QLabel()
+        self.multiButton = QPushButton("")
+        self.multiButton.setStatusTip('MUlti MOPS connected to several buses')
+        opcuaLabel.setText("")
+        self.multiButton.setIcon(QIcon('graphicsUtils/icons/icon_nodes.png'))
+        self.multiButton.clicked.connect(self.multi_window.Ui_ApplicationWindow)
+        configureCICBoxGroupBoxLayout.addWidget(self.multiButton)
+        configureCICBoxGroupBoxLayout.addWidget(opcuaLabel)
+        self.configureMultiBoxGroupBox.setLayout(configureCICBoxGroupBoxLayout)
         
         
+                
     def configure_device_box(self):
         '''
         The function provides a frame for the configured devices  according to the file main_cfg.yml
@@ -518,7 +543,7 @@ class MainWindow(QMainWindow):
         self.__devices.append(conf["Application"]["device_name"])
         mops_child = mops_child_window.MopsChildWindow()
         deviceName, version, icon_dir, nodeIds, dictionary_items, adc_channels_reg,\
-         self.__adc_index, self.__chipId, self.__index_items, self.__conf_index, self.__mon_index,self.__resistor_ratio, self.__refresh_rate  = mops_child.configure_devices(conf)
+         self.__adc_index, self.__chipId, self.__index_items, self.__conf_index, self.__mon_index,self.__resistor_ratio, self.__refresh_rate, self.__ref_voltage  = mops_child.configure_devices(conf)
         # Load ADC calibration constants
         # adc_calibration = pd.read_csv(config_dir + "adc_calibration.csv", delimiter=",", header=0)
         # condition = (adc_calibration["chip"] == chipId)
@@ -797,7 +822,7 @@ class MainWindow(QMainWindow):
             # printing TX   
             self.set_textBox_message(comunication_object="SDO_RX", msg=str([hex(m)[2:] for m in RX_response]), cobid=str(hex(cobid_RX) + " "))
             # print decoded response
-            converted_response = Analysis().adc_conversion("V", response_from_node, int(self.__resistor_ratio))
+            converted_response = Analysis().adc_conversion("V", response_from_node, int(self.__resistor_ratio), int(self.__ref_voltage))
             decoded_response = f'{response_from_node:03X}'
             self.set_textBox_message(comunication_object="Decoded", msg=decoded_response, cobid=str(hex(cobid_RX) + ": Hex value = "))
             self.set_textBox_message(comunication_object="ADC", msg=f'{round(converted_response,3)}', cobid=str(hex(cobid_RX) + ": ADC value = "))
@@ -951,7 +976,7 @@ class MainWindow(QMainWindow):
             writer.writeheader()            
             eventTimer = mops_child_window.EventTimer()
             self.adc_timer = eventTimer.initiate_timer()
-            self.adc_timer.setInterval(self.__refresh_rate)
+            self.adc_timer.setInterval(int(self.__refresh_rate))
             self.adc_timer.timeout.connect(self.update_adc_channels)
             self.adc_timer.timeout.connect(self.update_monitoring_values)
             self.adc_timer.timeout.connect(self.update_configuration_values)
@@ -1069,7 +1094,7 @@ class MainWindow(QMainWindow):
                 data_point[s] = self.read_sdo_can()  # _thread(print_sdo=False)
                 ts = time.time()
                 elapsedtime = ts - self.__monitoringTime
-                adc_converted = np.append(adc_converted, Analysis().adc_conversion(_adc_channels_reg[str(subindex)], data_point[s], int(self.__resistor_ratio)))
+                adc_converted = np.append(adc_converted, Analysis().adc_conversion(_adc_channels_reg[str(subindex)], data_point[s], int(self.__resistor_ratio), int(self.__ref_voltage)))
                 # update the progression bar to show bus statistics
                 self.progressBar.setValue(subindex)
                 if adc_converted[s] is not None:

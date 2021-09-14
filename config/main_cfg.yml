@@ -5,6 +5,7 @@ Application:
   app_name: CANMOPS
   app_version: v1.2
   user: Ahmed Qamesh
+  multi_mode: True
 
 channel_ports:
   '0':

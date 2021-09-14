@@ -6,7 +6,7 @@ from PyQt5.QtWidgets import *
 from PyQt5 import QtGui
 from canmops.analysis_utils import AnalysisUtils
 from canmops.logger_main    import Logger 
-from graphicsUtils import main_window, menu_window, data_monitoring
+from graphicsUtils import main_gui_window, menu_window, data_monitoring
 import numpy as np
 import time
 import os
@@ -22,9 +22,45 @@ class MopsChildWindow(QWidget):
        super(MopsChildWindow, self).__init__(parent)
        self.logger = Logger().setup_main_logger(name=" MOPS GUI", console_loglevel=console_loglevel)
        dev = AnalysisUtils().open_yaml_file(file=config_dir + "MOPS_cfg.yml", directory=lib_dir)
-       
        self.configure_devices(dev)
+       max_mops_num = 4
+       max_bus_num = 4
 
+    def bus_child_window(self,childWindow):      
+        mopsBotton = [k for k in np.arange(max_mops_num)]
+        BusGroupBox = [k for k in np.arange(max_bus_num)]
+        for c in np.arange(cic_num):        
+            CICGridLayout = QGridLayout()
+            CICGroupBox[c] = QGroupBox("        CIC"+str(c))
+            CICGroupBox[c].setStyleSheet("QGroupBox { font-weight: bold;font-size: 16px; background-color: #eeeeec; } ")
+            for b in np.arange(max_bus_num):
+                BusGridLayout = QGridLayout()
+                BusGroupBox[b] = QGroupBox("Port "+str(b))
+                BusGroupBox[b].setStyleSheet("QGroupBox { font-weight: bold;font-size: 10px; background-color: #eeeeec; } ")
+                for m in np.arange(max_mops_num):               
+                    col_len = int(mops_num / 2)
+                    s = m
+                    mopsBotton[m] = QPushButton("  ["+str(m)+"]")
+                    mopsBotton[m].setObjectName("C"+str(c)+"M"+str(m)+"P"+str(b))
+                    mopsBotton[m].setIcon(QIcon('graphicsUtils/icons/icon_mops.png'))
+                    mopsBotton[m].setStatusTip("CIC NO."+str(c)+" MOPS No."+str(m)+" Port No."+str(b))
+                    mopsBotton[m].clicked.connect(self.cic_group_action)
+                    if s < col_len:
+                        BusGridLayout.addWidget(mopsBotton[s], s, 1)
+                    else:
+                        BusGridLayout.addWidget(mopsBotton [s], s, 1)     #s- col_len, 0)      
+                BusGroupBox[b].setLayout(BusGridLayout)     #s- col_len, 0)  
+                
+            CICGridLayout.addWidget(BusGroupBox[0], 0, 1)     #s- col_len, 0) 
+            CICGridLayout.addWidget(BusGroupBox[1], 1, 1)     #s- col_len, 0)
+            CICGroupBox[c].setLayout(CICGridLayout)  
+        childWindow.setCentralWidget(plotframe)
+        mainGridLayout.addWidget(CICGroupBox[0]   , 0, 0)
+        plotframe.setLayout(mainGridLayout)
+        self.MenuBar.create_statusBar(childWindow)
+        QtCore.QMetaObject.connectSlotsByName(childWindow)
+        
+                
     def update_opcua_config_box(self):
         self.conf_cic = AnalysisUtils().open_yaml_file(file=config_dir+ "opcua_config.yaml", directory=lib_dir)
 
@@ -45,8 +81,9 @@ class MopsChildWindow(QWidget):
         self.__conf_index = dev["adc_channels_reg"]["conf_index"] 
         self.__resistor_ratio = dev["Hardware"]["resistor_ratio"]
         self.__refresh_rate = dev["Application"]["refresh_rate"] #millisecondsrefresh_rate
+        self.__ref_voltage = dev["Hardware"]["ref_voltage"] 
         return  self.__deviceName, self.__version, self.__appIconDir,self.__nodeIds, self.__dictionary_items, self.__adc_channels_reg,\
-            self.__adc_index, self.__chipId, self.__index_items, self.__conf_index, self.__mon_index, self.__resistor_ratio, self.__refresh_rate
+            self.__adc_index, self.__chipId, self.__index_items, self.__conf_index, self.__mon_index, self.__resistor_ratio, self.__refresh_rate, self.__ref_voltage
                
             
     def define_object_dict_window(self,connected_node = None, mainWindow = None):
@@ -453,7 +490,7 @@ class MopsChildWindow(QWidget):
                 labelChannel[s].setStatusTip('ADC channel %s [index = %s & subIndex = %s]' % (subindex_description_item[25:29],
                                                                                             _adc_indices[i],
                                                                                              _subIndexItems[s_correction]))  # show when move mouse to the icon
-                labelChannel[s].setText(subindex_description_item[25:29] + ":")
+                labelChannel[s].setText(subindex_description_item[25:29] + " [V]:")
                 icon = QLabel(self)
                 if _adc_channels_reg[str(subindex)] == "V": 
                     icon_dir = 'graphicsUtils/icons/icon_voltage.png'

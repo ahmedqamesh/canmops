@@ -4,7 +4,7 @@ from PyQt5.QtCore    import *
 from PyQt5.QtGui     import *
 from PyQt5.QtWidgets import *
 import logging
-from graphicsUtils import main_window, child_window
+from graphicsUtils import main_gui_window, child_window
 from canmops.analysis_utils import AnalysisUtils
 from canmops.logger_main import Logger 
 from PyQt5.QtWidgets import QMainWindow
@@ -15,9 +15,9 @@ config_dir = "config/"
 lib_dir = rootdir[:-13]
 class MenuWindow(QWidget):  
     
-    def __init__(self, parent=main_window):
+    def __init__(self, parent=main_gui_window):
         super(MenuWindow, self).__init__(parent)
-        self.MainWindow = main_window.MainWindow()
+        self.MainWindow = main_gui_window.MainWindow()
         self.logger = Logger().setup_main_logger(name = " Menu  GUI ",console_loglevel=logging.INFO)
     
     def stop(self):
@@ -82,13 +82,13 @@ class MenuWindow(QWidget):
                 
         def _show_browse_client_child_window():
             self.BrowseClientWindow = QMainWindow()
-            BrowseWindow = childWindow.ChildWindow(parent = self.BrowseClientWindow)
+            BrowseWindow = child_window.ChildWindow(parent = self.BrowseClientWindow)
             BrowseWindow.browse_client_child_window(self.BrowseClientWindow, conf)
             self.BrowseClientWindow.show()
             
         def _show_browse_server_child_window():
             self.BrowseServerWindow = QMainWindow()
-            BrowseWindow = childWindow.ChildWindow(parent = self.BrowseServerWindow)
+            BrowseWindow = child_window.ChildWindow(parent = self.BrowseServerWindow)
             BrowseWindow.browse_server_child_window(self.BrowseServerWindow ,conf)
             self.BrowseServerWindow.show()
             

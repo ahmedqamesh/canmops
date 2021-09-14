@@ -7,7 +7,7 @@ from PyQt5.QtWidgets import *
 from PyQt5 import QtGui
 from canmops.logger_main         import Logger 
 from canmops.analysis_utils import AnalysisUtils
-from graphicsUtils import main_window, menu_window, data_monitoring, plotting_canvas, design_diagram
+from graphicsUtils import main_gui_window, menu_window, data_monitoring, plotting_canvas, design_diagram
 import numpy as np
 import time
 import os
