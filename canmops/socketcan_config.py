@@ -23,15 +23,15 @@ class CanConfig(WATCHCan):
         self._directory = directory
         #self.logger = logging.getLogger('CAN config')
         self.logger = Logger().setup_main_logger(name = " CAN Config",console_loglevel=logging.INFO, logger_file = False)
-
-        self._can_channels = ['channel0', 'channel1']
+        
+        _canSettings = AnalysisUtils().open_yaml_file(file=self._file, directory=self._directory)
+        self._can_channels = list(_canSettings)[1:]#['channel0', 'channel1']
         self._can_settings_attr = ['bitrate', 'channel', 'samplePoint', 'SJW', 'tseg1', 'tseg2', 'ipAddress', 'timeout']
 
         self.can_0_settings = {}
         self.can_1_settings = {}
 
-        _canSettings = AnalysisUtils().open_yaml_file(file=self._file, directory=self._directory)
-
+       
         self._interface = _canSettings['CAN_Interfaces']
         self.sem_read_block = threading.Semaphore(value=0)
         self.sem_recv_block = threading.Semaphore(value=0)

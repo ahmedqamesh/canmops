@@ -8,14 +8,3 @@ channel0:
   tseg2: 6
   ipAddress: None
   timeout: 500
-
-channel1:
-  bitrate: 111111
-  channel: 1
-  samplePoint: 0.5
-  SJW: 4
-  tseg1: 5
-  tseg2: 6
-  ipAddress: None
-  timeout: 500
-  

@@ -469,14 +469,21 @@ class ChildWindow(QtWidgets.QMainWindow):
         def _interfaceParameters():
             _interface = interfaceComboBox.currentText()
             _channel = self.channelSettingsComboBox.currentText()
+            mainWindow.set_interface(_interface)
             mainWindow.set_channel(_channel)
+            if _interface == "AnaGate":
+                self.ipBox.setStyleSheet(" background-color: lightgray;")
+                self.ipBox.setReadOnly(False)
+            else:
+                self.ipBox.setStyleSheet(" background-color: white;")
+                self.ipBox.setReadOnly(True)
             _channel,_ipAddress, _bitrate,_samplePoint, _sjw,_tseg1, _tseg2 =  mainWindow.load_settings_file(interface = _interface, channel = _channel) 
             self.bitSpeedTextBox.setText(str(_bitrate))
             self.sampleTextBox.setText(str(_samplePoint*100))
             self.tseg1TextBox.setText(str(_tseg1))
             self.tseg2TextBox.setText(str(_tseg2))
             self.sjwComboBox.setCurrentText(str(_sjw))
-            mainWindow.set_interface(_interface)
+           
 
         interfaceComboBox.activated[str].connect(_interfaceParameters)
         # Define Third Group
@@ -493,7 +500,7 @@ class ChildWindow(QtWidgets.QMainWindow):
         self.MenuBar.create_statusBar(childWindow)
         plotframe.setStatusTip("")
         QtCore.QMetaObject.connectSlotsByName(childWindow)                
-        return interfaceComboBox, self.channelSettingsComboBox, self.ipBox
+        #return interfaceComboBox, self.channelSettingsComboBox, self.ipBox
                 
     def BusParametersGroupBox(self, mainWindow = None):
         '''
