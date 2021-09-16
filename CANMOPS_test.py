@@ -3,6 +3,7 @@ import sys
 import os
 import time
 import numpy as np
+import asyncio
 from canmops.analysis_utils import AnalysisUtils
 from canmops.can_wrapper_main   import CanWrapper
 rootdir = os.path.dirname(os.path.abspath(__file__)) 
@@ -32,12 +33,12 @@ def test():
    
     #Example (2): write/read SDO message
     VendorId = wrapper.read_sdo_can_thread(nodeId=NodeIds[0], 
-                                           index=0x1000,
-                                           subindex=0,
-                                           timeout=3000,
-                                           SDO_TX=SDO_TX,
-                                           SDO_RX=SDO_RX,
-                                           cobid = SDO_TX+NodeIds[0])
+                                                   index=0x1000,
+                                                   subindex=0,
+                                                   timeout=3000,
+                                                   SDO_TX=SDO_TX,
+                                                   SDO_RX=SDO_RX,
+                                                   cobid = SDO_TX+NodeIds[0])
     
     if all(m is not None for m in VendorId):
         print(f'Device type: {VendorId[1]:03X}')

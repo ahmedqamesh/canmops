@@ -28,6 +28,8 @@ try:
     from .logger_main import Logger
     #from .__version__ import __version__
     from .analysis_utils import AnalysisUtils
+    from .socketcan_config import can_config
+    from .socketcan_reader import READSocketcan
 except (ImportError, ModuleNotFoundError):
     from analysis import Analysis
     from logger_main   import Logger
@@ -40,6 +42,11 @@ from tqdm import tqdm
 import ctypes as ct
 import logging
 import csv
+import asyncio
+import queue
+from bs4 import BeautifulSoup #virtual env
+from typing import List, Any
+from random import randint
 #from csv import writer
 logger = Logger().setup_main_logger(name = " Lib Check ",console_loglevel=logging.INFO, logger_file = False)
 # Import Socketcan for Socketcan
@@ -67,7 +74,7 @@ rootdir = os.path.dirname(os.path.abspath(__file__))
 config_dir = "config/"
 lib_dir = rootdir[:-8]
 
-class CanWrapper(object):
+class CanWrapper(READSocketcan):#Instead of object
 
     def __init__(self,
                  interface=None, channel=None,
@@ -81,6 +88,12 @@ class CanWrapper(object):
                  console_loglevel=logging.INFO):
        
         super(CanWrapper, self).__init__()  # super keyword to call its methods from a subclass:
+        #can_config.can_setup(channel=0)
+        #can_config.can_setup(channel=1)
+        #can_config.start()
+        self.start()
+        can.util.set_logging_level('warning')
+        
         # Read configurations from a file
         self.__conf = AnalysisUtils().open_yaml_file(file=config_dir + conf_file, directory=rootdir[:-8])
         self.__channelPorts = self.__conf["channel_ports"]
@@ -138,6 +151,7 @@ class CanWrapper(object):
               
         # Initialize library and set connection parameters
         self.__cnt = Counter()
+        self.error_counter = 0
         """:obj:`bool` : If communication is established"""
         self.__busOn = False  
         """:obj:`int` : Internal attribute for the channel index"""
@@ -278,6 +292,7 @@ class CanWrapper(object):
         ADC channels. Each value is read using
         :meth:`read_sdo_can_thread` and written to its corresponding
         """     
+        self.logger.info(f'Reading ADC channels of Mops with ID {nodeId}')
         dev = AnalysisUtils().open_yaml_file(file=file, directory=directory)
         # yaml file is needed to get the object dictionary items
         _adc_channels_reg = dev["adc_channels_reg"]["adc_channels"]
@@ -378,6 +393,94 @@ class CanWrapper(object):
         self.__busOn = False
         self.logger.warning('Stopping the server.')
 
+    async def read_sdo_can_sync(self, nodeId=None, index=None, subindex=None, channel=None, timeout=2000, max_data_bytes=8,
+                           SDO_TX=0x600, SDO_RX=0x580, cobid=None):
+        """Read an object via |SDO|
+        Currently expedited and segmented transfer is supported by this method.
+        The function will writing the dictionary request from the master to the node then read the response from
+        the node to the master
+        The user has to decide how to decode the data.
+        """
+        self.logger.info('Reading an object via |SDO|')
+        if nodeId is None or index is None or subindex is None or channel is None:
+            self.logger.warning('SDO read protocol cancelled before it could begin.')
+            return None
+
+        self.cnt['SDO read total'] += 1
+        self.logger.info(f'Send SDO read request to node {nodeId}')
+
+        cobid = SDO_TX + nodeId
+        msg = [0 for _ in range(max_data_bytes)]
+        msg[0] = 0x40
+        msg[1], msg[2] = index.to_bytes(2, 'little')
+        msg[3] = subindex
+
+        can_config.sem_config_block.acquire()
+        self.logger.info("Start Communication")
+        try:
+            await self.write_can_message(channel, cobid, msg, timeout=timeout)
+            self.current_subindex = subindex
+            self.current_channel = channel
+            self.cobid_ret = SDO_RX + nodeId
+        except can.CanError as e:
+            self.logger.exception(e)
+            self.cnt['SDO read request timeout'] += 1
+            return None
+        can_config.sem_recv_block.release()
+        self.logger.info("Send Thread is waiting for receive thread to finish socket read")
+        # Wait for can-message
+        can_config.sem_read_block.acquire()
+        self.logger.info("Receiving is finished. Processing received data")
+        can_config.sem_config_block.release()
+        self.logger.info("Communication finished")
+        # Process can-messages
+        message_valid = False
+        error_response = False
+        while not self.receive_queue.empty():
+            frame = self.receive_queue.get()
+            if frame is not None:
+                cobid_ret, ret, dlc, flag, t, error_frame = (frame.arbitration_id, frame.data,
+                                                             frame.dlc, frame.is_extended_id,
+                                                             frame.timestamp, frame.is_error_frame)
+                message_valid = (dlc == max_data_bytes
+                                 and cobid_ret == sdo_rx + nodeId
+                                 and ret[0] in [0x80, 0x43, 0x47, 0x4b, 0x4f, 0x42]
+                                 and int.from_bytes([ret[1], ret[2]], 'little') == index
+                                 and ret[3] == subindex)
+                error_response = (dlc == 8 and cobid_ret == 0x88 and ret[0] in [0x00])
+            if error_response:
+                self.error_counter += 1
+                return None
+            if message_valid:
+                self.logger.info(f'We received a msg: {frame}')
+                break
+        else:
+            self.logger.info('SDO read response timeout.')
+            self.logger.info(f'NodeID: {nodeId}')
+            self.logger.info(f'Index: {index}')
+            self.logger.info(f'Subindex: {subindex}')
+            self.cnt['SDO read response timeout'] += 1
+            return None
+
+        # Check command byte
+        if ret[0] == 0x80:
+            abort_code = int.from_bytes(ret[4:], 'little')
+            self.logger.error('Received SDO abort message while reading')
+            self.logger.error(f'Object: {index}')
+            self.logger.error(f'Subindex: {subindex}')
+            self.logger.error(f'NodeID: {nodeId}')
+            self.logger.error(f'Abort code: {abort_code}')
+            self.cnt['SDO read abort'] += 1
+            return None
+
+        n_data_bytes = 4 - ((ret[0] >> 2) & 0b11) if ret[0] != 0x42 else 4
+        data = []
+        for i in range(n_data_bytes):
+            data.append(ret[4 + i])
+        self.logger.info('Got data %s', data)
+
+        return int.from_bytes(data, 'little')
+    
         
     def read_sdo_can_thread(self, nodeId=None, index=None, subindex=None, timeout=100, MAX_DATABYTES=8, SDO_TX=None, SDO_RX=None, cobid=None):
         """Read an object via |SDO|
@@ -415,6 +518,7 @@ class CanWrapper(object):
         msg[0] = 0x40
         msg[1], msg[2] = index.to_bytes(2, 'little')
         msg[3] = subindex
+        #can_config.sem_config_block.acquire()
         try:
             self.write_can_message(cobid, msg, timeout=timeout)
         except CanGeneralError:
@@ -615,8 +719,9 @@ class CanWrapper(object):
             msg = can.Message(arbitration_id=cobid, data=data, is_extended_id=False, is_error_frame=False)
             try:
                 self.__ch.send(msg, timeout)
-            except:  # can.CanError:
+            except can.CanError as e:
                 self.logger.error("An Error occurred, The bus is not active")
+                self.logger.error(f"{e}")
                 # self.hardware_config(str(self.__channel), self.__interface)
             
     def hardware_config(self, bitrate, channel, interface, sjw,samplepoint,tseg1,tseg2):

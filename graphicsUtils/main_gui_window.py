@@ -152,13 +152,13 @@ class MainWindow(QMainWindow):
         
         defaultSettingsWindowLayout = QGridLayout()
         __interfaceItems = self.__interfaceItems
-        __channelList = self.__channelPorts
+        __channelList = self.get_channelPorts()
         
         channelLabel = QLabel()
         channelLabel.setText(" CAN Channels")
         self.channelComboBox = QComboBox()
         self.channelComboBox.setStatusTip('Possible ports as defined in the main_cfg.yml file')
-        for item in list(__channelList): self.channelComboBox.addItem(item)  
+        for port in list(__channelList): self.channelComboBox.addItem(str(port))  
 
         interfaceLabel = QLabel()
         interfaceLabel.setText("  Interfaces")
@@ -661,15 +661,15 @@ class MainWindow(QMainWindow):
             
             # Save the settings into a file
             dict_file = {"CAN_Interfaces": _interface,
-                       "channel" + _channels[0]: {"bitrate":_bitrate,
-                                                 "channel":_channels[0] ,
-                                                 "samplePoint":_sample_point,
-                                                 "SJW":_sjw,
-                                                 "tseg1":_tseg1,
-                                                 "tseg2":_tseg2,
-                                                 "ipAddress":str(_ipAddress),
-                                                 "timeout":_timeout}                             
-                                                         }
+                       "channel" + str(_channels[0]): {"bitrate":_bitrate,
+                                                       "channel":_channels[0] ,
+                                                       "samplePoint":_sample_point,
+                                                       "SJW":_sjw,
+                                                       "tseg1":_tseg1,
+                                                       "tseg2":_tseg2,
+                                                       "ipAddress":str(_ipAddress),
+                                                       "timeout":_timeout}                             
+                                                                 }
             self.logger.info("Saving CAN settings to the file %s" % lib_dir + config_dir + _interface + "_CANSettings.yml") 
             self.logger.info("Please restart your bus from the tools menu (Interface >> %s >> Reset_%s_interface )to apply the new settings " % (_interface, _interface))
             AnalysisUtils().dump_yaml_file(directory=lib_dir + config_dir , file=_interface + "_CANSettings.yml", loaded=dict_file)
@@ -1282,7 +1282,7 @@ class MainWindow(QMainWindow):
     def show_CANSettingsWindow(self):
         self.SettingsWindow = QMainWindow()
         _interfaceItems = self.__interfaceItems
-        _channelList = self.__channelPorts
+        _channelList = self.get_channelPorts()
         child = child_window.ChildWindow(parent = self.SettingsWindow)
         self.interfaceComboBox, self.channelSettingsComboBox , self.ipBox = child.can_settings_child_window(self.SettingsWindow, 
                                                                                                                     interfaceItems = _interfaceItems,

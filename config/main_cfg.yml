@@ -8,5 +8,5 @@ Application:
   multi_mode: False
 
 channel_ports:
-  '0':
-  '1':
+  0:
+  1:
