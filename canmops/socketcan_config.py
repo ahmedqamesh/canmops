@@ -94,10 +94,14 @@ class CanConfig(WATCHCan):
         if channel == self.can_0_settings['channel']:
             if self._busOn0:
                 self.ch0.shutdown()
-            subprocess.call(['sh', './can_setup.sh', "can0", f"{self.can_0_settings['bitrate']}",
-                             f"{self.can_0_settings['tseg1']}", f"{self.can_0_settings['tseg2']}",
-                             f"{self.can_0_settings['SJW']}", f"{self.can_0_settings['samplePoint']}"],
-                            cwd=lib_dir+"/"+config_dir)
+            # subprocess.call(['sh', './can_setup.sh', "can0", f"{self.can_0_settings['bitrate']}",
+            #                  f"{self.can_0_settings['tseg1']}", f"{self.can_0_settings['tseg2']}",
+            #                  f"{self.can_0_settings['SJW']}", f"{self.can_0_settings['samplePoint']}"],
+            #                 cwd=lib_dir+"/"+config_dir)
+                subprocess.call(['sh', './socketcan_wrapper_enable.sh', f"{self.can_0_settings['bitrate']}",
+                                 f"{self.can_0_settings['samplePoint']}",f"{self.can_0_settings['SJW']}",f"{self.can_0_settings['channel']}","can",
+                                 f"{self.can_0_settings['tseg1']}", f"{self.can_0_settings['tseg2']}"],
+                                 cwd=lib_dir+"/canmops")
             self.set_channel_connection(self.can_0_settings['channel'])
         elif channel == self.can_1_settings['channel']:
             if self._busOn1:

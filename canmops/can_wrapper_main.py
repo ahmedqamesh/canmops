@@ -23,6 +23,7 @@ from threading import Thread, Event, Lock
 import numpy as np
 from pip._internal.cli.cmdoptions import pre
 from lxml.html.builder import PRE
+from _socket import socket
 try:
     from .analysis import Analysis
     from .logger_main import Logger
@@ -89,9 +90,9 @@ class CanWrapper(READSocketcan):#Instead of object
                  console_loglevel=logging.INFO):
        
         super(CanWrapper, self).__init__()  # super keyword to call its methods from a subclass:
-        #can_config.can_setup(channel=0)
-        #can_config.can_setup(channel=1)
-        #can_config.start()
+        # if interface == "socketcan":
+        #     can_config.can_setup(channel=channel)
+        #     can_config.start()
         self.start()
         can.util.set_logging_level('warning')
         
@@ -733,12 +734,12 @@ class CanWrapper(READSocketcan):#Instead of object
             _bus_type = "can"
             _can_channel = _bus_type + channel
             self.logger.info('Configure CAN hardware drivers for channel %s' % _can_channel)
-            os.system(". " + rootdir + "/socketcan_wrapper_enable.sh %i %s %s %s %s" % (bitrate, samplepoint, sjw, _can_channel, _bus_type))
+            os.system(". " + rootdir + "/socketcan_wrapper_enable.sh %i %s %s %s %s %s %s" % (bitrate, samplepoint, sjw, _can_channel, _bus_type,tseg1,tseg2))
         elif interface == "virtual":
             _bus_type = "vcan"
             _can_channel = _bus_type + channel
             self.logger.info('Configure CAN hardware drivers for channel %s' % _can_channel)
-            os.system(". " + rootdir + "/socketcan_wrapper_enable.sh %i %s %s %s %s" % (bitrate, samplepoint, sjw, _can_channel, _bus_type))
+            os.system(". " + rootdir + "/socketcan_wrapper_enable.sh %i %s %s %s %s %s %s" % (bitrate, samplepoint, sjw, _can_channel, _bus_type,tseg1,tseg2))
         else:
             _can_channel = channel
         self.logger.info('%s[%s] Interface is initialized....' % (interface,_can_channel))

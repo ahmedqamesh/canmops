@@ -704,12 +704,12 @@ class MainWindow(QMainWindow):
             _bus_type = "can"
             _can_channel = _bus_type + channel
             self.logger.info('Configure CAN hardware drivers for channel %s' % _can_channel)
-            os.system(". " + lib_dir + "canmops/socketcan_wrapper_enable.sh %i %s %s %s %s" % (bitrate, samplepoint, sjw, _can_channel, _bus_type))
+            os.system(". " + lib_dir + "/canmops/socketcan_wrapper_enable.sh %i %s %s %s %s %s %s" % (bitrate, samplepoint, sjw, _can_channel, _bus_type,tseg1,tseg2))
         elif interface == "virtual":
             _bus_type = "vcan"
             _can_channel = _bus_type + channel
             self.logger.info('Configure CAN hardware drivers for channel %s' % _can_channel)
-            os.system(". " + lib_dir+ "canmops/socketcan_wrapper_enable.sh %i %s %s %s %s" % (bitrate, samplepoint, sjw, _can_channel, _bus_type))
+            os.system(". " + lib_dir + "/canmops/socketcan_wrapper_enable.sh %i %s %s %s %s %s %s" % (bitrate, samplepoint, sjw, _can_channel, _bus_type,tseg1,tseg2))
         else:
             _can_channel = channel
         self.logger.info('%s[%s] Interface is initialized....' % (interface,_can_channel))
