@@ -9,7 +9,7 @@ import os
 from .logger_main import Logger
 from .analysis_utils import AnalysisUtils
 from .watchdog_can_interface import WATCHCan
-
+import time
 config_file = "socketcan_CANSettings.yml"
 rootdir = os.path.dirname(os.path.abspath(__file__))
 config_dir = "config"
@@ -22,7 +22,7 @@ class CanConfig(WATCHCan):
         self._file = file
         self._directory = directory
         #self.logger = logging.getLogger('CAN config')
-        self.logger = Logger().setup_main_logger(name = " CAN Config",console_loglevel=logging.INFO, logger_file = False)
+        self.logger = Logger().setup_main_logger(name = "CAN Config ",console_loglevel=logging.INFO, logger_file = False)
         
         _canSettings = AnalysisUtils().open_yaml_file(file=self._file, directory=self._directory)
         self._can_channels = list(_canSettings)[1:]#['channel0', 'channel1']
@@ -87,22 +87,26 @@ class CanConfig(WATCHCan):
         except can.CanError:
             return can.CanError
 
-    def can_setup(self, channel: int):
+    def can_setup(self, channel: int, interface : str):
         self.logger.info("Resetting CAN Interface as soon as communication threads are finished")
         self.sem_config_block.acquire()
         self.logger.info("Resetting CAN Interface")
+        self.set_interface(interface)
         if channel == self.can_0_settings['channel']:
             if self._busOn0:
                 self.ch0.shutdown()
-            # subprocess.call(['sh', './can_setup.sh', "can0", f"{self.can_0_settings['bitrate']}",
-            #                  f"{self.can_0_settings['tseg1']}", f"{self.can_0_settings['tseg2']}",
-            #                  f"{self.can_0_settings['SJW']}", f"{self.can_0_settings['samplePoint']}"],
-            #                 cwd=lib_dir+"/"+config_dir)
-                subprocess.call(['sh', './socketcan_wrapper_enable.sh', f"{self.can_0_settings['bitrate']}",
-                                 f"{self.can_0_settings['samplePoint']}",f"{self.can_0_settings['SJW']}",f"{self.can_0_settings['channel']}","can",
-                                 f"{self.can_0_settings['tseg1']}", f"{self.can_0_settings['tseg2']}"],
-                                 cwd=lib_dir+"/canmops")
-            self.set_channel_connection(self.can_0_settings['channel'])
+                subprocess.Popen(["sudo", 'bash', 'can_setup.sh', "can0", f"{self.can_0_settings['bitrate']}",
+                                 f"{self.can_0_settings['tseg1']}", f"{self.can_0_settings['tseg2']}",
+                                 f"{self.can_0_settings['SJW']}", f"{self.can_0_settings['samplePoint']}"],
+                                cwd=lib_dir+"/"+config_dir)
+                # subprocess.call(['sh', './socketcan_wrapper_enable.sh', f"{self.can_0_settings['bitrate']}",
+                #                  f"{self.can_0_settings['samplePoint']}",f"{self.can_0_settings['SJW']}",f"{self.can_0_settings['channel']}","can",
+                #                  f"{self.can_0_settings['tseg1']}", f"{self.can_0_settings['tseg2']}"],
+                #                  cwd=lib_dir+"/canmops")
+                # os.system(". " + lib_dir+"/canmops" + "/socketcan_wrapper_enable.sh %s %s %s %s %s %s %s" % ( f"{self.can_0_settings['bitrate']}",
+                #                   f"{self.can_0_settings['samplePoint']}",f"{self.can_0_settings['SJW']}","can0","can",
+                #                   f"{self.can_0_settings['tseg1']}", f"{self.can_0_settings['tseg2']}"))
+            ch_set = self.set_channel_connection(self.can_0_settings['channel'],interface )
         elif channel == self.can_1_settings['channel']:
             if self._busOn1:
                 self.ch1.shutdown()
@@ -110,13 +114,14 @@ class CanConfig(WATCHCan):
                              f"{self.can_1_settings['tseg1']}", f"{self.can_1_settings['tseg2']}",
                              f"{self.can_1_settings['SJW']}", f"{self.can_1_settings['samplePoint']}"],
                             cwd=lib_dir+"/"+config_dir)
-            self.set_channel_connection(self.can_1_settings['channel'])
+            ch_set = self.set_channel_connection(self.can_1_settings['channel'])
 
-        self.logger.info(f"Channel {channel} was set")
+        self.logger.info(f"Channel {channel} is set")
         self.sem_config_block.release()
         self.logger.info("Resetting of CAN Interface finished. Returning to communication.")
-
-    def set_channel_connection(self, channel: int):
+        return ch_set
+    
+    def set_channel_connection(self, channel: int, interface : str):
         """Bind |CAN| socket
            Set the internal attribute for the |CAN| channel
            The function is important to initialise the channel
@@ -129,6 +134,7 @@ class CanConfig(WATCHCan):
                 self.ch0.RECV_LOGGING_LEVEL = 0
                 self._busOn0 = True
                 self.logger.info(f'Setting of channel {channel} worked.')
+                ch_set = self.ch0
             elif channel == self.can_1_settings['channel']:
                 channel = "can" + str(self.can_1_settings['channel'])
                 self.ch1 = can.interface.Bus(bustype=self._interface, channel=channel,
@@ -136,11 +142,15 @@ class CanConfig(WATCHCan):
                 self.ch1.RECV_LOGGING_LEVEL = 0
                 self._busOn1 = True
                 self.logger.info(f'Setting of channel {channel} worked.')
+                ch_set = self.ch1
             else:
                 self.logger.error(f"Setting of Channel {channel} did not worked because of missing reference in dict")
+                ch_set =  None
         except Exception as e:
             self.logger.exception(e)
             self.logger.error(f'Error by setting channel {channel}.')
+        return ch_set
+        
 
     def stop_channel(self, channel: int):
         """Close |CAN| channel
@@ -185,7 +195,13 @@ class CanConfig(WATCHCan):
                 self.logger.info(f'Reset of Channel {channel} finished.')
         else:
             self.logger.error(f"Restart of Channel {channel} did not worked because of missing reference in dict")
-
+    def set_interface(self, x):
+        self.__interface = x
+        
+    def get_interface(self):
+        """:obj:`str` : Vendor of the CAN interface. Possible values are
+        ``'Kvaser'`` and ``'AnaGate'``."""
+        return self.__interface
 
 can_config = CanConfig()
 can_config.watchdog_notifier.subscribe("restart Interface", can_config.can_setup)

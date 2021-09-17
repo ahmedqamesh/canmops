@@ -25,27 +25,24 @@ config_dir = "config/"
 
 
 class MultiDeviceWindow(QWidget): 
-
     def __init__(self, console_loglevel=logging.INFO):
        super(MultiDeviceWindow, self).__init__(None)
        self.logger = Logger().setup_main_logger(name=" NET.  GUI ", console_loglevel=console_loglevel)
        self.MenuBar = menu_window.MenuWindow(self)
-       self.MOPSChildWindow = mops_child_window.MopsChildWindow(self, opcua_config="opcua_config.yaml")
+       self.MOPSChildWindow = mops_child_window.MopsChildWindow(self, opcua_config="MOPS_Net_cfg.yaml")
        self.DataMonitoring = data_monitoring.DataMonitoring(self)
        self.update_opcua_config_box()
        # get Default info 
-       self.__cic_num = 4
-       self.__bus_num = 2
+       self.__bus_num = 4
        self.__mops_num = 4
 
     def update_opcua_config_box(self):
-        self.conf_cic = AnalysisUtils().open_yaml_file(file=config_dir + "opcua_config.yaml", directory=lib_dir)
+        self.mops_net = AnalysisUtils().open_yaml_file(file=config_dir + "MOPS_Net_cfg.yaml", directory=lib_dir)
 
     def Ui_ApplicationWindow(self):
         self.mopshubWindow = QMainWindow()
-        self.mopshub_for_beginner_window(childWindow=self.mopshubWindow)
+        self.mops_multi_window(childWindow=self.mopshubWindow)
         self.mopshubWindow.show()
-        # dummy way of producing a fake opcua
         self.initiate_mopshub_timer()
         
     def update_device_box(self):
@@ -57,7 +54,7 @@ class MultiDeviceWindow(QWidget):
         deviceName, version, icon_dir,nodeIds, self.__dictionary_items, self.__adc_channels_reg,\
         self.__adc_index, self.__chipId, self.__index_items, self.__conf_index, self.__mon_index, self.__resistor_ratio, self.__refresh_rate, self.__ref_voltage   = mops_child.configure_devices(conf)       
     
-    def initiate_adc_timer(self, period=None,cic=None, mops=None, port=None):
+    def initiate_adc_timer(self, period=None, mops=None, port=None):
         '''
         The function will  update the GUI with the ADC data ach period in ms.
         '''  
@@ -65,7 +62,7 @@ class MultiDeviceWindow(QWidget):
         self.logger.notice("Reading ADC data...")
         self.__monitoringTime = time.time()         
         self.ADCDummytimer.setInterval(period)
-        self.ADCDummytimer.timeout.connect(lambda: self.read_adc_channels(int(cic),int(port),int(mops)))
+        self.ADCDummytimer.timeout.connect(lambda: self.read_adc_channels(int(port),int(mops)))
         self.ADCDummytimer.start()
 
     def stop_adc_timer(self):
@@ -82,7 +79,7 @@ class MultiDeviceWindow(QWidget):
         '''
         The function will  update the GUI with the ADC data ach period in ms.
         '''  
-        self.CicDummytimer = QtCore.QTimer(self)
+        self.NetDummytimer = QtCore.QTimer(self)
         self.logger.notice("Reading ADC data...")
         self.__monitoringTime = time.time()
         # A possibility to save the data into a file
@@ -94,21 +91,21 @@ class MultiDeviceWindow(QWidget):
         writer = csv.DictWriter(self.out_file_csv, fieldnames=fieldnames)
         writer.writeheader()            
         
-        self.CicDummytimer.setInterval(period)
-        self.CicDummytimer.timeout.connect(self.set_adc_cic)
-        self.CicDummytimer.start()
+        self.NetDummytimer.setInterval(period)
+       # self.NetDummytimer.timeout.connect(self.set_adc_cic)
+        self.NetDummytimer.start()
 
     def stop_mopshub_timer(self):
         '''
         The function will  stop the adc_timer.
         '''        
         try:
-            self.CicDummytimer.stop()
-            self.logger.notice("Stopping CIC timer...")
+            self.NetDummytimer.stop()
+            self.logger.notice("Stopping NET timer...")
         except Exception:
             pass
             
-    def mopshub_for_beginner_window(self, childWindow):
+    def mops_multi_window(self, childWindow):
         # create MenuBar
         self.MenuBar = menu_window.MenuWindow(childWindow)
         self.MenuBar.create_opcua_menuBar(childWindow)
@@ -118,51 +115,46 @@ class MultiDeviceWindow(QWidget):
         childWindow.setWindowIcon(QtGui.QIcon("graphicsUtils/icons/icon_opcua.png"))
         childWindow.adjustSize()    
         bus_num = self.__bus_num
-        cic_num = self.__cic_num
         mops_num = self.__mops_num
-        #frame_width =550 * cic_num/2
-        #frame_length =350 * cic_num/2 +200
-        #childWindow.setFixedSize(frame_width,frame_length)
-        # childWindow.setGeometry(200, 100, 50, 200)
         plotframe = QFrame()  
         childWindow.setCentralWidget(plotframe)
-       # childWindow.resize(childWindow.sizeHint().width,childWindow.size().height() + plotframe.sizeHint().height()) 
         mopshubGridLayout = QGridLayout()
-        #  Prepare a cic window
+        #  Prepare a group window
+        self.en_button          = [k for k in np.arange(bus_num)] 
+        self.statusBoxVar       = [k for k in np.arange(bus_num)]
+        self.bus_alarm_led      = [k for k in np.arange(bus_num)]
+       
+        self.channelValueBox    = [[ch for ch in np.arange(mops_num)]] * bus_num
+        self.trendingBox        = [[ch for ch in np.arange(mops_num)]] * bus_num
+        self.monValueBox        = [[ch for ch in np.arange(mops_num)]] * bus_num
+        self.confValueBox       = [[ch for ch in np.arange(mops_num)]] * bus_num
+        self.mops_alarm_led     = [[m  for m  in np.arange(mops_num)]] * bus_num
+    
+        NetGridLayout = QGridLayout()
+        
+        self.mops_alarm_led = self.get_bus_mops_led(bus_num = bus_num)
+        for b in np.arange(bus_num): 
+            BusGroupBox = QGroupBox("Port " + str(b))
+            BusGroupBox.setStyleSheet("QGroupBox { font-weight: bold;font-size: 10px; background-color: #eeeeec; } ")
+            self.en_button[b], self.bus_alarm_led[b], self.statusBoxVar[b] = self.def_bus_variables(b = b)
+            BusGridLayout = self.def_bus_frame(b)
+            BusGroupBox.setLayout(BusGridLayout)
+            NetGridLayout.addWidget(BusGroupBox,0, b, 1, 1)
 
-        
-        self.en_button          = [[k for k in np.arange(bus_num)]] * cic_num
-        self.statusBoxVar       = [[k for k in np.arange(bus_num)]] * cic_num
-        self.bus_alarm_led      = [[k for k in np.arange(bus_num)]] * cic_num
-        self.Adc_cic_channel    = ["    UH", "    UL", " VCAN", " Temp", "  GND"]
-        self.adc_text_box       = [[[ch for ch in self.Adc_cic_channel]] * bus_num] * cic_num 
-        self.channelValueBox  = [[[ch for ch in np.arange(mops_num)]] * bus_num] * cic_num 
-        self.trendingBox= [[[ch for ch in np.arange(mops_num)]] * bus_num] * cic_num
-        self.monValueBox= [[[ch for ch in np.arange(mops_num)]] * bus_num] * cic_num
-        self.confValueBox= [[[ch for ch in np.arange(mops_num)]] * bus_num] * cic_num
-        
-        self.mops_alarm_led     = [[[m for m in np.arange(mops_num)]] * bus_num] * cic_num   
-              
-        cic_row_len = int(cic_num / 2)
-        for c in np.arange(cic_num):
-            CICGroupBox = self.def_cic_frame(c)
-            if (c) < cic_row_len:
-                mopshubGridLayout.addWidget(CICGroupBox, 1, cic_row_len + (c - cic_row_len))
-            else:
-                mopshubGridLayout.addWidget(CICGroupBox, 2, c - cic_row_len)   
+        mopshubGridLayout.addLayout(NetGridLayout, 0, 0)
         # Prepare a log window
         self.textOutputWindow()        
 
         #close button
         buttonLayout = QHBoxLayout() 
+        buttonLayout.addSpacing(800)
         close_button = QPushButton("Close")
         close_button.setIcon(QIcon('graphicsUtils/icons/icon_close.png'))
         close_button.clicked.connect(self.stop_opcua)
         
-        buttonLayout.addSpacing(300)
         buttonLayout.addWidget(close_button)
-        mopshubGridLayout.addWidget(self.textGroupBox, cic_num + 2, 0, cic_row_len, cic_row_len)
-        mopshubGridLayout.addLayout(buttonLayout, cic_num + 4,1, cic_row_len, cic_row_len)
+        mopshubGridLayout.addWidget(self.textGroupBox, 1, 0, 1, 1)
+        mopshubGridLayout.addLayout(buttonLayout, 2,0)
         plotframe.setLayout(mopshubGridLayout)
         self.MenuBar.create_statusBar(childWindow)
         QtCore.QMetaObject.connectSlotsByName(childWindow)
@@ -175,53 +167,54 @@ class MultiDeviceWindow(QWidget):
         
         self.logger.warning('Closing the GUI.')
         sys.exit()
-                
-    def def_cic_frame(self, c):
-        # Define CIC Layout
-        bus_num = self.__bus_num
-        cic_num = self.__cic_num
-        CICGridLayout = QGridLayout()
-        CICGroupBox = QGroupBox("        CIC" + str(c))
-        CICGroupBox.setStyleSheet("QGroupBox { font-weight: bold;font-size: 16px; background-color: #eeeeec; } ") 
-        _ , self.en_button[c], self.bus_alarm_led[c], self.statusBoxVar[c] =  self.def_bus_variables(c,bus_num)
-        self.adc_text_box[c] = self.get_bus_adc_text_box()
-        self.mops_alarm_led[c] = self.get_bus_mops_led(c)
-        for b in np.arange(bus_num): 
-            true_bus_number = self.get_true_bus_number(b, c)
-            BusGroupBox = self.def_bus_frame(c, b,true_bus_number)
-            CICGridLayout.addWidget(BusGroupBox, 3, b, 1, 1)
-        CICGroupBox.setLayout(CICGridLayout)
-        return CICGroupBox
+
+    def def_bus_variables(self, b):  
+        icon = QIcon()
+        icon.addPixmap(QPixmap('graphicsUtils/icons/icon_connect.jpg'), QIcon.Normal, QIcon.On)
+        icon.addPixmap(QPixmap('graphicsUtils/icons/icon_disconnect.jpg'), QIcon.Normal, QIcon.Off)
+        #for b in np.arange(bus_num):
+        en_button = QPushButton("")
+        en_button.setIcon(icon)
+        en_button.setStatusTip("b" + str(b))
+        en_button.setObjectName("b" + str(b))
+        en_button.setCheckable(True)
+        en_button.clicked.connect(lambda: self.set_bus_enable(b))
+
+        bus_alarm_led = self.def_alert_leds(bus_alarm=True, mops=None, icon_state=False)     
+        statusBoxVar= QLineEdit()
+        statusBoxVar.setStyleSheet("background-color: white; border: 1px inset black;")
+        statusBoxVar.setReadOnly(True) 
+        statusBoxVar.setFixedWidth(40)
+        statusBoxVar.setText("OFF")              
+        
+        return en_button, bus_alarm_led, statusBoxVar
+
        
-    def def_bus_frame(self, c, b, true_bus_number): 
+    def def_bus_frame(self, b): 
         icon = QIcon()
         icon.addPixmap(QPixmap('graphicsUtils/icons/icon_connect.jpg'), QIcon.Normal, QIcon.On)
         icon.addPixmap(QPixmap('graphicsUtils/icons/icon_disconnect.jpg'), QIcon.Normal, QIcon.Off)
         BusGridLayout = QGridLayout()  
         StatLayout = QGridLayout()  
-        mopsBottonLayout = self.def_mops_frame(c,b,true_bus_number)
+        mopsBottonLayout = self.def_mops_frame(0,b)
        
-        BusGroupBox = QGroupBox("Port " + str(true_bus_number))
-        BusGroupBox.setStyleSheet("QGroupBox { font-weight: bold;font-size: 10px; background-color: #eeeeec; } ")
-        
         statusLabelVar = QLabel()
         statusLabelVar.setStyleSheet("QLabel { font-weight: font-size: 8px; background-color:  #eeeeec; } ") 
         statusLabelVar.setText("Bus Status:")   
+        
         itemSpacer = QSpacerItem(50, 10, QtWidgets.QSizePolicy.Minimum, QtWidgets.QSizePolicy.Expanding)            
         StatLayout.addWidget(statusLabelVar, b, 0)
-        StatLayout.addWidget(self.statusBoxVar[c][b], b, 1)
-        StatLayout.addWidget(self.bus_alarm_led[c][b], b, 2)
-        StatLayout.addWidget(self.en_button[c][b], b, 3)   
+        StatLayout.addWidget(self.statusBoxVar[b], b, 1)
+        StatLayout.addWidget(self.bus_alarm_led[b], b, 2)
+        StatLayout.addWidget(self.en_button[b], b, 3)   
         StatLayout.addItem(itemSpacer, b, 4) 
         
-        BusGridLayout.addLayout(StatLayout, 1, 0, 1, 2)
-        BusGridLayout.addLayout(mopsBottonLayout, 2, 0, 1, 1)
-        BusGroupBox.setLayout(BusGridLayout)
-        return BusGroupBox
+        BusGridLayout.addLayout(StatLayout, 0, 0, 1, 1)
+        BusGridLayout.addLayout(mopsBottonLayout, 1, 0, 1, 1)
+        return BusGridLayout
 
     
-    def def_alert_leds(self, bus_alarm=None, mops_alarm=None, cic=None, mops=None, bus = None, icon_state=False):
-        cic_num = self.__cic_num
+    def def_alert_leds(self, bus_alarm=None, mops_alarm=None, mops=None, bus = None, icon_state=False):
         if mops_alarm is True:
             icon_red = "graphicsUtils/icons/icon_disconnected_device.png" #icon_red.gif"
             icon_green = "graphicsUtils/icons/icon_green.gif"
@@ -236,16 +229,15 @@ class MultiDeviceWindow(QWidget):
         if bus_alarm is True:
             icon_red = "graphicsUtils/icons/icon_red.png"
             icon_green = "graphicsUtils/icons/icon_green.png"
-            alarm_led = [0] * cic_num
-            alarm_led[cic] = QLabel() 
+            alarm_led = QLabel() 
             if icon_state:
                 pixmap = QPixmap(icon_green)
             else: 
                 pixmap = QPixmap(icon_red)    
-            alarm_led[cic].setPixmap(pixmap.scaled(20, 20))            
-            return alarm_led[cic] 
+            alarm_led.setPixmap(pixmap.scaled(20, 20))            
+            return alarm_led
         
-    def def_mops_frame(self, c, b,true_bus_number):
+    def def_mops_frame(self, c, b):
         # # Details for each MOPS
         mops_num = 4
         icon_mops = 'graphicsUtils/icons/icon_mops.png'
@@ -253,26 +245,24 @@ class MultiDeviceWindow(QWidget):
         mopsBottonLayout = QGridLayout()
         self.update_device_box()
         for m in np.arange(mops_num):
-            status = self.check_dut(c, b, m)
+            status = self.check_dut(b, m)
             mopsBotton[m] = QPushButton("  [" + str(m) + "]")
             mopsBotton[m].setObjectName("C" + str(c) + "M" + str(m) + "P" + str(b))
             mopsBotton[m].setIcon(QIcon(icon_mops))
-            mopsBotton[m].setStatusTip("CIC NO." + str(c) + " MOPS No." + str(m) + " Port No." + str(true_bus_number))
+            mopsBotton[m].setStatusTip(" MOPS No." + str(m) + " Port No." + str(b))
             mopsBotton[m].clicked.connect(self.get_mops_device)
             if status:        
                 pass
             else:
                 mopsBotton[m].setEnabled(False)   
-            mopsBottonLayout.addWidget(self.mops_alarm_led[c][b][m], m + 3, 0, 1, 1)
-            mopsBottonLayout.addWidget(mopsBotton[m], m + 3, 1, 1, 1) 
+            mopsBottonLayout.addWidget(self.mops_alarm_led[b][m], m + 3, 0)
+            mopsBottonLayout.addWidget(mopsBotton[m], m + 3, 1) 
         return mopsBottonLayout
     
-    def get_bus_mops_led(self,c):
-        
-        bus_num =self.__bus_num 
+    def get_bus_mops_led(self,bus_num =     None):
         bus_mops_leds =  [[k for k in np.arange(bus_num)]]*self.__mops_num
         for b in np.arange(bus_num):
-            bus_mops_leds[b] = self.def_mops_led(b,c)
+            bus_mops_leds[b] = self.def_mops_led(b,0)
         return bus_mops_leds
     
     def def_mops_led(self,b,c):
@@ -280,58 +270,11 @@ class MultiDeviceWindow(QWidget):
         mops_led = [k for k in np.arange(mops_num)]
         for m in np.arange(mops_num):
             mops_led[m] = QLabel()
-            status = self.check_dut(c, b, m)
-            mops_alarm_led = self.def_alert_leds(mops_alarm=True, cic=c, mops=m, bus = b, icon_state=status)   
+            status = self.check_dut(b, m)
+            mops_alarm_led = self.def_alert_leds(mops_alarm=True, mops=m, bus = b, icon_state=status)   
             mops_led[m].setMovie(mops_alarm_led)    
         return mops_led 
-                 
-    def get_bus_adc_text_box(self): 
-        bus_num =self.__bus_num 
-        adctextBox =  [[k for k in np.arange(bus_num)]]*len(self.Adc_cic_channel)
-        for b in np.arange(bus_num):
-            adctextBox[b] = self.def_adc_text_box()
-        return adctextBox
-    
-    def def_adc_text_box(self):
-        adctextBox = [k for k in np.arange(len(self.Adc_cic_channel))]
-        for ch in np.arange(len(self.Adc_cic_channel)):
-            adctextBox[ch] = QLineEdit(str(ch))
-            adctextBox[ch].setStyleSheet("background-color: white; border: 1px inset black;")
-            adctextBox[ch].setReadOnly(True) 
-            adctextBox[ch].setFixedWidth(40)
-        return adctextBox                     
-
-    def def_bus_variables(self, cic, bus_num):
-        en_button = [k for k in np.arange(bus_num) ]
-        statusBoxVar = [k for k in np.arange(bus_num) ]
-        bus_alarm_led = [k for k in np.arange(bus_num) ]
-        statusLabelVar = [k for k in np.arange(bus_num) ]        
-        icon = QIcon()
-        icon.addPixmap(QPixmap('graphicsUtils/icons/icon_connect.jpg'), QIcon.Normal, QIcon.On)
-        icon.addPixmap(QPixmap('graphicsUtils/icons/icon_disconnect.jpg'), QIcon.Normal, QIcon.Off)
-        for b in np.arange(bus_num):
-            true_bus_number = self.get_true_bus_number(b, cic)
-            en_button[b] = QPushButton("")
-            en_button[b].setIcon(icon)
-            en_button[b].setStatusTip("C" + str(cic) + "_b" + str(true_bus_number))
-            en_button[b].setObjectName("C" + str(cic) + "_b" + str(true_bus_number))
-            en_button[b].setCheckable(True)
-            en_button[b].clicked.connect(lambda: self.set_bus_enable(cic, true_bus_number))
-
-            bus_alarm_led[b] = self.def_alert_leds(bus_alarm=True, cic=b, mops=None, icon_state=False)     
-            statusBoxVar[b] = QLineEdit()
-            statusBoxVar[b].setStyleSheet("background-color: white; border: 1px inset black;")
-            statusBoxVar[b].setReadOnly(True) 
-            statusBoxVar[b].setFixedWidth(40)
-            statusBoxVar[b].setText("OFF")    
-            
-            statusLabelVar[b] = QLabel()
-            statusLabelVar[b].setStyleSheet("QLabel { font-weight: font-size: 8px; background-color:  #eeeeec; } ") 
-            statusLabelVar[b].setText("Bus Status:")               
-        return statusLabelVar, en_button, bus_alarm_led, statusBoxVar
-
-            
-                             
+                                            
     def textOutputWindow(self):
         '''
         The function defines the GroupBox output window for the CAN messages
@@ -345,20 +288,19 @@ class MultiDeviceWindow(QWidget):
         self.textGroupBox.setLayout(textOutputWindowLayout)
             
     # show windows
-    def show_deviceWindow(self, cic=None, mops=None, port=None):
+    def show_deviceWindow(self, mops=None, port=None):
         deviceWindow = QMainWindow(self)
-        _device_name = "CIC:" + cic + ", Port:"+port+", MOPS:"+mops
+        _device_name = "Port:"+port+", MOPS:"+mops
         adc_channels_num = 33
-        self.channelValueBox[int(cic)][int(port)][int(mops)], self.trendingBox[int(cic)][int(port)][int(mops)] , self.monValueBox[int(cic)][int(port)][int(mops)] , self.confValueBox[int(cic)][int(port)][int(mops)], _ = self.MOPSChildWindow.device_child_window(deviceWindow,  
+        self.channelValueBox[int(port)][int(mops)], self.trendingBox[int(port)][int(mops)] , self.monValueBox[int(port)][int(mops)] , self.confValueBox[int(port)][int(mops)], _ = self.MOPSChildWindow.device_child_window(deviceWindow,  
                                                                                                                                                    device=_device_name, 
-                                                                                                                                                   cic=cic, 
+                                                                                                                                                   cic=str(0), 
                                                                                                                                                    mops=mops, 
                                                                                                                                                    port=port, 
                                                                                                                                                    mainWindow = self)
         self.graphWidget = self.DataMonitoring.initiate_trending_figure(n_channels=adc_channels_num)    
-        self.initiate_adc_timer(period = 500, cic=cic, mops=mops, port=port)
+        self.initiate_adc_timer(period = 500, mops=mops, port=port)
         deviceWindow.show()
-
 
     # Action windows     
     def set_textBox_message(self, comunication_object=None, msg=None):
@@ -386,54 +328,41 @@ class MultiDeviceWindow(QWidget):
     def clear_textBox_message(self):
          self.textBox.clear()
         
-    def check_dut(self, c, b, m):
+    def check_dut(self, b, m):
         try:
-            port_num = self.conf_cic["CIC " + str(c)]["MOPS " + str(m)]["Port"]
+            port_num = self.mops_net["Port " + str(b)]["MOPS " + str(m)]["Port"]
             if port_num == b:
                 status = True
             else:
                 status = False
-                msg = "CIC " + str(c), "MOPS " + str(m), "Port " + str(b), ": Not Found"
-                # self.set_textBox_message(comunication_object = "ErrorFrame" , msg = str(msg)) 
+                msg = "MOPS " + str(m), "Port " + str(b), ": Not Found"
+                self.set_textBox_message(comunication_object = "ErrorFrame" , msg = str(msg)) 
         except:
             status = False
         return status
-             
 
-    def get_true_bus_number(self, bus_id, cic_id):
-        true_bus_number = (33 - (bus_id + 1) - (2 * cic_id))
-        return true_bus_number
-    
-    def get_reverse_bus_number(self, true_bus_number, cic_id):
-        bus_id = -1 - (true_bus_number + (2 * cic_id) - 33)
-        return str(bus_id)
-    
-    def set_bus_enable(self, c, b):
+    def set_bus_enable(self, b):
         sender = self.sender().objectName()
-        _cic_id = sender[1:-4]
-        _true_port_id = sender[4:]
-        _port_id = self.get_reverse_bus_number(int(_true_port_id), int(_cic_id))
         print(sender, "is clicked")
-        en_button_check = self.en_button[int(_cic_id)][int(_port_id)].isChecked()
+        en_button_check = self.en_button[int(b)].isChecked()
         if en_button_check:
             print("Checked")
-            self.update_bus_status_box(cic_id=_cic_id, port_id=_port_id, on=True)
+            self.update_bus_status_box(port_id=b, on=True)
         else:
-            self.update_bus_status_box(cic_id=_cic_id, port_id=_port_id, off=True)
+            self.update_bus_status_box(port_id=b, off=True)
 
     def set_adc_cic(self):
-        for c in np.arange(self.__cic_num): 
-            for b in np.arange(self.__bus_num):
-                for ch in np.arange(5):
-                    adc_value = np.random.randint(0, 100)
-                    self.adc_text_box[c][b][ch].setText(str(adc_value))
-                    # This will be used later for limits 
-                    if adc_value >= 90:
-                        self.update_alarm_limits(high=True, object=self.adc_text_box[c][b][ch]) 
-                    if adc_value <= 5:
-                        self.update_alarm_limits(low=True, object=self.adc_text_box[c][b][ch]) 
-                    else:
-                        self.update_alarm_limits(normal=True, object=self.adc_text_box[c][b][ch])
+        for b in np.arange(self.__bus_num):
+            for ch in np.arange(5):
+                adc_value = np.random.randint(0, 100)
+                self.adc_text_box[b][ch].setText(str(adc_value))
+                # This will be used later for limits 
+                if adc_value >= 90:
+                    self.update_alarm_limits(high=True, object=self.adc_text_box[b][ch]) 
+                if adc_value <= 5:
+                    self.update_alarm_limits(low=True, object=self.adc_text_box[b][ch]) 
+                else:
+                    self.update_alarm_limits(normal=True, object=self.adc_text_box[b][ch])
 
     def update_alarm_limits(self, high=None, low=None, normal=None, object=None):
         if high:
@@ -445,20 +374,20 @@ class MultiDeviceWindow(QWidget):
         else:
             pass  
                 
-    def update_bus_status_box(self, cic_id=None, port_id=None, on=False, off=False):
+    def update_bus_status_box(self, port_id=None, on=False, off=False):
         icon_red = "graphicsUtils/icons/icon_red.png"
         icon_green = "graphicsUtils/icons/icon_green.png" 
         if on:
             pixmap = QPixmap(icon_green)
-            self.statusBoxVar[int(cic_id)][int(port_id)].setText("ON")
-            self.en_button[int(cic_id)][int(port_id)].setChecked(True)
-            self.bus_alarm_led[int(cic_id)][int(port_id)]
+            self.statusBoxVar[int(port_id)].setText("ON")
+            self.en_button[int(port_id)].setChecked(True)
+            self.bus_alarm_led[int(port_id)]
         else:
             pixmap = QPixmap(icon_red)
-            self.statusBoxVar[int(cic_id)][int(port_id)].setText("OFF")
-            self.en_button[int(cic_id)][int(port_id)].setChecked(False)
-            self.bus_alarm_led[int(cic_id)][int(port_id)]
-        self.bus_alarm_led[int(cic_id)][int(port_id)].setPixmap(pixmap.scaled(20, 20))   
+            self.statusBoxVar[int(port_id)].setText("OFF")
+            self.en_button[int(port_id)].setChecked(False)
+            self.bus_alarm_led[int(port_id)]
+        self.bus_alarm_led[int(port_id)].setPixmap(pixmap.scaled(20, 20))   
             
     def update_alarm_status(self, on=False, off=False, warning=False, button=None, button_type = "Movie"):
      
@@ -493,18 +422,17 @@ class MultiDeviceWindow(QWidget):
     
     def get_mops_device(self):
         sender = self.sender().objectName()
-        _cic_id = sender[1:-4]
         _mops_num = sender[3:-2]
         _port_id = sender[-1]
-        status = self.check_dut(c=_cic_id, b=int(_port_id), m=_mops_num)
+        status = self.check_dut(b=int(_port_id), m=_mops_num)
         if status:
-            self.show_deviceWindow(cic=_cic_id, mops=_mops_num, port=str(_port_id)) 
+            self.show_deviceWindow(mops=_mops_num, port=str(_port_id)) 
         else:
-            msg = "CIC " + _cic_id, "MOPS " + _mops_num, "Port " + _port_id, ": Not Found"
+            msg =  "MOPS " + _mops_num, "Port " + _port_id, ": Not Found"
             self.set_textBox_message(comunication_object="ErrorFrame" , msg=str(msg)) 
 
         
-    def read_adc_channels(self,c,b,m):
+    def read_adc_channels(self,b,m):
         _dictionary = self.__dictionary_items
         _adc_indices = list(self.__adc_index)
         for i in np.arange(len(_adc_indices)):
@@ -515,21 +443,21 @@ class MultiDeviceWindow(QWidget):
                 s = subindex - _start_a
                 adc_value = np.random.randint(0,100)     
                 #adc_value = "(c%s|b%s|m%s|s%s)"%(c,b,m,s)     
-                self.channelValueBox[c][b][m][s].setText(str(adc_value))   
-                if self.trendingBox[c][b][m][s] == True:
+                self.channelValueBox[b][m][s].setText(str(adc_value))   
+                if self.trendingBox[b][m][s] == True:
                     if len(self.x[s]) >= 10:# Monitor a window of 100 points is enough to avoid Memory issues 
                         self.DataMonitoring.reset_data_holder(adc_value,s) 
                     self.DataMonitoring.update_figure(data=adc_value, subindex=subindex, graphWidget = self.graphWidget[s])     
             #This will be used later for limits 
             if adc_value >=95:
-                self.update_alarm_limits(high=True, low=None, normal=None, object=self.channelValueBox[c][b][m][s]) 
-                self.update_alarm_status(on=False, off=True, warning=False, button=self.mops_alarm_led[c][b][m],button_type = "Movie")
+                self.update_alarm_limits(high=True, low=None, normal=None, object=self.channelValueBox[b][m][s]) 
+                self.update_alarm_status(on=False, off=True, warning=False, button=self.mops_alarm_led[b][m],button_type = "Movie")
             elif (adc_value >=50 and adc_value <=80):
-                self.update_alarm_limits(high=None, low=True, normal=None, object=self.channelValueBox[c][b][m][s])
-                self.update_alarm_status(on=False, off=False, warning=True, button=self.mops_alarm_led[c][b][m],button_type = "Movie")
+                self.update_alarm_limits(high=None, low=True, normal=None, object=self.channelValueBox[b][m][s])
+                self.update_alarm_status(on=False, off=False, warning=True, button=self.mops_alarm_led[b][m],button_type = "Movie")
             else:
-                self.channelValueBox[c][b][m][s].setStyleSheet("color: black;")
-                self.update_alarm_status(on=True, off=False, warning=False, button=self.mops_alarm_led[c][b][m],button_type = "Movie")
+                self.channelValueBox[b][m][s].setStyleSheet("color: black;")
+                self.update_alarm_status(on=True, off=False, warning=False, button=self.mops_alarm_led[b][m],button_type = "Movie")
          
         _conf_indices = list(self.__conf_index)                      
         a = 0 
@@ -537,11 +465,11 @@ class MultiDeviceWindow(QWidget):
             _subIndexItems = list(AnalysisUtils().get_subindex_yaml(dictionary=_dictionary, index=_conf_indices[i], subindex="subindex_items"))
             for s in np.arange(0, len(_subIndexItems)):
                 adc_value = np.random.randint(0,100)
-                self.confValueBox[c][b][m][a].setText(str(adc_value))      
+                self.confValueBox[b][m][a].setText(str(adc_value))      
                 if adc_value <=95:
-                    self.confValueBox[c][b][m][a].setStyleSheet("color: black;")
+                    self.confValueBox[b][m][a].setStyleSheet("color: black;")
                 else:
-                    self.confValueBox[c][b][m][a].setStyleSheet(" background-color: red;")
+                    self.confValueBox[b][m][a].setStyleSheet(" background-color: red;")
                 a = a + 1    
         
         _mon_indices = list(self.__mon_index)    
@@ -550,11 +478,11 @@ class MultiDeviceWindow(QWidget):
             _subIndexItems = list(AnalysisUtils().get_subindex_yaml(dictionary=_dictionary, index=_mon_indices[i], subindex="subindex_items"))
             for s in np.arange(0, len(_subIndexItems)):
                 adc_value = np.random.randint(0,100)
-                self.monValueBox[c][b][m][a].setText(str(adc_value))
+                self.monValueBox[b][m][a].setText(str(adc_value))
                 if adc_value <=95:
-                    self.monValueBox[c][b][m][a].setStyleSheet("color: black;")
+                    self.monValueBox[b][m][a].setStyleSheet("color: black;")
                 else:
-                    self.monValueBox[c][b][m][a].setStyleSheet(" background-color: red;")
+                    self.monValueBox[b][m][a].setStyleSheet(" background-color: red;")
                 a = a + 1   
   
         
@@ -562,7 +490,7 @@ class MultiDeviceWindow(QWidget):
         trend = QMainWindow(self)
         subindex = self.sender().objectName()
         s = int(subindex) - 3     
-        self.trendingBox[c][b][m][s] = True  
+        self.trendingBox[b][m][s] = True  
         n_channels = 33
         for i in np.arange(0, n_channels): self.graphWidget[i].clear()  # clear any old plots
         self.x, self.y = self.DataMonitoring.trend_child_window(childWindow=trend, subindex=int(subindex), n_channels=n_channels)

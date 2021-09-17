@@ -20,7 +20,7 @@ class MopsChildWindow(QWidget):
 
     def __init__(self, parent=None,console_loglevel=logging.INFO,opcua_config = "opcua_config.yaml"):
        super(MopsChildWindow, self).__init__(parent)
-       self.logger = Logger().setup_main_logger(name=" MOPS GUI", console_loglevel=console_loglevel)
+       self.logger = Logger().setup_main_logger(name=" MOPS GUI ", console_loglevel=console_loglevel)
        dev = AnalysisUtils().open_yaml_file(file=config_dir + "MOPS_cfg.yml", directory=lib_dir)
        self.configure_devices(dev)
        max_mops_num = 4

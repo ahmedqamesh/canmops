@@ -2,10 +2,9 @@ import queue
 import time
 
 from .logger_main import Logger
-from .socketcan_config import can_config
+from .can_bus_config import can_config
 from threading import Thread
 import logging
-
 
 class READSocketcan(Thread):
 
@@ -17,7 +16,7 @@ class READSocketcan(Thread):
         self.cobid_ret = None
 
         self.read_timeout = 2000
-        self.logger_thread = logging.getLogger('socketcan_receive_thread')
+        self.logger_thread = logging.getLogger('mopshub_log:socketcan_receive_thread')
         self.logger_thread.setLevel(logging.WARNING)
         self.running = True
         self.err_counter = 0

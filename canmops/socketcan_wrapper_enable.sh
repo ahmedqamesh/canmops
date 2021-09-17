@@ -26,6 +26,7 @@ then
 	ip -details link show $4
 
 fi
+
 if [ $5 == "vcan" ]
 then
 	echo "\e[1;31m$now -  [NOTICE   ] - Configuring Virtual Interface $4 \e[0m"

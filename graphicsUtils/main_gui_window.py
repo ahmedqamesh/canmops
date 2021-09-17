@@ -10,6 +10,7 @@ import logging
 import numpy as np
 import pyqtgraph as pg
 import pandas as pd
+import asyncio
 from csv                    import writer
 from PyQt5 import *
 from PyQt5.QtCore           import *
@@ -599,10 +600,6 @@ class MainWindow(QMainWindow):
                     # Default settings from yml file
                 _channel,_ipAddress, _bitrate,_sample_point, _sjw,_tseg1, _tseg2 =  self.load_settings_file(interface = _interface, channel = _default_channel)              
                 # Update settings
-                #self.set_channelPorts(list(str(_channel)))         
-                # Update buttons
-                #self.channelComboBox.clear()
-                #self.channelComboBox.addItems(list(str(_channel)))
                 self.wrapper = CanWrapper(interface=_interface,
                                           bitrate=_bitrate,
                                           samplePoint=_sample_point,
@@ -783,7 +780,7 @@ class MainWindow(QMainWindow):
             _nodeId = self.get_nodeId()
             _nodeId = int(_nodeId)
             _interface = self.get_interface()
-            data_RX = self.wrapper.read_sdo_can(_nodeId, _index, _subIndex, self.__timeout)
+            data_RX = asyncio.run(self.wrapper.read_sdo_can(_nodeId, _index, _subIndex, self.__timeout))
             return data_RX
         except Exception:
             return None
@@ -799,31 +796,31 @@ class MainWindow(QMainWindow):
            c) default_message_window 
            d) can_message_child_window
         """
-        try:
-            _index = int(self.get_index(), 16)
-            _subIndex = int(self.get_subIndex(), 16)
-            _nodeId = int(self.get_nodeId())
-            SDO_TX = int(self.get_canId_tx(), 16)
-            SDO_RX = self.get_canId_rx()
-            _cobid_TX = SDO_TX + _nodeId
-            _cobid_RX, data_RX = self.wrapper.read_sdo_can_thread(nodeId=_nodeId,
-                                                                  index=_index,
-                                                                  subindex=_subIndex,
-                                                                  timeout=self.__timeout,
-                                                                  SDO_TX=SDO_TX,
-                                                                  SDO_RX=SDO_RX,
-                                                                  cobid=_cobid_TX)
-            if print_sdo == True:
-                # self.control_logger.disabled = False
-                self.print_sdo_can(index=_index, subIndex=_subIndex, response_from_node=data_RX, cobid_TX=_cobid_TX, cobid_RX=_cobid_RX)
-            return data_RX
-        except Exception:
-            self.error_message(text="Make sure that the CAN interface is connected")
+       # try:
+        _index = int(self.get_index(), 16)
+        _subIndex = int(self.get_subIndex(), 16)
+        _nodeId = int(self.get_nodeId())
+        SDO_TX = int(self.get_canId_tx(), 16)
+        SDO_RX = self.get_canId_rx()
+        _cobid_TX = SDO_TX + _nodeId
+        _cobid_RX, data_RX = asyncio.run(self.wrapper.read_sdo_can_thread(nodeId=_nodeId,
+                                                              index=_index,
+                                                              subindex=_subIndex,
+                                                              timeout=self.__timeout,
+                                                              SDO_TX=SDO_TX,
+                                                              SDO_RX=SDO_RX,
+                                                              cobid=_cobid_TX))
+        if print_sdo == True:
+            # self.control_logger.disabled = False
+            self.print_sdo_can(index=_index, subIndex=_subIndex, response_from_node=data_RX, cobid_TX=_cobid_TX, cobid_RX=_cobid_RX)
+        return data_RX
+       # except Exception:
+       #     self.error_message(text="Make sure that the CAN interface is connected")
         
     def print_sdo_can(self , index=None, subIndex=None, response_from_node=None, cobid_TX=None, cobid_RX=None):
         # printing the read message with cobid = SDO_RX + nodeId
-        MAX_DATABYTES = 8
-        msg = [0 for i in range(MAX_DATABYTES)]
+        max_data_bytes = 8
+        msg = [0 for i in range(max_data_bytes)]
         msg[0] = 0x40  # Defines a read (reads data only from the node) dictionary object in CANOPN standard
         msg[1], msg[2] = index.to_bytes(2, 'little')
         msg[3] = subIndex
@@ -913,21 +910,39 @@ class MainWindow(QMainWindow):
         # fill the textBox     
         self.set_textBox_message(comunication_object="SDO_TX", msg=str([hex(b)[2:] for b in _bytes]), cobid=str(_cobid_TX) + " ")    
         try: 
-            # Send the can Message
-            self.wrapper.write_can_message(int(_cobid_TX, 16), _bytes, flag=0, timeout=self.__timeout)
+                # Send the can Message
+            asyncio.run(self.wrapper.write_can_message(int(_cobid_TX, 16), _bytes, flag=0, timeout=self.__timeout))
             # receive the message
+            nodeList = self.get_nodeList()
             if _cobid_TX == "0x0":
-                for i in np.arange(len(self.nodeComboBox) - 1):
+                for i in np.arange(len(nodeList)):
                     self.read_can_message_thread(thread=True)
                     self.wrapper.restart_channel_connection()
             elif int(_cobid_TX, 16) >= 0x700:
                 self.read_can_message_thread(thread=False)
                 self.wrapper.restart_channel_connection()
+                wait_led = self.wait_alert_leds()
+                wait_led.show()
+                time.sleep(2)
             else:
                 self.read_can_message_thread(thread=True)
         except Exception:
             self.error_message(text="Make sure that the CAN interface is connected")
-
+            
+    def wait_alert_leds(self):
+        v = QVBoxLayout()
+        window = QWidget()
+        window.setGeometry(200, 200, 250, 250)
+        icon_red = "graphicsUtils/icons/ICON_RED_LED2.gif" #icon_red.gif"
+        wait_label = QLabel()
+        alarm_led = QMovie(icon_red)    
+        alarm_led.setScaledSize(QSize().scaled(20, 20, Qt.KeepAspectRatio))
+        alarm_led.start()
+        wait_label.setMovie(alarm_led)
+        v.addWidget(wait_label)
+        window.setLayout(v)
+        return window  
+        
     def read_can_message_thread(self, print_sdo=True, thread=True):
         """Read an object in a thread
         1. Request messages in the bus
@@ -938,6 +953,7 @@ class MainWindow(QMainWindow):
            b) show_dump_child_window
            c) dump_child_window
         """
+
         if thread:
             readCanMessage = self.wrapper.read_can_message_thread()
         else:
