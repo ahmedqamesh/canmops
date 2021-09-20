@@ -641,7 +641,7 @@ class OpcuaWindow(QWidget):
                                                 f"ADCChannel {(subindex+3):02}"]["Vref"]
                     r_ntc = resistor_1*(adc_value/(v_ref-adc_value))
                     print(r_ntc)
-                    adc_value = round((298.15 / (1 - (298.15 / 3435) * np.log(10 / r_ntc))) - 273.15, 3)
+                    adc_value = round((298.15 / (1 - (298.15 / 3435) * np.log(10 / (r_ntc/1000)))) - 273.15, 3)
                 if desc == "Temperature bPOLs":
                     resistor_1 = self.opcua_client.server_dict[f"CIC {c}"][f"CANBus {bus_id}"][f"MOPS {m}"][
                         f"ADCChannel {(subindex + 3):02}"]["Resistor1"]
