@@ -1,4 +1,7 @@
 # -*- coding: utf-8 -*-
+#pip install event-notifier
+# pip install BeautifulSoup4
+#pip install pytest-asyncio
 import sys
 
 from matplotlib.backends.qt_compat import  QtWidgets

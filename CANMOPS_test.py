@@ -3,11 +3,12 @@ import sys
 import os
 import time
 import numpy as np
-from canmops.analysisUtils import AnalysisUtils
-from canmops.canWrapper   import CanWrapper
+import asyncio
+from canmops.analysis_utils import AnalysisUtils
+from canmops.can_wrapper_main   import CanWrapper
 rootdir = os.path.dirname(os.path.abspath(__file__)) 
 # All the can configurations of the CAN controller should be set first from $HOME/config/main_cfg.yml
-def test():
+async def test_can_wrapper():
     # Define parameters
     NodeIds = [1,8]
     SDO_TX = 0x600
@@ -19,7 +20,7 @@ def test():
     
     #Example (1):Write/read CAN messages
     #write CAN message [read dictionary request from master to node]
-    wrapper.write_can_message(cobid = SDO_TX + NodeIds[0], 
+    await wrapper.write_can_message(cobid = SDO_TX + NodeIds[0], 
                               data = [Byte0,Byte1,Byte2,Byte3,0,0,0,0], 
                               flag=0, 
                               timeout=30)
@@ -31,13 +32,13 @@ def test():
     print('Writing example CAN Expedited read message ...')
    
     #Example (2): write/read SDO message
-    VendorId = wrapper.read_sdo_can_thread(nodeId=NodeIds[0], 
-                                           index=0x1000,
-                                           subindex=0,
-                                           timeout=3000,
-                                           SDO_TX=SDO_TX,
-                                           SDO_RX=SDO_RX,
-                                           cobid = SDO_TX+NodeIds[0])
+    VendorId = await wrapper.read_sdo_can_thread(nodeId=NodeIds[0], 
+                                                   index=0x1000,
+                                                   subindex=0,
+                                                   timeout=3000,
+                                                   SDO_TX=SDO_TX,
+                                                   SDO_RX=SDO_RX,
+                                                   cobid = SDO_TX+NodeIds[0])
     
     if all(m is not None for m in VendorId):
         print(f'Device type: {VendorId[1]:03X}')
@@ -46,17 +47,42 @@ def test():
 
      #Example (3): Read all the ADC channels and Save it to a file in the directory output_data
      # PS. To visualise the data, Users can use the file $HOME/test_files/plot_adc.py
-    wrapper.read_adc_channels(file ="MOPS_cfg.yml", #Yaml configurations
+    await wrapper.read_adc_channels(file ="MOPS_cfg.yml", #Yaml configurations
                               directory=rootdir+"/config", # direstory of the yaml file
                               nodeId = NodeIds[0], # Node Id
                               outputname = "adc_data_trial", # Data file name
                               outputdir = rootdir + "/output_data", # # Data directory
-                              n_readings = 1) # Number of Iterations
-    wrapper.stop()        
+                              n_readings = 1) # Number of Iterations  
+      
 
-
+    #Example (2): write/read SDO message [For Developers]
+    # VendorId_sync = await wrapper.read_sdo_can_sync(nodeId=NodeIds[0], 
+    #                                                index=0x1000,
+    #                                                subindex=0,
+    #                                                timeout=3000,
+    #                                                SDO_TX=SDO_TX,
+    #                                                SDO_RX=SDO_RX,
+    #                                                cobid = SDO_TX+NodeIds[0])
+    # if all(m is not None for m in VendorId_sync):
+    #     print(f'Device type: {VendorId[1]:03X}')
+    # else:
+    #     print(f'Cannot read the SDO message')    
+    
+    wrapper.stop()  
+    
 if __name__=='__main__':
-    #wrapper = canWrapper.CanWrapper(interface = "AnaGate",channel = 0)
-    wrapper = CanWrapper(interface = "socketcan",channel = 0)
-    #wrapper =  CanWrapper(interface = "Kvaser",channel = 0)
-    test()
+    channel = 0
+    #wrapper = canWrapper.CanWrapper(interface = "AnaGate",channel = channel)
+    wrapper = CanWrapper(interface = "socketcan",channel = channel)
+    #wrapper =  CanWrapper(interface = "Kvaser",channel = channel)
+    loop = asyncio.get_event_loop()
+    try:
+        asyncio.ensure_future(test_can_wrapper())
+        loop.run_forever()
+    finally: 
+        #can_config.stop_channel(channel)
+        #can_config.stop()
+        loop.close()
+
+    
+    

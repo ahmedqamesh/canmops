@@ -16,9 +16,8 @@ then
 	echo -e "\e[1;31m$now -  [NOTICE   ] - Bringing the $4 driver down if Up\e[0m"
 	sudo -S ip link set down $4
 	now=$(date +'%Y-%m-%d'" %T")
-	echo -e "\e[1;31m$now -  [NOTICE   ] - Configuring the SocketCAN interface to bitrate of $1 [Sample Point $2, SJW $3] \e[0m"
-	sudo -S ip link set $4 type can bitrate $1 sample-point $2 sjw $3 
-	#phase-seg1 $6 phase-seg2 $7
+	echo -e "\e[1;31m$now -  [NOTICE   ] - Configuring the SocketCAN interface to bitrate of $1 [Sample Point $2, SJW $3, tseg1 $6 tseg2 $7] \e[0m"
+	sudo -S ip link set $4 type $5 bitrate $1 sample-point $2 sjw $3 phase-seg1 $6 phase-seg2 $7
 	now=$(date +'%Y-%m-%d'" %T")
 	echo -e "\e[1;31m$now -  [NOTICE   ] - Bringing the  $4 driver  up \e[0m"
 	sudo -S ip link set up $4

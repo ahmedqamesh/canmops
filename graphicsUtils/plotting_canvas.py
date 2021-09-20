@@ -170,7 +170,6 @@ class PlottingCanvas(FigureCanvas):
                     self.ax.set_ylim(-3.,15)
                     self.ax.set_xlim(0,52)
                     self.ax.set_xscale('log')
-                    print(hi)
             else:
                 v = []
                 mean = []

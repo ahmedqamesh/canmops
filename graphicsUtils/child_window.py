@@ -23,7 +23,7 @@ class ChildWindow(QtWidgets.QMainWindow):
 
     def __init__(self,parent = None, console_loglevel=logging.INFO):
        super().__init__(parent)
-       self.logger = Logger().setup_main_logger(name="Child GUI", console_loglevel=console_loglevel)
+       self.logger = Logger().setup_main_logger(name=" Child GUI ", console_loglevel=console_loglevel)
        self.MenuBar = menu_window.MenuWindow(self)
 
     def ip_address_window(self, childWindow):
@@ -469,14 +469,21 @@ class ChildWindow(QtWidgets.QMainWindow):
         def _interfaceParameters():
             _interface = interfaceComboBox.currentText()
             _channel = self.channelSettingsComboBox.currentText()
+            mainWindow.set_interface(_interface)
             mainWindow.set_channel(_channel)
+            if _interface == "AnaGate":
+                self.ipBox.setStyleSheet(" background-color: lightgray;")
+                self.ipBox.setReadOnly(False)
+            else:
+                self.ipBox.setStyleSheet(" background-color: white;")
+                self.ipBox.setReadOnly(True)
             _channel,_ipAddress, _bitrate,_samplePoint, _sjw,_tseg1, _tseg2 =  mainWindow.load_settings_file(interface = _interface, channel = _channel) 
             self.bitSpeedTextBox.setText(str(_bitrate))
             self.sampleTextBox.setText(str(_samplePoint*100))
             self.tseg1TextBox.setText(str(_tseg1))
             self.tseg2TextBox.setText(str(_tseg2))
             self.sjwComboBox.setCurrentText(str(_sjw))
-            mainWindow.set_interface(_interface)
+           
 
         interfaceComboBox.activated[str].connect(_interfaceParameters)
         # Define Third Group
@@ -493,7 +500,7 @@ class ChildWindow(QtWidgets.QMainWindow):
         self.MenuBar.create_statusBar(childWindow)
         plotframe.setStatusTip("")
         QtCore.QMetaObject.connectSlotsByName(childWindow)                
-        return interfaceComboBox, self.channelSettingsComboBox, self.ipBox
+        #return interfaceComboBox, self.channelSettingsComboBox, self.ipBox
                 
     def BusParametersGroupBox(self, mainWindow = None):
         '''
@@ -698,19 +705,23 @@ class ChildWindow(QtWidgets.QMainWindow):
         self.plotframe.setLayout(MainLayout) 
         QtCore.QMetaObject.connectSlotsByName(self) 
     
-    def plot_yaml_file(self,yaml_or_yml = "yaml"):
+    def plot_yaml_file(self):
         adc_state = False
         self.filetextboxValue = self.filetextbox.text()
         file_path = os.path.dirname(os.path.realpath(self.filetextboxValue))
         file_name = os.path.basename(self.filetextboxValue)
         
-        self.adcPlotGridLayout.removeItem(self.itemSpacer)     
-        if yaml_or_yml =="yaml":   
+        self.adcPlotGridLayout.removeItem(self.itemSpacer)   
+        if "yaml" in  file_name:  
             design = design_diagram.DesignDiagram(file_path =file_path, file_name = file_name[:-5])
             fig_path = design.process_yaml(path=file_path,file_name =file_name[:-5],graphid_name = "MopsHub", file_end = ".yaml")
-        else:
+        if "yml" in  file_name:  
             design = design_diagram.DesignDiagram(file_path =file_path, file_name = file_name[:-4])
             fig_path = design.process_yaml(path=file_path,file_name =file_name[:-4],graphid_name = "MopsHub", file_end = ".yml")
+        else:
+            self.logger.error("File with Unknown extension")
+            fig_path = "graphicsUtils/icons/icon_minus.jpg"
+            pass
         
         fig = QLabel()
         #self.resize(pixmap.width(),pixmap.height())
@@ -723,7 +734,7 @@ class ChildWindow(QtWidgets.QMainWindow):
         scroll.setFixedSize(800,800)
         scroll.setAlignment(Qt.AlignCenter)
         scroll.setWidget(fig)
-        return scroll
+        self.adcPlotGridLayout.addWidget(scroll,5,1,4,4)
         
     def plot_adc_file(self,plot_prefix = "adc_data"):    
         self.filetextboxValue = self.filetextbox.text()
@@ -750,11 +761,11 @@ class ChildWindow(QtWidgets.QMainWindow):
                 self.adcPlotGridLayout.addWidget(toolbar,4,1,1,1)                
             elif self.filetextboxValue.endswith('.yaml'):
                 adc_state = False
-                fig = self.plot_yaml_file(yaml_or_yml = "yaml")     
+                fig = self.plot_yaml_file()     
                    
             elif self.filetextboxValue.endswith('.yml'):
                 adc_state = False
-                fig = self.plot_yaml_file(yaml_or_yml = "yml")  
+                fig = self.plot_yaml_file()  
             else:
                 adc_state = False
                 fig = QLabel() 
@@ -820,6 +831,140 @@ class ChildWindow(QtWidgets.QMainWindow):
             e.ignore()   
         
     
+    def edit_adc(self, childWindow, conf):
+        #check the conf file
+        ADCGroup= QGroupBox("ADC details")
+        childWindow.setObjectName("Edit ADC settings")
+        childWindow.setWindowTitle("ADC Settings")
+        def_refreshRate = conf["Application"]["refresh_rate"]
+        def_adc_channels = list(conf["adc_channels_reg"]["adc_channels"])
+        childWindow.setWindowIcon(QtGui.QIcon(self.__appIconDir))
+        childWindow.setGeometry(200, 200, 100, 100)
+        mainLayout = QGridLayout()
+        # Define a frame for that group
+        plotframe = QFrame()
+        plotframe.setLineWidth(0.6)
+        childWindow.setCentralWidget(plotframe)
+        #ADC part
+        adcLayout= QHBoxLayout()
+        channelLabel = QLabel("")
+        channelLabel.setText("ADC channel")
+        adcComboBox = QComboBox()
+        adc_items =np.arange(3,35)
+        for item in adc_items: adcComboBox.addItem(str(item))
+        adcLayout.addWidget(channelLabel)
+        adcLayout.addWidget(adcComboBox)   
+        
+        #parameters part
+        parameterLayout= QHBoxLayout()
+        parameterLabel = QLabel("")
+        parameterLabel.setText("Parameter")
+        parametersComboBox = QComboBox()
+        parameter_items =["T","V"]
+        for item in parameter_items: parametersComboBox.addItem(str(item))
+        parameterLayout.addWidget(parameterLabel)
+        parameterLayout.addWidget(parametersComboBox)                           
+          
+        adc_mainLayout= QVBoxLayout()
+        #Inputs        
+        inLayout = QVBoxLayout()  
+        addLayout= QHBoxLayout()  
+        add_button = QPushButton("Add")
+        add_button.setIcon(QIcon('graphicsUtils/icons/icon_add.png'))
+        addLayout.addSpacing(80)
+        addLayout.addWidget(add_button)
+        
+        outLabel = QLabel()
+        outLabel.setText("Edited settings")                
+        inLayout.addLayout(adcLayout)
+        inLayout.addLayout(parameterLayout)
+        inLayout.addLayout(addLayout)
+        inLayout.addWidget(outLabel)
+        #outputs
+        outLayout = QHBoxLayout()
+        channelListBox = QListWidget()
+        fullListBox = QListWidget()
+        parameterListBox = QListWidget()
+        #set the default values
+        for i in range(len(def_adc_channels)):
+            def_channel =str(i+3)
+            def_parameter = conf["adc_channels_reg"]["adc_channels"][def_adc_channels[i]]
+            channelListBox.addItem(def_channel)
+            parameterListBox.addItem(def_parameter)
+            fullListBox.addItem(def_channel+" : "+def_parameter)
+            
+        clearLayout= QHBoxLayout()  
+        clear_button = QPushButton("Clear")
+        clear_button.setIcon(QIcon('graphicsUtils/icons/icon_clear.png'))
+        clearLayout.addSpacing(80)
+        clearLayout.addWidget(clear_button)
+        outLayout.addWidget(fullListBox)
+        
+        
+        adc_mainLayout.addLayout(inLayout)
+        adc_mainLayout.addLayout(outLayout)       
+        adc_mainLayout.addLayout(clearLayout)
+
+        def _add_item():
+            adc_channel = adcComboBox.currentText()
+            parameter_channel = parametersComboBox.currentText()
+            channelListBox.addItem(adc_channel)
+            parameterListBox.addItem(parameter_channel)
+            fullListBox.addItem(adc_channel+" : "+parameter_channel)
+        
+        def _clear_item():
+            _row = channelListBox.currentRow()
+            _parameter_channel = parameterListBox.currentRow()
+            _full = fullListBox.currentRow()
+            channelListBox.takeItem(_row)
+            parameterListBox.takeItem(_parameter_channel)
+            fullListBox.takeItem(_full)
+            
+        def _save_items():
+            _refreshRate = refreshLineEdit.text()
+            conf["Application"]["refresh_rate"] = _refreshRate 
+            if (channelListBox.count() != 0 or parameterListBox.count() != 0):
+                _adc_channels = [channelListBox.item(x).text() for x in range(channelListBox.count())]
+                _parameters = [parameterListBox.item(x).text() for x in range(parameterListBox.count())]
+                for i in range(len(_adc_channels)):
+                    conf["adc_channels_reg"]["adc_channels"][_adc_channels[i]] = _parameters[i]
+                file = config_dir + self.__device + "_cfg.yml"
+                AnalysisUtils().dump_yaml_file(file=file,
+                                               loaded = conf,
+                                               directory=lib_dir)
+                self.logger.info("Saving Information to the file %s"%file)
+            else:
+                self.logger.error("No ADC Info to be saved.....")
+        add_button.clicked.connect(_add_item)
+        clear_button.clicked.connect(_clear_item)
+       
+               
+        refreshLayout = QHBoxLayout()
+        refreshLabel = QLabel()
+        refreshLabel.setText("Refresh Rate:")
+        refreshLineEdit = QLineEdit()
+        refreshLineEdit.setFixedSize(70, 25)
+        refreshLineEdit.setText(str(def_refreshRate))
+        refreshLayout.addWidget(refreshLabel)
+        refreshLayout.addWidget(refreshLineEdit)
+         
+        buttonLayout = QHBoxLayout()
+        close_button = QPushButton("Close")
+        close_button.setIcon(QIcon('graphicsUtils/icons/icon_close.png'))
+        close_button.clicked.connect(childWindow.close)
+        
+        save_button = QPushButton("Save")
+        save_button.setIcon(QIcon('graphicsUtils/icons/icon_true.png'))
+        save_button.clicked.connect(_save_items)       
+        buttonLayout.addWidget(save_button)
+        buttonLayout.addWidget(close_button)
+
+        mainLayout.addWidget(ADCGroup , 0,0)
+        mainLayout.addLayout(refreshLayout,1,0)
+        mainLayout.addLayout(buttonLayout ,2, 0)
+        ADCGroup.setLayout(adc_mainLayout)
+        plotframe.setLayout(mainLayout) 
+            
     def match_client_to_server(self,server_config = None):
         self.logger.notice("Matching Client Configurations to the Server Configurations")
         client_file = server_config.replace("server", "client")

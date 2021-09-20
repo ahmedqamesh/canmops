@@ -10,6 +10,7 @@ import logging
 import numpy as np
 import pyqtgraph as pg
 import pandas as pd
+import asyncio
 from csv                    import writer
 from PyQt5 import *
 from PyQt5.QtCore           import *
@@ -152,13 +153,13 @@ class MainWindow(QMainWindow):
         
         defaultSettingsWindowLayout = QGridLayout()
         __interfaceItems = self.__interfaceItems
-        __channelList = self.__channelPorts
+        __channelList = self.get_channelPorts()
         
         channelLabel = QLabel()
         channelLabel.setText(" CAN Channels")
         self.channelComboBox = QComboBox()
         self.channelComboBox.setStatusTip('Possible ports as defined in the main_cfg.yml file')
-        for item in list(__channelList): self.channelComboBox.addItem(item)  
+        for port in list(__channelList): self.channelComboBox.addItem(str(port))  
 
         interfaceLabel = QLabel()
         interfaceLabel.setText("  Interfaces")
@@ -281,6 +282,7 @@ class MainWindow(QMainWindow):
         self.setCentralWidget(plotframe)
         plotframe.setLayout(textOutputWindowLayout)
         self.textGroupBox.setLayout(textOutputWindowLayout)
+        
     def tableOutputWindow(self):
         '''
         The function defines the GroupBox output table for Bytes monitoring for RX and TX messages
@@ -540,15 +542,17 @@ class MainWindow(QMainWindow):
             conf = self.child.open()
         else:
             conf = AnalysisUtils().open_yaml_file(file=config_dir + self.__devices[0] + "_cfg.yml", directory=lib_dir)
-        self.__devices.append(conf["Application"]["device_name"])
         mops_child = mops_child_window.MopsChildWindow()
         deviceName, version, icon_dir, nodeIds, dictionary_items, adc_channels_reg,\
-         self.__adc_index, self.__chipId, self.__index_items, self.__conf_index, self.__mon_index,self.__resistor_ratio, self.__refresh_rate, self.__ref_voltage  = mops_child.configure_devices(conf)
+         self.__adc_index, self.__chipId, self.__index_items, self.__conf_index, \
+         self.__mon_index,self.__resistor_ratio, self.__refresh_rate, self.__ref_voltage  = mops_child.configure_devices(conf)
+        
         # Load ADC calibration constants
         # adc_calibration = pd.read_csv(config_dir + "adc_calibration.csv", delimiter=",", header=0)
         # condition = (adc_calibration["chip"] == chipId)
         # chip_parameters = adc_calibration[condition]
         # print(chip_parameters["calib_a"],chip_parameters["calib_b"] )
+        self.__devices.append(deviceName)
         self.set_deviceName(deviceName)
         self.set_version(version)
         self.set_icon_dir(icon_dir)
@@ -576,14 +580,15 @@ class MainWindow(QMainWindow):
             _channel = _canSettings['channel' + str(channel)]["channel"]
             _ipAddress = _canSettings['channel' + str(channel)]["ipAddress"]
             _bitrate = _canSettings['channel' + str(channel)]["bitrate"]
-            _samplePoint = _canSettings['channel' + str(channel)]["samplePoint"]
+            _sample_point = _canSettings['channel' + str(channel)]["samplePoint"]
             _sjw = _canSettings['channel' + str(channel)]["SJW"]
             _tseg1 = _canSettings['channel' + str(channel)]["tseg1"]
             _tseg2 = _canSettings['channel' + str(channel)]["tseg2"] 
-            return _channel,_ipAddress, _bitrate,_samplePoint, _sjw,_tseg1, _tseg2
+            return _channel,_ipAddress, _bitrate,_sample_point, _sjw,_tseg1, _tseg2
         except:
-          self.logger.error("Channel %s settings for %s interface Not found" % (channel,interface)) 
-          return None,None, None,None, None,None, None         
+          self.logger.error("Channel %s settings for %s interface Not found" % (str(channel),interface)) 
+          return None,None, None,None, None,None, None 
+              
     def connect_server(self):
         '''
         The function is starts calling the CANWrapper [called by the connectButton].
@@ -596,16 +601,12 @@ class MainWindow(QMainWindow):
             _interface = self.get_interface()   
             _default_channel = self.get_channel()
             try: 
-                # Default settings from yml file
-                _channel,_ipAddress, _bitrate,_samplePoint, _sjw,_tseg1, _tseg2 =  self.load_settings_file(interface = _interface, channel = _default_channel)              
+                    # Default settings from yml file
+                _channel,_ipAddress, _bitrate,_sample_point, _sjw,_tseg1, _tseg2 =  self.load_settings_file(interface = _interface, channel = _default_channel)              
                 # Update settings
-                self.set_channelPorts(list(_channel))         
-                # Update buttons
-                self.channelComboBox.clear()
-                self.channelComboBox.addItems(list(_channel))
                 self.wrapper = CanWrapper(interface=_interface,
                                           bitrate=_bitrate,
-                                          samplePoint=_samplePoint,
+                                          samplePoint=_sample_point,
                                           sjw=_sjw,
                                           tseg1=_tseg1,
                                           tseg2=_tseg2,
@@ -654,48 +655,66 @@ class MainWindow(QMainWindow):
                 pass
             # Change the buttons view in the main GUI
             self.logger.info("Applying changes to the main server") 
-            self.interfaceComboBox.clear()
-            self.interfaceComboBox.addItems([_interface])
-            self.channelComboBox.clear()
-            self.channelComboBox.addItems([str(_channel)])
-            
+            self.interfaceComboBox.SelectedText = _interface
+            self.channelComboBox.SelectedText = str(_channel)
             # Save the settings into a file
             dict_file = {"CAN_Interfaces": _interface,
-                       "channel" + _channels[0]: {"bitrate":_bitrate,
-                                                 "channel":_channels[0] ,
-                                                 "samplePoint":_sample_point,
-                                                 "SJW":_sjw,
-                                                 "tseg1":_tseg1,
-                                                 "tseg2":_tseg2,
-                                                 "ipAddress":str(_ipAddress),
-                                                 "timeout":_timeout}                             
-                                                         }
+                       "channel" + str(_channels[0]): {"bitrate":_bitrate,
+                                                       "channel":int(_channels[0]) ,
+                                                       "samplePoint":_sample_point,
+                                                       "SJW":_sjw,
+                                                       "tseg1":_tseg1,
+                                                       "tseg2":_tseg2,
+                                                       "ipAddress":str(_ipAddress),
+                                                       "timeout":_timeout}                             
+                                                                 }
             self.logger.info("Saving CAN settings to the file %s" % lib_dir + config_dir + _interface + "_CANSettings.yml") 
             self.logger.info("Please restart your bus from the tools menu (Interface >> %s >> Reset_%s_interface )to apply the new settings " % (_interface, _interface))
             AnalysisUtils().dump_yaml_file(directory=lib_dir + config_dir , file=_interface + "_CANSettings.yml", loaded=dict_file)
-            # Apply the settings to the main server
-            self.wrapper = CanWrapper(interface=_interface,
-                                      bitrate=_bitrate,
-                                      ipAddress=str(_ipAddress),
-                                      channel=int(_channel),
-                                      samplePoint=_sample_point,
-                                      sjw=int(_sjw),
-                                      tseg1=int(_tseg1),
-                                      tseg2=int(_tseg2))
             # Set the channel
-            self.wrapper.hardware_config(bitrate=int(_bitrate),
+            self.hardware_config(bitrate=int(_bitrate),
                                          interface=_interface,
                                          sjw=int(_sjw),
                                          samplepoint=_sample_point,
                                          tseg1=int(_tseg1),
                                          tseg2=int(_tseg2),
                                          channel=str(_channel))
-        
-            # the the connect button to checked
-            self.connectButton.setChecked(True)
+            if self.connectButton.isChecked():
+                pass
+            else:
+                time.sleep(2)
+                # Apply the settings to the main server
+                self.wrapper = CanWrapper(interface=_interface,
+                              bitrate=_bitrate,
+                              samplePoint=_sample_point,
+                              sjw=_sjw,
+                              tseg1=_tseg1,
+                              tseg2=_tseg2,
+                              ipAddress=str(_ipAddress),
+                              channel=int(_channel))            
+                # the the connect button to checked
+                self.connectButton.setChecked(True)
         except Exception:
             self.error_message(text="Please choose an interface or close the window")
  
+    def hardware_config(self, bitrate, channel, interface, sjw,samplepoint,tseg1,tseg2):
+        '''
+        Pass channel string (example 'can0') to configure OS level drivers and interface.
+        '''
+        if interface == "socketcan":
+            _bus_type = "can"
+            _can_channel = _bus_type + channel
+            self.logger.info('Configure CAN hardware drivers for channel %s' % _can_channel)
+            os.system(". " + lib_dir + "/canmops/socketcan_wrapper_enable.sh %i %s %s %s %s %s %s" % (bitrate, samplepoint, sjw, _can_channel, _bus_type,tseg1,tseg2))
+        elif interface == "virtual":
+            _bus_type = "vcan"
+            _can_channel = _bus_type + channel
+            self.logger.info('Configure CAN hardware drivers for channel %s' % _can_channel)
+            os.system(". " + lib_dir + "/canmops/socketcan_wrapper_enable.sh %i %s %s %s %s %s %s" % (bitrate, samplepoint, sjw, _can_channel, _bus_type,tseg1,tseg2))
+        else:
+            _can_channel = channel
+        self.logger.info('%s[%s] Interface is initialized....' % (interface,_can_channel))
+        
     def set_canchannel(self, arg=None, interface=None, default_channel=None):
         '''
         The function will restart the van channel
@@ -703,38 +722,39 @@ class MainWindow(QMainWindow):
         try:
             if interface is not None: 
                 #_channel = default_channel
-                _channel,_ipAddress, _bitrate,_samplePoint, _sjw,_tseg1, _tseg2 =  self.load_settings_file(interface = interface, channel = default_channel) 
+                _channel,_ipAddress, _bitrate,_sample_point, _sjw,_tseg1, _tseg2 =  self.load_settings_file(interface = interface, channel = default_channel) 
                 if (arg == "socketcan" and interface == "socketcan"):
                     _bus_type = "can"
                     _can_channel = _bus_type + str(_channel)
                     self.logger.info('Configure CAN hardware drivers for channel %s' % _can_channel)
-                    os.system(". " + rootdir[:-14] + "/canmops/socketcan_wrapper_enable.sh %i %s %s %s %s" % (_bitrate, _samplePoint, _sjw, _can_channel, _bus_type))
+                    os.system(". " + rootdir[:-14] + "/canmops/socketcan_wrapper_enable.sh %i %s %s %s %s" % (_bitrate, _sample_point, _sjw, _can_channel, _bus_type))
                     self.logger.info('SocketCAN[%s] is initialized....' % _can_channel)
                     
                 if (arg == "virtual" and interface == "virtual"):
                     _bus_type = "vcan"             
                     _can_channel = _bus_type + str(_channel)
                     self.logger.info('Configure CAN hardware drivers for channel %s' % _can_channel)
-                    os.system(". " + rootdir[:-14] + "/canmops/socketcan_wrapper_enable.sh %i %s %s %s %s" % (_bitrate, _samplePoint, _sjw, _can_channel, _bus_type))
+                    os.system(". " + rootdir[:-14] + "/canmops/socketcan_wrapper_enable.sh %i %s %s %s %s" % (_bitrate, _sample_point, _sjw, _can_channel, _bus_type))
                     self.logger.info('SocketCAN[%s] is initialized....' % _can_channel)
                     
                 if (arg == "restart" and interface == "socketcan"):
                     # This is An automatic bus-off recovery if too many errors occurred on the CAN bus
                     _bus_type = "restart" 
                     _can_channel = "can" + str(_channel)       
-                    os.system(". " + rootdir[:-14] + "/canmops/socketcan_wrapper_enable.sh %s %s %s %s %s" % ("_bitrate", "_samplePoint", "_sjw", _can_channel, _bus_type))
+                    os.system(". " + rootdir[:-14] + "/canmops/socketcan_wrapper_enable.sh %s %s %s %s %s" % ("_bitrate", "_sample_point", "_sjw", _can_channel, _bus_type))
                 
-                #if (arg == "restart" and interface == "Kvaser"):
-                #    self.wrapper.restart_channel_connection(interface="Kvaser")
+
                 self.wrapper = CanWrapper(interface=interface,
                               bitrate=_bitrate,
-                              samplePoint=_samplePoint,
+                              samplePoint=_sample_point,
                               sjw=_sjw,
                               tseg1=_tseg1,
                               tseg2=_tseg2,
                               ipAddress=_ipAddress,
                               channel=int(_channel))
-                                
+                if (arg == "restart" and interface == "Kvaser"):
+                    self.wrapper.restart_channel_connection(interface="Kvaser")
+                                                
         except:
             self.logger.error("Cannot Connect to the CAN bus interface")
             pass
@@ -764,7 +784,7 @@ class MainWindow(QMainWindow):
             _nodeId = self.get_nodeId()
             _nodeId = int(_nodeId)
             _interface = self.get_interface()
-            data_RX = self.wrapper.read_sdo_can(_nodeId, _index, _subIndex, self.__timeout)
+            data_RX = asyncio.run(self.wrapper.read_sdo_can(_nodeId, _index, _subIndex, self.__timeout))
             return data_RX
         except Exception:
             return None
@@ -780,31 +800,31 @@ class MainWindow(QMainWindow):
            c) default_message_window 
            d) can_message_child_window
         """
-        try:
-            _index = int(self.get_index(), 16)
-            _subIndex = int(self.get_subIndex(), 16)
-            _nodeId = int(self.get_nodeId())
-            SDO_TX = int(self.get_canId_tx(), 16)
-            SDO_RX = self.get_canId_rx()
-            _cobid_TX = SDO_TX + _nodeId
-            _cobid_RX, data_RX = self.wrapper.read_sdo_can_thread(nodeId=_nodeId,
-                                                                  index=_index,
-                                                                  subindex=_subIndex,
-                                                                  timeout=self.__timeout,
-                                                                  SDO_TX=SDO_TX,
-                                                                  SDO_RX=SDO_RX,
-                                                                  cobid=_cobid_TX)
-            if print_sdo == True:
-                # self.control_logger.disabled = False
-                self.print_sdo_can(index=_index, subIndex=_subIndex, response_from_node=data_RX, cobid_TX=_cobid_TX, cobid_RX=_cobid_RX)
-            return data_RX
-        except Exception:
-            self.error_message(text="Make sure that the CAN interface is connected")
+       # try:
+        _index = int(self.get_index(), 16)
+        _subIndex = int(self.get_subIndex(), 16)
+        _nodeId = int(self.get_nodeId())
+        SDO_TX = int(self.get_canId_tx(), 16)
+        SDO_RX = self.get_canId_rx()
+        _cobid_TX = SDO_TX + _nodeId
+        _cobid_RX, data_RX = asyncio.run(self.wrapper.read_sdo_can_thread(nodeId=_nodeId,
+                                                              index=_index,
+                                                              subindex=_subIndex,
+                                                              timeout=self.__timeout,
+                                                              SDO_TX=SDO_TX,
+                                                              SDO_RX=SDO_RX,
+                                                              cobid=_cobid_TX))
+        if print_sdo == True:
+            # self.control_logger.disabled = False
+            self.print_sdo_can(index=_index, subIndex=_subIndex, response_from_node=data_RX, cobid_TX=_cobid_TX, cobid_RX=_cobid_RX)
+        return data_RX
+       # except Exception:
+       #     self.error_message(text="Make sure that the CAN interface is connected")
         
     def print_sdo_can(self , index=None, subIndex=None, response_from_node=None, cobid_TX=None, cobid_RX=None):
         # printing the read message with cobid = SDO_RX + nodeId
-        MAX_DATABYTES = 8
-        msg = [0 for i in range(MAX_DATABYTES)]
+        max_data_bytes = 8
+        msg = [0 for i in range(max_data_bytes)]
         msg[0] = 0x40  # Defines a read (reads data only from the node) dictionary object in CANOPN standard
         msg[1], msg[2] = index.to_bytes(2, 'little')
         msg[3] = subIndex
@@ -847,7 +867,7 @@ class MainWindow(QMainWindow):
         # Generate random indices and sub indices
         _index = np.random.randint(1000, 2500)
         _subIndex = np.random.randint(0, 5)
-        _nodeId = self.nodeComboBox.currentText()
+        _nodeId = self.nodetextBox.text()
         
         # Set the indices and the sub indices
         self.set_nodeId(_nodeId)
@@ -894,21 +914,39 @@ class MainWindow(QMainWindow):
         # fill the textBox     
         self.set_textBox_message(comunication_object="SDO_TX", msg=str([hex(b)[2:] for b in _bytes]), cobid=str(_cobid_TX) + " ")    
         try: 
-            # Send the can Message
-            self.wrapper.write_can_message(int(_cobid_TX, 16), _bytes, flag=0, timeout=self.__timeout)
+                # Send the can Message
+            asyncio.run(self.wrapper.write_can_message(int(_cobid_TX, 16), _bytes, flag=0, timeout=self.__timeout))
             # receive the message
+            nodeList = self.get_nodeList()
             if _cobid_TX == "0x0":
-                for i in np.arange(len(self.nodeComboBox) - 1):
+                for i in np.arange(len(nodeList)):
                     self.read_can_message_thread(thread=True)
                     self.wrapper.restart_channel_connection()
             elif int(_cobid_TX, 16) >= 0x700:
                 self.read_can_message_thread(thread=False)
                 self.wrapper.restart_channel_connection()
+                wait_led = self.wait_alert_leds()
+                wait_led.show()
+                time.sleep(2)
             else:
                 self.read_can_message_thread(thread=True)
         except Exception:
             self.error_message(text="Make sure that the CAN interface is connected")
-
+            
+    def wait_alert_leds(self):
+        v = QVBoxLayout()
+        window = QWidget()
+        window.setGeometry(200, 200, 250, 250)
+        icon_red = "graphicsUtils/icons/ICON_RED_LED2.gif" #icon_red.gif"
+        wait_label = QLabel()
+        alarm_led = QMovie(icon_red)    
+        alarm_led.setScaledSize(QSize().scaled(20, 20, Qt.KeepAspectRatio))
+        alarm_led.start()
+        wait_label.setMovie(alarm_led)
+        v.addWidget(wait_label)
+        window.setLayout(v)
+        return window  
+        
     def read_can_message_thread(self, print_sdo=True, thread=True):
         """Read an object in a thread
         1. Request messages in the bus
@@ -919,6 +957,7 @@ class MainWindow(QMainWindow):
            b) show_dump_child_window
            c) dump_child_window
         """
+
         if thread:
             readCanMessage = self.wrapper.read_can_message_thread()
         else:
@@ -1266,7 +1305,7 @@ class MainWindow(QMainWindow):
             interface = self.get_interface()
             if interface == "socketcan" or interface == "virtual":
                 self.logger.info("DumpingCAN bus traffic.")
-                print_command = "echo ==================== Dumping CAN bus traffic ====================\n"
+                print_command = "echo ============================ Dumping CAN bus traffic ============================\n"
                 candump_command = "candump any -x -c -t A"
                 os.system("gnome-terminal -e 'bash -c \"" + print_command + candump_command + ";bash\"'")
             else:
@@ -1281,12 +1320,13 @@ class MainWindow(QMainWindow):
     def show_CANSettingsWindow(self):
         self.SettingsWindow = QMainWindow()
         _interfaceItems = self.__interfaceItems
-        _channelList = self.__channelPorts
+        _channelList = self.get_channelPorts()
         child = child_window.ChildWindow(parent = self.SettingsWindow)
-        self.interfaceComboBox, self.channelSettingsComboBox , self.ipBox = child.can_settings_child_window(self.SettingsWindow, 
-                                                                                                                    interfaceItems = _interfaceItems,
-                                                                                                                    channelPorts = _channelList,
-                                                                                                                    mainWindow = self)
+        #self.interfaceComboBox, self.channelSettingsComboBox , self.ipBox = 
+        child.can_settings_child_window(self.SettingsWindow, 
+                                        interfaceItems = _interfaceItems,
+                                        channelPorts = _channelList,
+                                        mainWindow = self)
         self.SettingsWindow.show()
     
     def show_trendWindow(self):

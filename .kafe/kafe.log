@@ -1,0 +1,1 @@
+socketcan_receive_thread 2021-09-17 12:26:04,229 :: ERROR :: Some Error occurred while reading Channel <bound method CanWrapper.channel of <CanWrapper(Thread-2, started 140573868549888)>>: type object 'CanError' has no attribute 'data'

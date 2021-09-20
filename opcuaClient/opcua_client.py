@@ -2,7 +2,7 @@ import logging
 from yaml import load, dump
 import time
 from opcuaClient.browse_server_structure import BROWSEServer
-from canmops.analysisUtils import AnalysisUtils
+from canmops.analysis_utils import AnalysisUtils
 # from browse_server_structure import BROWSEServer
 # from analysisUtils import AnalysisUtils
 from datetime import date

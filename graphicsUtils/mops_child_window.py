@@ -20,7 +20,7 @@ class MopsChildWindow(QWidget):
 
     def __init__(self, parent=None,console_loglevel=logging.INFO,opcua_config = "opcua_config.yaml"):
        super(MopsChildWindow, self).__init__(parent)
-       self.logger = Logger().setup_main_logger(name=" MOPS GUI", console_loglevel=console_loglevel)
+       self.logger = Logger().setup_main_logger(name=" MOPS GUI ", console_loglevel=console_loglevel)
        dev = AnalysisUtils().open_yaml_file(file=config_dir + "MOPS_cfg.yml", directory=lib_dir)
        self.configure_devices(dev)
        max_mops_num = 4
@@ -210,7 +210,7 @@ class MopsChildWindow(QWidget):
         GridLayout.addLayout(VLayout, 0, 3, 0, 4)
         return GridLayout
                                 
-    def device_child_window(self, childWindow, device = "MOPS", cic = None, port = None , mops = None, mainWindow = None): 
+    def device_child_window(self, childWindow, device = "MOPS", cic = None, port = None , mops = None, mainWindow = None, readout_thread = None): 
         '''
         The function will Open a special window for the device [MOPS] .
         The calling function for this is show_deviceWindow
