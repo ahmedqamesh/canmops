@@ -5,11 +5,18 @@ import logging
 import can
 import subprocess
 import threading
-import os
-from .logger_main import Logger
-from .analysis_utils import AnalysisUtils
-from .watchdog_can_interface import WATCHCan
 import time
+import os
+try:
+    from logger_main import Logger
+    from analysis_utils import AnalysisUtils
+    from watchdog_can_interface import WATCHCan
+except:
+    from .logger_main import Logger
+    from .analysis_utils import AnalysisUtils
+    from .watchdog_can_interface import WATCHCan
+
+
 config_file = "socketcan_CANSettings.yml"
 rootdir = os.path.dirname(os.path.abspath(__file__))
 config_dir = "config"
@@ -30,7 +37,6 @@ class CanConfig(WATCHCan):
 
         self.can_0_settings = {}
         self.can_1_settings = {}
-
        
         self._interface = _canSettings['CAN_Interfaces']
         self.sem_read_block = threading.Semaphore(value=0)
@@ -44,6 +50,7 @@ class CanConfig(WATCHCan):
 
         for channel in self._can_channels:
             for value in _canSettings[channel]:
+                
                 if channel == self._can_channels[0]:
                     self.can_0_settings[f'{value}'] = _canSettings[channel][f'{value}']
                 else:

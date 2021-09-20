@@ -117,7 +117,7 @@ class MenuWindow(QWidget):
         
         def show_edit_adc():            
             self.adcWindow = QMainWindow()
-            self.edit_adc(self.adcWindow, conf)
+            self.edit_adc_window(self.adcWindow, conf)
             self.adcWindow.show()
 
         DeviceSettings = QAction(QIcon('graphics_Utils/icons/icon_nodes.png'),'Edit Device Settings', mainwindow)
@@ -254,10 +254,7 @@ class MenuWindow(QWidget):
         RestartKvaser.triggered.connect(_restart_kvaserchannel)
         
         KvaserMenu.addAction(RestartKvaser)
-            
 
-        
-        
     def create_statusBar(self, mainwindow, msg=" "):
         status = QStatusBar()
         status.showMessage(msg)
@@ -290,7 +287,7 @@ class MenuWindow(QWidget):
         msgBox.setStandardButtons(QMessageBox.Close)
         msgBox.exec()
     
-    def edit_adc(self, childWindow, conf):
+    def edit_adc_window(self, childWindow, conf):
         #check the conf file
         ADCGroup= QGroupBox("ADC details")
         childWindow.setObjectName("Edit ADC settings")

@@ -3,7 +3,10 @@ import time
 from threading import Thread
 from EventNotifier import Notifier
 import logging
-from .logger_main import Logger
+try:
+    from logger_main import Logger
+except:
+    from .logger_main import Logger
 
 
 class WATCHCan(Thread):

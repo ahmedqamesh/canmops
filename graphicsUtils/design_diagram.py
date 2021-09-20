@@ -65,7 +65,6 @@ class DesignDiagram(object):
                 child = self.getID()
                 # Every CIC will have an Idname = 1
                 label_attribute = self.asAttr(attr = "label",  val = key,id_name = id_name, child = child)
-               # print(id_name)
                 if type(val) is dict:
                     #Node definition
                     edges.append((id_name, child, label_attribute))
@@ -104,15 +103,17 @@ class DesignDiagram(object):
             full_path =path+"\\"+file_name+file_end
         else:
            full_path =path+"/"+file_name+file_end 
-        with open(full_path, 'r') as stream:
-            ast = yaml.safe_load(stream)
-            self.output_to_dot ("digraph graphid_name {\n")
-            self.map_render(ast)
-            self.output_to_dot ("}\n")
-            self.output_file.close()
-            graph = self.create_visualization(path =path, file_name = file_name)
-        return graph
-    
+        if file_name is not None:
+            with open(full_path, 'r') as stream:
+                ast = yaml.safe_load(stream)
+                self.output_to_dot ("digraph graphid_name {\n")
+                self.map_render(ast)
+                self.output_to_dot ("}\n")
+                self.output_file.close()
+                graph = self.create_visualization(path =path, file_name = file_name)
+            return graph
+        else:
+            pass
 if   __name__  == "__main__":
     test_file = "/home/dcs/git/canmops/config/opcua_config.yaml"
     file_name = os.path.basename(test_file)

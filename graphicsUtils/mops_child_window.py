@@ -210,7 +210,7 @@ class MopsChildWindow(QWidget):
         GridLayout.addLayout(VLayout, 0, 3, 0, 4)
         return GridLayout
                                 
-    def device_child_window(self, childWindow, device = "MOPS", cic = None, port = None , mops = None, mainWindow = None): 
+    def device_child_window(self, childWindow, device = "MOPS", cic = None, port = None , mops = None, mainWindow = None, readout_thread = None): 
         '''
         The function will Open a special window for the device [MOPS] .
         The calling function for this is show_deviceWindow

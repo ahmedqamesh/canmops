@@ -282,6 +282,7 @@ class MainWindow(QMainWindow):
         self.setCentralWidget(plotframe)
         plotframe.setLayout(textOutputWindowLayout)
         self.textGroupBox.setLayout(textOutputWindowLayout)
+        
     def tableOutputWindow(self):
         '''
         The function defines the GroupBox output table for Bytes monitoring for RX and TX messages
@@ -541,15 +542,17 @@ class MainWindow(QMainWindow):
             conf = self.child.open()
         else:
             conf = AnalysisUtils().open_yaml_file(file=config_dir + self.__devices[0] + "_cfg.yml", directory=lib_dir)
-        self.__devices.append(conf["Application"]["device_name"])
         mops_child = mops_child_window.MopsChildWindow()
         deviceName, version, icon_dir, nodeIds, dictionary_items, adc_channels_reg,\
-         self.__adc_index, self.__chipId, self.__index_items, self.__conf_index, self.__mon_index,self.__resistor_ratio, self.__refresh_rate, self.__ref_voltage  = mops_child.configure_devices(conf)
+         self.__adc_index, self.__chipId, self.__index_items, self.__conf_index, \
+         self.__mon_index,self.__resistor_ratio, self.__refresh_rate, self.__ref_voltage  = mops_child.configure_devices(conf)
+        
         # Load ADC calibration constants
         # adc_calibration = pd.read_csv(config_dir + "adc_calibration.csv", delimiter=",", header=0)
         # condition = (adc_calibration["chip"] == chipId)
         # chip_parameters = adc_calibration[condition]
         # print(chip_parameters["calib_a"],chip_parameters["calib_b"] )
+        self.__devices.append(deviceName)
         self.set_deviceName(deviceName)
         self.set_version(version)
         self.set_icon_dir(icon_dir)
@@ -584,7 +587,8 @@ class MainWindow(QMainWindow):
             return _channel,_ipAddress, _bitrate,_sample_point, _sjw,_tseg1, _tseg2
         except:
           self.logger.error("Channel %s settings for %s interface Not found" % (str(channel),interface)) 
-          return None,None, None,None, None,None, None         
+          return None,None, None,None, None,None, None 
+              
     def connect_server(self):
         '''
         The function is starts calling the CANWrapper [called by the connectButton].
@@ -863,7 +867,7 @@ class MainWindow(QMainWindow):
         # Generate random indices and sub indices
         _index = np.random.randint(1000, 2500)
         _subIndex = np.random.randint(0, 5)
-        _nodeId = self.nodeComboBox.currentText()
+        _nodeId = self.nodetextBox.text()
         
         # Set the indices and the sub indices
         self.set_nodeId(_nodeId)
@@ -1301,7 +1305,7 @@ class MainWindow(QMainWindow):
             interface = self.get_interface()
             if interface == "socketcan" or interface == "virtual":
                 self.logger.info("DumpingCAN bus traffic.")
-                print_command = "echo ==================== Dumping CAN bus traffic ====================\n"
+                print_command = "echo ============================ Dumping CAN bus traffic ============================\n"
                 candump_command = "candump any -x -c -t A"
                 os.system("gnome-terminal -e 'bash -c \"" + print_command + candump_command + ";bash\"'")
             else:

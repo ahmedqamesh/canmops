@@ -15,8 +15,9 @@ import sys
 try:
     from graphicsUtils          import menu_window, mops_child_window, data_monitoring
     from canmops.analysis       import Analysis
-    from canmops.logger_main         import Logger 
+    from canmops.logger_main    import Logger 
     from canmops.analysis_utils  import AnalysisUtils
+    from canmops.mops_readout_thread import READMops
 except:
     pass
 rootdir = os.path.dirname(os.path.abspath(__file__)) 
@@ -289,15 +290,25 @@ class MultiDeviceWindow(QWidget):
             
     # show windows
     def show_deviceWindow(self, mops=None, port=None):
+        #Fix thread issue        
+        mops_readout = READMops(None, None, port, int(mops), None, parent=self)
+        #mops_readout.start()
+        
         deviceWindow = QMainWindow(self)
         _device_name = "Port:"+port+", MOPS:"+mops
         adc_channels_num = 33
-        self.channelValueBox[int(port)][int(mops)], self.trendingBox[int(port)][int(mops)] , self.monValueBox[int(port)][int(mops)] , self.confValueBox[int(port)][int(mops)], _ = self.MOPSChildWindow.device_child_window(deviceWindow,  
-                                                                                                                                                   device=_device_name, 
-                                                                                                                                                   cic=str(0), 
-                                                                                                                                                   mops=mops, 
-                                                                                                                                                   port=port, 
-                                                                                                                                                   mainWindow = self)
+        readout_thread = None
+        self.channelValueBox[int(port)][int(mops)], \
+        self.trendingBox[int(port)][int(mops)] , \
+        self.monValueBox[int(port)][int(mops)] , \
+        self.confValueBox[int(port)][int(mops)], _ = self.MOPSChildWindow.device_child_window(deviceWindow,  
+                                                                                               device=_device_name, 
+                                                                                               cic=str(0), 
+                                                                                               mops=mops, 
+                                                                                               port=port, 
+                                                                                               mainWindow = self, 
+                                                                                               readout_thread=readout_thread)
+
         self.graphWidget = self.DataMonitoring.initiate_trending_figure(n_channels=adc_channels_num)    
         self.initiate_adc_timer(period = 500, mops=mops, port=port)
         deviceWindow.show()

@@ -1,8 +1,14 @@
 import queue
 import time
+from symbol import except_clause
 
-from .logger_main import Logger
-from .can_bus_config import can_config
+try:
+    from .logger_main import Logger
+    from .can_bus_config import can_config
+except:
+    from logger_main import Logger
+    from can_bus_config import can_config
+
 from threading import Thread
 import logging
 

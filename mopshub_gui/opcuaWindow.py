@@ -446,6 +446,7 @@ class OpcuaWindow(QWidget):
         deviceWindow = QMainWindow(self)
         _device_name = "CIC:" + cic + ", Port:" + port + ", MOPS:" + mops
         adc_channels_num = 33
+        
         self.channelValueBox[int(cic)][int(port)][int(mops)], self.trendingBox[int(cic)][int(port)][int(mops)], \
         self.monValueBox[int(cic)][int(port)][int(mops)], self.mon_labelvalue[int(cic)][int(port)][int(mops)], \
         self.confValueBox[int(cic)][int(port)][int(mops)], self.conf_labelvalue[int(cic)][int(port)][
