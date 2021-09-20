@@ -2,7 +2,10 @@
 # Possible updates: Watchdog on Channel Health while system is running
 
 import logging
-import can
+try:
+    import can
+except:
+    pass
 import subprocess
 import threading
 import time

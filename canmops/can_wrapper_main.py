@@ -30,7 +30,6 @@ try:
     from .analysis_utils import AnalysisUtils
     from .can_bus_config import can_config
     from .can_thread_reader import READSocketcan
-    
 except (ImportError, ModuleNotFoundError):
     from analysis import Analysis
     from logger_main   import Logger
