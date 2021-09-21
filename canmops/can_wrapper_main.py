@@ -28,14 +28,11 @@ try:
     from .analysis import Analysis
     from .logger_main import Logger
     from .analysis_utils import AnalysisUtils
-    from .can_bus_config import can_config
-    from .can_thread_reader import READSocketcan
 except (ImportError, ModuleNotFoundError):
     from analysis import Analysis
     from logger_main   import Logger
     from analysis_utils import AnalysisUtils
-    from can_bus_config import can_config
-    from can_thread_reader import READSocketcan    
+  
 # Third party modules
 from collections import deque, Counter
 from tqdm import tqdm
@@ -52,6 +49,12 @@ from random import randint
 logger = Logger().setup_main_logger(name = " Lib Check ",console_loglevel=logging.INFO, logger_file = False)
 try:
     import can
+    try:
+        from .can_bus_config import can_config
+        from .can_thread_reader import READSocketcan
+    except (ImportError, ModuleNotFoundError):
+        from can_bus_config import can_config
+        from can_thread_reader import READSocketcan          
 except:
      logger.warning("SocketCAN Package is not installed....."+"[Please ignore the warning if No SocketCAN drivers used.]")
 
@@ -74,7 +77,7 @@ rootdir = os.path.dirname(os.path.abspath(__file__))
 config_dir = "config/"
 lib_dir = rootdir[:-8]
 
-class CanWrapper(READSocketcan):#Instead of object
+class CanWrapper(object):#READSocketcan):#Instead of object
 
     def __init__(self,
                  interface=None, channel=None,
