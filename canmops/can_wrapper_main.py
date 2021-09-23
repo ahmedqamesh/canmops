@@ -20,6 +20,8 @@ import datetime
 import sys
 import os
 from threading import Thread, Event, Lock
+import subprocess
+import threading
 import numpy as np
 from pip._internal.cli.cmdoptions import pre
 from lxml.html.builder import PRE
@@ -52,9 +54,12 @@ try:
     try:
         from .can_bus_config import can_config
         from .can_thread_reader import READSocketcan
+        from .watchdog_can_interface import WATCHCan
     except (ImportError, ModuleNotFoundError):
         from can_bus_config import can_config
+        from watchdog_can_interface import WATCHCan
         from can_thread_reader import READSocketcan          
+
 except:
      logger.warning("SocketCAN Package is not installed....."+"[Please ignore the warning if No SocketCAN drivers used.]")
 
@@ -77,7 +82,7 @@ rootdir = os.path.dirname(os.path.abspath(__file__))
 config_dir = "config/"
 lib_dir = rootdir[:-8]
 
-class CanWrapper(object):#READSocketcan):#Instead of object
+class CanWrapper(WATCHCan):#READSocketcan):#Instead of object
 
     def __init__(self,
                  interface=None, channel=None,
@@ -87,15 +92,18 @@ class CanWrapper(object):#READSocketcan):#Instead of object
                  nodeid =None,
                  conf_file="main_cfg.yml",
                  file_loglevel=logging.INFO, 
-                 logdir=None,
+                 logdir=None,load_config = False, 
                  console_loglevel=logging.INFO):
        
         super(CanWrapper, self).__init__()  # super keyword to call its methods from a subclass:        
-        # Read configurations from a file
-        self.__conf = AnalysisUtils().open_yaml_file(file=config_dir + conf_file, directory=lib_dir)
-        self.__channelPorts = self.__conf["channel_ports"]
-        self.__channel = list(self.__conf['channel_ports'])[0]
-
+        #Initialize a watchdog
+        WATCHCan.__init__(self)
+        self.start()
+        #Begin a thread settings
+        self.sem_read_block = threading.Semaphore(value=0)
+        self.sem_recv_block = threading.Semaphore(value=0)
+        self.sem_config_block = threading.Semaphore()
+        
         """:obj:`~logging.Logger`: Main logger for this class"""
         if logdir is None:
             #'Directory where log files should be stored'
@@ -103,14 +111,25 @@ class CanWrapper(object):#READSocketcan):#Instead of object
                             
         ts = os.path.join(logdir, time.strftime('%Y-%m-%d_%H-%M-%S_CAN_Wrapper.'))
         self.logger = Logger().setup_main_logger(name = "CAN Wrapper",console_loglevel=console_loglevel, logger_file = False)
-        
         self.logger_file = Logger().setup_file_logger(name = "CANWrapper",console_loglevel=console_loglevel, logger_file = ts)#for later usage
         self.logger.info(f'Existing logging Handler: {ts}'+'log')
-        
-        if bitrate is None:
+    
+        if load_config:
            # Read CAN settings from a file 
             self.__channels, self.__ipAddress,self.__bitrate, self.__samplePoint,\
-            self.__sjw, self.__tseg1, self.__tseg2 =   self.load_settings_file(interface = interface, channel = self.__channel)
+            self.__sjw, self.__tseg1, self.__tseg2, self.__can_channels, _canSettings =   self.load_settings_file(interface = interface, channel = channel)
+            self.can_0_settings = {}     
+            self.can_1_settings = {}       
+            for ch in self.__can_channels:
+                for value in _canSettings[ch]:
+                    if ch == self.__can_channels[0]:
+                        self.can_0_settings[f'{value}'] = _canSettings[ch][f'{value}']
+                    else:
+                        if ch == self.__can_channels[1]:
+                            self.can_1_settings[f'{value}'] = _canSettings[ch][f'{value}']
+        else:
+            pass
+        
         # Initialize default arguments
         """:obj:`str` : Internal attribute for the interface"""
         self.__interface = interface
@@ -140,7 +159,8 @@ class CanWrapper(object):#READSocketcan):#Instead of object
         self.error_counter = 0
         
         """:obj:`bool` : If communication is established"""
-        self.__busOn = False  
+        self.__busOn0 = False  
+        self.__busOn1 = False
         """:obj:`int` : Internal attribute for the channel index"""
         if channel is not None:
             self.__channel = channel
@@ -153,16 +173,13 @@ class CanWrapper(object):#READSocketcan):#Instead of object
                                                                                                                self.__ipAddress))
         """Internal attribute for the |CAN| channel"""
         self.ch0= None
-        
-        if interface == "developer_trial":
-            self.ch0= can_config.can_setup(channel = self.__channel, interface = self.__interface)
-            can_config.start()
-            self.start()
-            can.util.set_logging_level('warning')
-        else:
-            self.set_channel_connection(interface=self.__interface)            
+        self.ch1 = None
+        #Setup CAN
+        self.can_setup(channel = self.__channel, interface = self.__interface)
+        self.set_channel_connection(interface=self.__interface)            
         """Internal attribute for the |CAN| channel"""
-        self.__busOn = True
+        self.__busOn0 = True
+        self.__busOn1 = True
         self.__canMsgQueue = deque([], 100)  # queue with a size of 100 to queue all the messages in the bus
         self.__pill2kill = Event()
         self.__lock = Lock()
@@ -220,6 +237,7 @@ class CanWrapper(object):#READSocketcan):#Instead of object
         self.logger.notice("Loading CAN settings from the file %s produced on %s" % (filename, test_date))
         try:
             _canSettings = AnalysisUtils().open_yaml_file(file=config_dir + interface + "_CANSettings.yml", directory=lib_dir)
+            _can_channels = list(_canSettings)[1:]#['channel0', 'channel1']
             _channel = _canSettings['channel' + str(channel)]["channel"]
             _ipAddress = _canSettings['channel' + str(channel)]["ipAddress"]
             _bitrate = _canSettings['channel' + str(channel)]["bitrate"]
@@ -227,10 +245,10 @@ class CanWrapper(object):#READSocketcan):#Instead of object
             _sjw = _canSettings['channel' + str(channel)]["SJW"]
             _tseg1 = _canSettings['channel' + str(channel)]["tseg1"]
             _tseg2 = _canSettings['channel' + str(channel)]["tseg2"] 
-            return _channel,_ipAddress, _bitrate,_sample_point, _sjw,_tseg1, _tseg2
+            return _channel,_ipAddress, _bitrate,_sample_point, _sjw,_tseg1, _tseg2, _can_channels, _canSettings
         except:
           self.logger.error("Channel %s settings for %s interface Not found" % (str(channel),interface)) 
-          return None,None, None,None, None,None, None 
+          return None,None, None,None, None,None, None , None, None
                                       
     def set_channel_connection(self, interface=None):
         """
@@ -283,9 +301,9 @@ class CanWrapper(object):#READSocketcan):#Instead of object
         self.logger.notice('Starting CAN Connection ...')
         _interface = self.get_interface()
         if _interface == 'Kvaser':
-            if not self.__busOn:
+            if not self.__busOn0:
                 self.logger.notice('Going in \'Bus On\' state ...')
-                self.__busOn = True
+                self.__busOn0 = True
             #self.ch0.busOn()
         if _interface == 'AnaGate':
             if not self.ch0.deviceOpen:
@@ -347,7 +365,7 @@ class CanWrapper(object):#READSocketcan):#Instead of object
                     self.logger.info(f'Got data for channel {channel}: = {adc_converted}')
                 pbar.update(1)
             pbar.close()
-        self.logger.notice("ADC data are saved to %s%s" % (outputdir,outputname))
+        self.logger.notice("ADC data are saved to %s/%s" % (outputdir,outputname))
 
     def restart_channel_connection(self, interface = None):
         """Restart |CAN| channel.
@@ -366,7 +384,7 @@ class CanWrapper(object):#READSocketcan):#Instead of object
         with self.lock:
             self.cnt['Residual CAN messages'] = len(self.__canMsgQueue)
         self.__pill2kill.set()
-        if self.__busOn:
+        if self.__busOn0:
             if _interface == 'Kvaser':
                 try:
                     self.__canMsgThread.join()
@@ -378,7 +396,7 @@ class CanWrapper(object):#READSocketcan):#Instead of object
                 self.ch0.close()
             else:
                 self.ch0.shutdown()            
-        self.__busOn = False
+        self.__busOn0 = False
         self.set_channel_connection(interface = _interface)
         self.__pill2kill = Event()
         self.logger.notice('The channel is reset') 
@@ -396,7 +414,7 @@ class CanWrapper(object):#READSocketcan):#Instead of object
                             'minute')
         self.logger.warning('Closing the CAN channel.')
         self.__pill2kill.set()
-        if self.__busOn:
+        if self.__busOn0:
             if self.__interface == 'Kvaser':
                 try:
                     self.__canMsgThread.join()
@@ -411,7 +429,7 @@ class CanWrapper(object):#READSocketcan):#Instead of object
                 self.ch0.shutdown()
                 #channel = "can" + str(self.__channel)
                         
-        self.__busOn = False
+        self.__busOn0 = False
         self.logger.warning('Stopping the server.')
 
     async def read_sdo_can_sync(self, nodeId=None, index=None, subindex=None, timeout=2000, max_data_bytes=8,
@@ -781,24 +799,59 @@ class CanWrapper(object):#READSocketcan):#Instead of object
                 self.ch0.send(msg, timeout)
             except:  # can.CanError:
                 self.logger.error("An Error occurred, The bus is not active")
-                # self.hardware_config(str(self.__channel), self.__interface)
-            
-    def hardware_config(self, bitrate, channel, interface, sjw,samplepoint,tseg1,tseg2):
+    
+    def can_setup(self, channel: int, interface : str):
+        self.logger.info("Resetting CAN Interface as soon as communication threads are finished")
+        self.sem_config_block.acquire()
+        self.logger.info("Resetting CAN Interface")
+        self.set_interface(interface)
+        if channel == self.can_0_settings['channel']:
+            if self.__busOn0:
+                self.ch0.shutdown()
+                self.hardware_config(channel = channel,interface = interface)
+        elif channel == self.can_1_settings['channel']:
+            if self.__busOn1:
+                self.ch1.shutdown()
+                self.hardware_config(channel = channel,interface = interface)
+        self.logger.info(f"Channel {channel} is set")
+        self.sem_config_block.release()
+        self.logger.info("Resetting of CAN Interface finished. Returning to communication.")
+                                                    
+    def hardware_config(self, bitrate = None, channel = None, interface = None, sjw = None,samplepoint = None,tseg1 = None,tseg2 = None):
         '''
         Pass channel string (example 'can0') to configure OS level drivers and interface.
         '''
-        if interface == "socketcan":
-            _bus_type = "can"
-            _can_channel = _bus_type + channel
-            self.logger.info('Configure CAN hardware drivers for channel %s' % _can_channel)
-            os.system(". " + rootdir + "/socketcan_wrapper_enable.sh %i %s %s %s %s %s %s" % (bitrate, samplepoint, sjw, _can_channel, _bus_type,tseg1,tseg2))
-        elif interface == "virtual":
-            _bus_type = "vcan"
-            _can_channel = _bus_type + channel
-            self.logger.info('Configure CAN hardware drivers for channel %s' % _can_channel)
-            os.system(". " + rootdir + "/socketcan_wrapper_enable.sh %i %s %s %s %s %s %s" % (bitrate, samplepoint, sjw, _can_channel, _bus_type,tseg1,tseg2))
-        else:
-            _can_channel = channel
+        #sudo chown root:root socketcan_wrapper_enable.sh
+        #sudo chmod 4775 socketcan_wrapper_enable.sh
+        #sudo bash socketcan_wrapper_enable.sh 111111 0.5 4 can0 can 5 6
+        if channel == 0:
+            if interface == "socketcan":
+                _bus_type = "can"
+                _can_channel = _bus_type + f"{self.can_0_settings['channel']}"
+                self.logger.info('Configure CAN hardware drivers for channel %s' % _can_channel)
+                #os.system("." + rootdir + "/socketcan_wrapper_enable.sh %i %s %s %s %s %s %s" % (bitrate, samplepoint, sjw, _can_channel, _bus_type,tseg1,tseg2))
+                os.system("bash " + rootdir + "/socketcan_wrapper_enable.sh %s %s %s %s %s %s %s" % (f"{self.can_0_settings['bitrate']}",
+                                 f"{self.can_0_settings['samplePoint']}",f"{self.can_0_settings['SJW']}",_can_channel,_bus_type,
+                                 f"{self.can_0_settings['tseg1']}", f"{self.can_0_settings['tseg2']}"))
+                # subprocess.call(['sh', 'bash socketcan_wrapper_enable.sh', f"{self.can_0_settings['bitrate']}",
+                #                  f"{self.can_0_settings['samplePoint']}",f"{self.can_0_settings['SJW']}",_can_channel,_bus_type,
+                #                  f"{self.can_0_settings['tseg1']}", f"{self.can_0_settings['tseg2']}"],
+                #                  cwd=rootdir)
+                            
+            elif interface == "virtual":
+                _bus_type = "vcan"
+                _can_channel = _bus_type + f"{self.can_0_settings['channel']}"
+                self.logger.info('Configure CAN hardware drivers for channel %s' % _can_channel)
+                #os.system(". sudo " + rootdir + "/socketcan_wrapper_enable.sh %i %s %s %s %s %s %s" % (bitrate, samplepoint, sjw, _can_channel, _bus_type,tseg1,tseg2))
+                subprocess.call(['sh', 'sudo  ./socketcan_wrapper_enable.sh', f"{self.can_0_settings['bitrate']}",
+                                 f"{self.can_0_settings['samplePoint']}",f"{self.can_0_settings['SJW']}",_can_channel,_bus_type,
+                                 f"{self.can_0_settings['tseg1']}", f"{self.can_0_settings['tseg2']}"],
+                                 cwd=rootdir)
+            else:
+                #Do nothing because it is not CAN
+                _can_channel = str(channel)
+        if channel == 1:
+            pass
         self.logger.info('%s[%s] Interface is initialized....' % (interface,_can_channel))
            
     def read_can_message_thread(self):
@@ -953,7 +1006,7 @@ class CanWrapper(object):#READSocketcan):#Instead of object
         self.__nodeList = x
     
     def set_channelPorts(self, x):
-        self.__channelPorts = x
+        self.__can_channels = x
             
     def set_channel(self, x):
         self.__channel = x
@@ -978,7 +1031,7 @@ class CanWrapper(object):#READSocketcan):#Instead of object
         return self.__nodeList
 
     def get_channelPorts(self):
-        return self.__channelPorts
+        return self.__can_channels
         
     def get_bitrate(self):
         return self.__bitrate

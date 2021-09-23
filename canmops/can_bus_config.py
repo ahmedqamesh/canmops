@@ -214,4 +214,4 @@ class CanConfig(WATCHCan):
         return self.__interface
 
 can_config = CanConfig()
-can_config.watchdog_notifier.subscribe("restart Interface", can_config.can_setup)
+#can_config.watchdog_notifier.subscribe("restart Interface", can_config.can_setup)
