@@ -17,6 +17,7 @@ class READMops(Thread, OPCClient):
         self.mops_id = node_id
         self.server_dict = server_dict
         self.readout_adc_mops = [None for _ in range(34)]
+        self.transformed_readout = [None for _ in range(34)]
         self.readout_conf_mops = None
         self.readout_mon_mops = None
         self.running = True
@@ -44,8 +45,9 @@ class READMops(Thread, OPCClient):
                         self.stream.write(f", Channel {i:02}")
                     self.stream.write("\n")
                     self.stream.write(f"Readout {current_time}")
-                    for item in self.readout_adc_mops:
-                        self.stream.write(f", {item}")
+                    for item in self.transformed_readout:
+                        if item is not None:
+                            self.stream.write(f", {item}")
                     self.stream.write("\n")
                     self.stream.close()
                 else:

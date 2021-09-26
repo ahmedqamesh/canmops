@@ -320,6 +320,7 @@ class MopsChildWindow(QWidget):
             elif readout_thread.save_flag is True:
                 readout_thread.save_flag = False
                 readout_thread.stream.close()
+                save_button.setIcon(QIcon('mopshub_gui/icons/icon_trend.jpg'))
 
         def snapshot():
             dir_path = QFileDialog.getExistingDirectory(self, "Select Directory")

@@ -647,6 +647,7 @@ class OpcuaWindow(QWidget):
                     resistor_2 = self.opcua_client.server_dict[f"CIC {c}"][f"CANBus {bus_id}"][f"MOPS {m}"][
                         f"ADCChannel {(subindex + 3):02}"]["Resistor2"]
                     adc_value = round((adc_value*(resistor_1+resistor_2))/resistor_1, 3)
+                readout_thread.transformed_readout[subindex] = adc_value
                 self.channelValueBox[c][b][m][subindex].setText(str(adc_value))
                 if self.trendingBox[c][b][m][subindex] is True:
                     if len(self.x[subindex]) >= 10:  # Monitor a window of 100 points is enough to avoid Memory issues
