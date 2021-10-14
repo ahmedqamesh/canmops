@@ -53,7 +53,7 @@ class READMops(Thread, OPCClient):
                 else:
                     self.stream = open(self.data_path, "a")
                     self.stream.write(f"Readout {current_time}")
-                    for item in self.readout_adc_mops:
+                    for item in self.transformed_readout:
                         self.stream.write(f", {item}")
                     self.stream.write("\n")
             time.sleep(0.25)
