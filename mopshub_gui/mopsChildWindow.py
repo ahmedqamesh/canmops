@@ -335,7 +335,7 @@ class MopsChildWindow(QWidget):
             #     stream.write(f", {readout_thread.readout_mon_mops[i, 1]}")
             stream.write("\n")
             stream.write(f"Readout {current_time}")
-            for item in readout_thread.readout_adc_mops:
+            for item in readout_thread.transformed_readout:
                 stream.write(f", {item}")
             stream.close()
 
