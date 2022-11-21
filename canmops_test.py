@@ -10,7 +10,7 @@ rootdir = os.path.dirname(os.path.abspath(__file__))
 # All the can configurations of the CAN controller should be set first from $HOME/config/main_cfg.yml
 async def test_can_wrapper():
     # Define parameters
-    NodeIds = [1,8]
+    NodeIds = [0,8]
     SDO_TX = 0x600
     SDO_RX = 0x580
     index = 0x1000
@@ -48,13 +48,12 @@ async def test_can_wrapper():
      #Example (3): Read all the ADC channels and Save it to a file in the directory output_data
      # PS. To visualise the data, Users can use the file $HOME/test_files/plot_adc.py
     await wrapper.read_adc_channels(file ="MOPS_cfg.yml", #Yaml configurations
-                              directory=rootdir+"/config", # direstory of the yaml file
+                              directory=rootdir+"/config_files", # direstory of the yaml file
                               nodeId = NodeIds[0], # Node Id
                               outputname = "adc_data_trial", # Data file name
                               outputdir = rootdir + "/output_data", # # Data directory
                               n_readings = 1) # Number of Iterations  
-      
-
+    
     #Example (2): write/read SDO message [For Developers]
     # VendorId_sync = await wrapper.read_sdo_can_sync(nodeId=NodeIds[0], 
     #                                                index=0x1000,
@@ -72,9 +71,9 @@ async def test_can_wrapper():
     
 if __name__=='__main__':
     channel = 0
-    #wrapper = canWrapper.CanWrapper(interface = "AnaGate",channel = channel)
-    wrapper = CanWrapper(interface = "socketcan",channel = channel)
-    #wrapper =  CanWrapper(interface = "Kvaser",channel = channel)
+    #wrapper = canWrapper.CanWrapper(interface = "AnaGate",channel = channel, load_config = True)
+    wrapper = CanWrapper(interface = "socketcan",channel = channel, load_config = True)
+    #wrapper =  CanWrapper(interface = "Kvaser",channel = channel, load_config = True)
     loop = asyncio.get_event_loop()
     try:
         asyncio.ensure_future(test_can_wrapper())

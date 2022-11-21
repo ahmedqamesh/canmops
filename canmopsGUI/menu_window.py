@@ -4,15 +4,15 @@ from PyQt5.QtCore    import *
 from PyQt5.QtGui     import *
 from PyQt5.QtWidgets import *
 import logging
-from graphicsUtils import main_gui_window, child_window
+from canmopsGUI import main_gui_window, child_window
 from canmops.analysis_utils import AnalysisUtils
 from canmops.logger_main import Logger 
 from PyQt5.QtWidgets import QMainWindow
 import os
 import numpy as np
 rootdir = os.path.dirname(os.path.abspath(__file__)) 
-config_dir = "config/"
-lib_dir = rootdir[:-13]
+config_dir = "config_files/"
+lib_dir = rootdir[:-11]
 class MenuWindow(QWidget):  
     
     def __init__(self, parent=main_gui_window):
@@ -23,17 +23,17 @@ class MenuWindow(QWidget):
     def stop(self):
         return self.MainWindow.stop_server()
     
-    def create_device_menuBar(self, mainwindow):
+    def create_device_menuBar(self, mainwindow,device_config):
         menuBar = mainwindow.menuBar()
         menuBar.setNativeMenuBar(False)  # only for MacOS   
-        self.set_device_settings_menu(menuBar, mainwindow)
+        self.set_device_settings_menu(menuBar, mainwindow,device_config)
         self.set_plotting_menu(menuBar, mainwindow)
         
-    def create_opcua_menuBar(self,mainwindow):
+    def create_opcua_menuBar(self,mainwindow,device_config):
         menuBar = mainwindow.menuBar()
         menuBar.setNativeMenuBar(False)  # only for MacOS 
         self.set_file_menu(menuBar, mainwindow)  
-        self.set_opcua_settings_menu(menuBar, mainwindow)
+        self.set_opcua_settings_menu(menuBar, mainwindow,device_config)
         self.set_help_main_menu(menuBar, mainwindow)         
        
     
@@ -48,7 +48,7 @@ class MenuWindow(QWidget):
     def set_file_menu(self, menuBar, mainwindow):
                
         fileMenu = menuBar.addMenu('&File')
-        exit_action = QAction(QIcon('graphicsUtils/icons/icon_exit.png'), '&Exit', mainwindow)
+        exit_action = QAction(QIcon('canmopsGUI/icons/icon_exit.png'), '&Exit', mainwindow)
         exit_action.setShortcut('Ctrl+Q')
         exit_action.setStatusTip('Exit program')
         exit_action.triggered.connect(self.stop)
@@ -68,15 +68,15 @@ class MenuWindow(QWidget):
                                         plot_prefix="adc_data")
             plottingWindow.show()
                     
-        plotADC = QAction(QIcon('graphicsUtils/icons/icon_curve.png'),'Plot ADC', mainwindow)
+        plotADC = QAction(QIcon('canmopsGUI/icons/icon_curve.png'),'Plot ADC', mainwindow)
         plotADC.setStatusTip("Plot ADC channels")
         plotADC.triggered.connect(show_adc_plotting_window)
         plottingMenu.addAction(plotADC) 
 
-    def set_opcua_settings_menu(self, menuBar, mainwindow):      
+    def set_opcua_settings_menu(self, menuBar, mainwindow,device):      
         settingsMenu = menuBar.addMenu('&settings')
-        self.MainWindow.update_device_box()    
-        self.__device = self.MainWindow.get_deviceName()
+        #self.MainWindow.update_device_box()    
+        self.__device = device#self.MainWindow.get_deviceName()
         conf = AnalysisUtils().open_yaml_file(file=config_dir + self.__device + "_cfg.yml" , directory=lib_dir)
         self.__appIconDir = conf["Application"]["icon_dir"]
                 
@@ -103,11 +103,9 @@ class MenuWindow(QWidget):
         settingsMenu.addAction(BrowseServer)
         settingsMenu.addAction(BrowseClient)
                 
-    def set_device_settings_menu(self, menuBar, mainwindow):      
+    def set_device_settings_menu(self, menuBar, mainwindow,device_config):      
         settingsMenu = menuBar.addMenu('&settings')
-        self.MainWindow.update_device_box()    
-        self.__device = self.MainWindow.get_deviceName()
-        conf = AnalysisUtils().open_yaml_file(file=config_dir + self.__device + "_cfg.yml" , directory=lib_dir)
+        conf = AnalysisUtils().open_yaml_file(file=config_dir + device_config + "_cfg.yml" , directory=lib_dir)
         self.__appIconDir = conf["Application"]["icon_dir"]
         
         def show_edit_device_settings():
@@ -326,7 +324,7 @@ class MenuWindow(QWidget):
         inLayout = QVBoxLayout()  
         addLayout= QHBoxLayout()  
         add_button = QPushButton("Add")
-        add_button.setIcon(QIcon('graphicsUtils/icons/icon_add.png'))
+        add_button.setIcon(QIcon('canmopsGUI/icons/icon_add.png'))
         addLayout.addSpacing(80)
         addLayout.addWidget(add_button)
         
@@ -351,7 +349,7 @@ class MenuWindow(QWidget):
             
         clearLayout= QHBoxLayout()  
         clear_button = QPushButton("Clear")
-        clear_button.setIcon(QIcon('graphicsUtils/icons/icon_clear.png'))
+        clear_button.setIcon(QIcon('canmopsGUI/icons/icon_clear.png'))
         clearLayout.addSpacing(80)
         clearLayout.addWidget(clear_button)
         outLayout.addWidget(fullListBox)
@@ -406,11 +404,11 @@ class MenuWindow(QWidget):
          
         buttonLayout = QHBoxLayout()
         close_button = QPushButton("Close")
-        close_button.setIcon(QIcon('graphicsUtils/icons/icon_close.png'))
+        close_button.setIcon(QIcon('canmopsGUI/icons/icon_close.png'))
         close_button.clicked.connect(childWindow.close)
         
         save_button = QPushButton("Save")
-        save_button.setIcon(QIcon('graphicsUtils/icons/icon_true.png'))
+        save_button.setIcon(QIcon('canmopsGUI/icons/icon_true.png'))
         save_button.clicked.connect(_save_items)       
         buttonLayout.addWidget(save_button)
         buttonLayout.addWidget(close_button)
@@ -445,10 +443,10 @@ class MenuWindow(QWidget):
         nodeSpinBox = QSpinBox()
         
         add_button = QPushButton("Add")
-        add_button.setIcon(QIcon('graphicsUtils/icons/icon_add.png'))
+        add_button.setIcon(QIcon('canmopsGUI/icons/icon_add.png'))
 
         clear_button = QPushButton("Clear")
-        clear_button.setIcon(QIcon('graphicsUtils/icons/icon_clear.png'))
+        clear_button.setIcon(QIcon('canmopsGUI/icons/icon_clear.png'))
                     
         inLayout.addWidget(nodeSpinBox)
         inLayout.addWidget(add_button)
@@ -523,11 +521,11 @@ class MenuWindow(QWidget):
         clear_button.clicked.connect(_clear_item)
         buttonLayout = QHBoxLayout()
         close_button = QPushButton("Close")
-        close_button.setIcon(QIcon('graphicsUtils/icons/icon_close.png'))
+        close_button.setIcon(QIcon('canmopsGUI/icons/icon_close.png'))
         close_button.clicked.connect(childWindow.close)
         
         save_button = QPushButton("Save")
-        save_button.setIcon(QIcon('graphicsUtils/icons/icon_true.png'))
+        save_button.setIcon(QIcon('canmopsGUI/icons/icon_true.png'))
         save_button.clicked.connect(_save_items)       
         buttonLayout.addWidget(save_button)
         buttonLayout.addWidget(close_button)
@@ -581,10 +579,10 @@ class MenuWindow(QWidget):
         
         busComboBox.currentTextChanged.connect(_busComboBox_changed)
         add_button = QPushButton("Reset")
-        add_button.setIcon(QIcon('graphicsUtils/icons/icon_start.png'))
+        add_button.setIcon(QIcon('canmopsGUI/icons/icon_start.png'))
         add_button.clicked.connect(_set)
         close_button = QPushButton("Close")
-        close_button.setIcon(QIcon('graphicsUtils/icons/icon_close.png'))
+        close_button.setIcon(QIcon('canmopsGUI/icons/icon_close.png'))
         close_button.clicked.connect(childWindow.close)
         buttonLayout.addWidget(add_button)  
         buttonLayout.addWidget(close_button) 

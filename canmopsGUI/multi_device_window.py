@@ -13,7 +13,7 @@ import yaml
 import logging
 import sys
 try:
-    from graphicsUtils          import menu_window, mops_child_window, data_monitoring
+    from canmopsGUI          import menu_window, mops_child_window, data_monitoring
     from canmops.analysis       import Analysis
     from canmops.logger_main    import Logger 
     from canmops.analysis_utils  import AnalysisUtils
@@ -113,7 +113,7 @@ class MultiDeviceWindow(QWidget):
         
         childWindow.setObjectName("OPCUA servers")
         childWindow.setWindowTitle("OPCUA servers")
-        childWindow.setWindowIcon(QtGui.QIcon("graphicsUtils/icons/icon_opcua.png"))
+        childWindow.setWindowIcon(QtGui.QIcon("canmopsGUI/icons/icon_opcua.png"))
         childWindow.adjustSize()    
         bus_num = self.__bus_num
         mops_num = self.__mops_num
@@ -150,7 +150,7 @@ class MultiDeviceWindow(QWidget):
         buttonLayout = QHBoxLayout() 
         buttonLayout.addSpacing(800)
         close_button = QPushButton("Close")
-        close_button.setIcon(QIcon('graphicsUtils/icons/icon_close.png'))
+        close_button.setIcon(QIcon('canmopsGUI/icons/icon_close.png'))
         close_button.clicked.connect(self.stop_opcua)
         
         buttonLayout.addWidget(close_button)
@@ -171,8 +171,8 @@ class MultiDeviceWindow(QWidget):
 
     def def_bus_variables(self, b):  
         icon = QIcon()
-        icon.addPixmap(QPixmap('graphicsUtils/icons/icon_connect.jpg'), QIcon.Normal, QIcon.On)
-        icon.addPixmap(QPixmap('graphicsUtils/icons/icon_disconnect.jpg'), QIcon.Normal, QIcon.Off)
+        icon.addPixmap(QPixmap('canmopsGUI/icons/icon_connect.jpg'), QIcon.Normal, QIcon.On)
+        icon.addPixmap(QPixmap('canmopsGUI/icons/icon_disconnect.jpg'), QIcon.Normal, QIcon.Off)
         #for b in np.arange(bus_num):
         en_button = QPushButton("")
         en_button.setIcon(icon)
@@ -193,8 +193,8 @@ class MultiDeviceWindow(QWidget):
        
     def def_bus_frame(self, b): 
         icon = QIcon()
-        icon.addPixmap(QPixmap('graphicsUtils/icons/icon_connect.jpg'), QIcon.Normal, QIcon.On)
-        icon.addPixmap(QPixmap('graphicsUtils/icons/icon_disconnect.jpg'), QIcon.Normal, QIcon.Off)
+        icon.addPixmap(QPixmap('canmopsGUI/icons/icon_connect.jpg'), QIcon.Normal, QIcon.On)
+        icon.addPixmap(QPixmap('canmopsGUI/icons/icon_disconnect.jpg'), QIcon.Normal, QIcon.Off)
         BusGridLayout = QGridLayout()  
         StatLayout = QGridLayout()  
         mopsBottonLayout = self.def_mops_frame(0,b)
@@ -217,8 +217,8 @@ class MultiDeviceWindow(QWidget):
     
     def def_alert_leds(self, bus_alarm=None, mops_alarm=None, mops=None, bus = None, icon_state=False):
         if mops_alarm is True:
-            icon_red = "graphicsUtils/icons/icon_disconnected_device.png" #icon_red.gif"
-            icon_green = "graphicsUtils/icons/icon_green.gif"
+            icon_red = "canmopsGUI/icons/icon_disconnected_device.png" #icon_red.gif"
+            icon_green = "canmopsGUI/icons/icon_green.gif"
             if icon_state:
                 alarm_led = QMovie(icon_green)
             else: 
@@ -228,8 +228,8 @@ class MultiDeviceWindow(QWidget):
             return alarm_led         
         
         if bus_alarm is True:
-            icon_red = "graphicsUtils/icons/icon_red.png"
-            icon_green = "graphicsUtils/icons/icon_green.png"
+            icon_red = "canmopsGUI/icons/icon_red.png"
+            icon_green = "canmopsGUI/icons/icon_green.png"
             alarm_led = QLabel() 
             if icon_state:
                 pixmap = QPixmap(icon_green)
@@ -241,7 +241,7 @@ class MultiDeviceWindow(QWidget):
     def def_mops_frame(self, c, b):
         # # Details for each MOPS
         mops_num = 4
-        icon_mops = 'graphicsUtils/icons/icon_mops.png'
+        icon_mops = 'canmopsGUI/icons/icon_mops.png'
         mopsBotton = [k for k in np.arange(mops_num)] 
         mopsBottonLayout = QGridLayout()
         self.update_device_box()
@@ -386,8 +386,8 @@ class MultiDeviceWindow(QWidget):
             pass  
                 
     def update_bus_status_box(self, port_id=None, on=False, off=False):
-        icon_red = "graphicsUtils/icons/icon_red.png"
-        icon_green = "graphicsUtils/icons/icon_green.png" 
+        icon_red = "canmopsGUI/icons/icon_red.png"
+        icon_green = "canmopsGUI/icons/icon_green.png" 
         if on:
             pixmap = QPixmap(icon_green)
             self.statusBoxVar[int(port_id)].setText("ON")
@@ -403,9 +403,9 @@ class MultiDeviceWindow(QWidget):
     def update_alarm_status(self, on=False, off=False, warning=False, button=None, button_type = "Movie"):
      
         if button_type == "Movie":
-            icon_red = "graphicsUtils/icons/icon_red_alarm.gif"
-            icon_green = "graphicsUtils/icons/icon_green.gif"
-            icon_yellow = "graphicsUtils/icons/icon_yellow.gif"  
+            icon_red = "canmopsGUI/icons/icon_red_alarm.gif"
+            icon_green = "canmopsGUI/icons/icon_green.gif"
+            icon_yellow = "canmopsGUI/icons/icon_yellow.gif"  
         
             if on: 
                 alarm_led = QMovie(icon_green)
@@ -418,9 +418,9 @@ class MultiDeviceWindow(QWidget):
             button.setMovie(alarm_led) 
             
         if button_type == "Label":
-            icon_red = "graphicsUtils/icons/icon_red_alarm.png"
-            icon_green = "graphicsUtils/icons/icon_green.png"
-            icon_yellow = "graphicsUtils/icons/icon_yellow.png"  
+            icon_red = "canmopsGUI/icons/icon_red_alarm.png"
+            icon_green = "canmopsGUI/icons/icon_green.png"
+            icon_yellow = "canmopsGUI/icons/icon_yellow.png"  
             if on: 
                 pixmap = QPixmap(icon_green)
             if off:

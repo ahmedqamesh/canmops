@@ -18,16 +18,17 @@ from PyQt5.QtGui            import *
 from PyQt5.QtWidgets        import *
 from typing                 import *
 from random                 import randint
-from graphicsUtils          import menu_window, opcua_window,child_window, data_monitoring, mops_child_window, multi_device_window
+from canmopsGUI          import menu_window,child_window, data_monitoring, mops_child_window, multi_device_window
+from mopshubGUI          import mopshub_child_window
 from canmops.analysis       import Analysis
 from canmops.logger_main         import Logger 
 from canmops.analysis_utils  import AnalysisUtils
 from canmops.can_wrapper_main     import CanWrapper
 
 rootdir = os.path.dirname(os.path.abspath(__file__)) 
-lib_dir = rootdir[:-13]
-config_dir = "config/"
-
+lib_dir = rootdir[:-11]
+config_dir = "config_files/"
+config_yaml = config_dir + "main_cfg.yml"
 class MainWindow(QMainWindow):
 
     def __init__(self, console_loglevel=logging.INFO):
@@ -36,7 +37,7 @@ class MainWindow(QMainWindow):
         self.logger = Logger().setup_main_logger(name=" Main  GUI ", console_loglevel=console_loglevel)
         # Start with default settings
         # Read configurations from a file    
-        self.__conf = AnalysisUtils().open_yaml_file(file=config_dir + "main_cfg.yml", directory=lib_dir)
+        self.__conf = AnalysisUtils().open_yaml_file(file=config_yaml, directory=lib_dir)
         self.__appName = self.__conf["Application"]["app_name"] 
         self.__appVersion = self.__conf['Application']['app_version']
         self.__appIconDir = self.__conf["Application"]["app_icon_dir"]
@@ -54,11 +55,12 @@ class MainWindow(QMainWindow):
         self.__ipAddress = None
         self.__bitrate = None
         self.__sample_point = None
+        self.__deviceName = None
         self.index_description_items = None
         self.__subIndex = None
         self.wrapper = None      
           
-    def Ui_ApplicationWindow(self, opcua =None):
+    def Ui_ApplicationWindow(self, mopshub =None):
         '''
         The function Will start the main graphical interface with its main components
         1. The menu bar
@@ -94,7 +96,7 @@ class MainWindow(QMainWindow):
         
         logo_layout = QHBoxLayout()
         uni_logo_label = QLabel()
-        pixmap = QPixmap("graphicsUtils/icons/icon_wuppertal_banner.png")
+        pixmap = QPixmap("canmopsGUI/icons/icon_wuppertal_banner.png")
         uni_logo_label.setPixmap(pixmap.scaled(150, 50)) 
         icon_spacer = QSpacerItem(250, 50, QtWidgets.QSizePolicy.Minimum, QtWidgets.QSizePolicy.Expanding)
         logo_layout.addItem(icon_spacer) 
@@ -120,17 +122,16 @@ class MainWindow(QMainWindow):
         mainLayout.addWidget(self.monitorGroupBox, 3, 0, 2, 2)
         mainLayout.addWidget(self.configureDeviceBoxGroupBox, 5, 0, 1, 1)
 
-        
         if self.multi_mode is True:
             self.multi_window = multi_device_window.MultiDeviceWindow()
             self.multi_device_box()
             mainLayout.addWidget(self.configureMultiBoxGroupBox, 5, 1, 1, 1)
             
-        # Opcua child window
-        if opcua is not None:   
-            self.opcuaWindow = opcuaWindow.OpcuaWindow()
+        #moopshub child window
+        if mopshub is not None:   
+            self.mopshubWindow = mopshub_child_window.mopshubWindow()
             self.configure_cic_box()
-            mainLayout.addWidget(self.configureCICBoxGroupBox, 5, 2, 1, 1)
+            mainLayout.addWidget(self.configureCICBoxGroupBox, 5, 1, 1, 1)
 
                             
         mainFrame.setLayout(mainLayout)
@@ -145,12 +146,7 @@ class MainWindow(QMainWindow):
         2. The Interface [e.g. socketcan, kvaser, Anagate]
         All the options in every widget are defined in the file main_cfg.yml
         '''    
-        self.defaultSettingsGroupBox = QGroupBox("Bus Settings")
-        plotframe = QFrame()
-        plotframe.setStyleSheet("QWidget { background-color: #eeeeec; }")
-        plotframe.setLineWidth(0.6)
-        self.setCentralWidget(plotframe)
-        
+        self.defaultSettingsGroupBox = QGroupBox("Bus Settings")      
         defaultSettingsWindowLayout = QGridLayout()
         __interfaceItems = self.__interfaceItems
         __channelList = self.get_channelPorts()
@@ -160,7 +156,8 @@ class MainWindow(QMainWindow):
         self.channelComboBox = QComboBox()
         self.channelComboBox.setStatusTip('Possible ports as defined in the main_cfg.yml file')
         for port in list(__channelList): self.channelComboBox.addItem(str(port))  
-
+        self.channelComboBox.setCurrentIndex(0)
+        
         interfaceLabel = QLabel()
         interfaceLabel.setText("  Interfaces")
         self.interfaceComboBox = QComboBox()
@@ -171,31 +168,61 @@ class MainWindow(QMainWindow):
         
         self.connectButton = QPushButton("")
         icon = QIcon()
-        icon.addPixmap(QPixmap('graphicsUtils/icons/icon_connect.jpg'), QIcon.Normal, QIcon.On)
-        icon.addPixmap(QPixmap('graphicsUtils/icons/icon_disconnect.jpg'), QIcon.Normal, QIcon.Off)
+        icon.addPixmap(QPixmap('canmopsGUI/icons/icon_connect.jpg'), QIcon.Active, QIcon.On)
+        icon.addPixmap(QPixmap('canmopsGUI/icons/icon_disconnect.jpg'), QIcon.Normal, QIcon.Off)
         self.connectButton.setIcon(icon)
-        self.connectButton.setStatusTip('Connect the interface and set the channel')
+        #self.connectButton.setIconSize(QtCore.QSize(20,20))
         self.connectButton.setCheckable(True)
+        self.connectButton.setStatusTip('Connect the interface and set the channel')
+        self.bus_alarm_led = self.def_alert_leds(bus_alarm=True, mops=None, icon_state=False)   
         
+        self.statusBoxVar = QLineEdit()
+        self.statusBoxVar.setStyleSheet("background-color: white; border: 1px inset black;")
+        self.statusBoxVar.setReadOnly(True) 
+        self.statusBoxVar.setFixedWidth(50)
+        self.statusBoxVar.setText("OFF") 
+                
         def on_channelComboBox_currentIndexChanged():
             _interface = self.interfaceComboBox.currentText()
             _channel = self.channelComboBox.currentText()
             self.set_interface(_interface)
             self.set_channel(int(_channel))
-
-        self.channelComboBox.setCurrentIndex(0)
+                        
         self.connectButton.clicked.connect(on_channelComboBox_currentIndexChanged)
         self.connectButton.clicked.connect(self.connect_server)
         
-        defaultSettingsWindowLayout.addWidget(channelLabel, 0, 0)
-        defaultSettingsWindowLayout.addWidget(self.channelComboBox, 1, 0)
+        defaultSettingsWindowLayout.addWidget(channelLabel,   0, 0)
         defaultSettingsWindowLayout.addWidget(interfaceLabel, 0, 1)
-        defaultSettingsWindowLayout.addWidget(self.interfaceComboBox, 1, 1)
-        defaultSettingsWindowLayout.addWidget(self.connectButton, 1, 2)
-
-        plotframe.setLayout(defaultSettingsWindowLayout)
+        defaultSettingsWindowLayout.addWidget(self.channelComboBox, 1, 0)
+        defaultSettingsWindowLayout.addWidget(self.interfaceComboBox, 1, 1,1,2)
+        defaultSettingsWindowLayout.addWidget(self.bus_alarm_led, 1, 3)
+        defaultSettingsWindowLayout.addWidget(self.statusBoxVar, 1, 4)
+        defaultSettingsWindowLayout.addWidget(self.connectButton, 1, 5,1,3)
         self.defaultSettingsGroupBox.setLayout(defaultSettingsWindowLayout)
-                       
+    
+    def def_alert_leds(self, bus_alarm=None, mops_alarm=None, mops=None, bus = None, icon_state=False):
+        if mops_alarm is True:
+            icon_red = "canmopsGUI/icons/icon_disconnected_device.png" #icon_red.gif"
+            icon_green = "canmopsGUI/icons/icon_green.gif"
+            if icon_state:
+                alarm_led = QMovie(icon_green)
+            else: 
+               alarm_led = QMovie(icon_red)    
+            alarm_led.setScaledSize(QSize().scaled(20, 20, Qt.KeepAspectRatio)) 
+            alarm_led.start()
+            return alarm_led         
+        
+        if bus_alarm is True:
+            icon_red = "canmopsGUI/icons/icon_red.png"
+            icon_green = "canmopsGUI/icons/icon_green.png"
+            alarm_led = QLabel() 
+            if icon_state:
+                pixmap = QPixmap(icon_green)
+            else: 
+                pixmap = QPixmap(icon_red)    
+            alarm_led.setPixmap(pixmap.scaled(20, 20))            
+            return alarm_led
+                               
     def default_message_window(self):
         '''
         The function defines the GroupBox for a default SDO CANOpen message parameters
@@ -207,11 +234,6 @@ class MainWindow(QMainWindow):
         All the options in every widget are defined in the file main_cfg.yml
         '''  
         self.defaultMessageGroupBox = QGroupBox("SDO Message Settings [0x600]")
-        plotframe = QFrame()
-        plotframe.setStyleSheet("QWidget { background-color: #eeeeec; }")
-        plotframe.setLineWidth(0.6)
-        self.setCentralWidget(plotframe)
-        
         defaultMessageWindowLayout = QGridLayout()                        
         nodeLabel = QLabel()
         nodeLabel.setText("NodeId [dec]")
@@ -246,7 +268,7 @@ class MainWindow(QMainWindow):
                 self.error_message(text="Make sure that the CAN interface is connected")
                 
         self.startButton = QPushButton("")
-        self.startButton.setIcon(QIcon('graphicsUtils/icons/icon_start.png'))
+        self.startButton.setIcon(QIcon('canmopsGUI/icons/icon_start.png'))
         self.startButton.setStatusTip('Send CAN message')
         self.startButton.clicked.connect(__set_bus)
         self.startButton.clicked.connect(self.read_sdo_can_thread)                 
@@ -262,8 +284,6 @@ class MainWindow(QMainWindow):
         defaultMessageWindowLayout.addWidget(subIndexLabel, 3, 3)
         defaultMessageWindowLayout.addWidget(self.mainSubIndextextbox, 4, 3)       
         defaultMessageWindowLayout.addWidget(self.startButton, 4, 4)
-        
-        plotframe.setLayout(defaultMessageWindowLayout)
         self.defaultMessageGroupBox.setLayout(defaultMessageWindowLayout)
                     
     def textOutputWindow(self):
@@ -271,16 +291,11 @@ class MainWindow(QMainWindow):
         The function defines the GroupBox output window for the CAN messages
         '''  
         self.textGroupBox = QGroupBox("   Output Window")
-        plotframe = QFrame()
-        plotframe.setStyleSheet("QWidget { background-color: #eeeeec; }")
-        plotframe.setLineWidth(0.8)
         self.textBox = QTextEdit()
         self.textBox.setReadOnly(True)
         self.textBox.resize(20, 20)
         textOutputWindowLayout = QGridLayout()
         textOutputWindowLayout.addWidget(self.textBox, 1, 0)
-        self.setCentralWidget(plotframe)
-        plotframe.setLayout(textOutputWindowLayout)
         self.textGroupBox.setLayout(textOutputWindowLayout)
         
     def tableOutputWindow(self):
@@ -288,11 +303,6 @@ class MainWindow(QMainWindow):
         The function defines the GroupBox output table for Bytes monitoring for RX and TX messages
         '''  
         self.monitorGroupBox = QGroupBox("Bytes Monitoring")
-        plotframe = QFrame()
-        plotframe.setStyleSheet("QWidget { background-color: #eeeeec; }")
-        plotframe.setLineWidth(0.6)
-        self.setCentralWidget(plotframe)
-        #self.monitorGroupBox.setFixedSize(900, 350)
         def __graphic_view():
             byteLabel = QLabel()
             byteLabel.setText("Bytes")
@@ -455,7 +465,6 @@ class MainWindow(QMainWindow):
         setTableLength()
                 
         gridLayout = QGridLayout()
-
         gridLayout.addLayout(TXLayout, 0 , 1)
         gridLayout.addWidget(TXbitLabel, 1, 2)
         gridLayout.addWidget(TXgraphicsview, 2, 0)
@@ -471,103 +480,101 @@ class MainWindow(QMainWindow):
         gridLayout.addWidget(self.RXTable, 2, 6)
         gridLayout.addWidget(self.hexRXTable, 2, 7)
         gridLayout.addWidget(self.decRXTable, 2, 8)
-        
-        plotframe.setLayout(gridLayout)
         self.monitorGroupBox.setLayout(gridLayout)
    
     def configure_cic_box(self):
         '''
         The function provides a frame for the configured devices  according to the file main_cfg.yml
         '''
-        self.configureCICBoxGroupBox = QGroupBox("OPCUA Client")
+        self.configureCICBoxGroupBox = QGroupBox("MOPSHUB network")
         configureCICBoxGroupBoxLayout = QHBoxLayout()
-        opcuaLabel = QLabel()
-        self.opcuaButton = QPushButton("")
-        self.opcuaButton.setStatusTip('Open OPCUA window')
-        opcuaLabel.setText("")
-        self.opcuaButton.setIcon(QIcon('graphicsUtils/icons/icon_opcua.png'))
-        self.opcuaButton.clicked.connect(self.opcuaWindow.Ui_ApplicationWindow)
-        configureCICBoxGroupBoxLayout.addWidget(self.opcuaButton)
-        configureCICBoxGroupBoxLayout.addWidget(opcuaLabel)
+        multiLabel = QLabel()
+        self.multiButton = QPushButton("")
+        self.multiButton.setStatusTip('Open MOPSHUB window')
+        multiLabel.setText("")
+        self.multiButton.setIcon(QIcon('canmopsGUI/icons/icon_nodes.png'))
+        self.multiButton.clicked.connect(self.mopshubWindow.Ui_ApplicationWindow)
+        configureCICBoxGroupBoxLayout.addWidget(self.multiButton)
+        configureCICBoxGroupBoxLayout.addWidget(multiLabel)
         self.configureCICBoxGroupBox.setLayout(configureCICBoxGroupBoxLayout)
-        
+            
     def multi_device_box(self):
         '''
         The function provides a frame for the configured devices  according to the file main_cfg.yml
         '''
         self.configureMultiBoxGroupBox = QGroupBox("CAN network")
         configureCICBoxGroupBoxLayout = QHBoxLayout()
-        opcuaLabel = QLabel()
+        multiLabel = QLabel()
         self.multiButton = QPushButton("")
         self.multiButton.setStatusTip('MUlti MOPS connected to several buses')
-        opcuaLabel.setText("")
-        self.multiButton.setIcon(QIcon('graphicsUtils/icons/icon_nodes.png'))
+        multiLabel.setText("")
+        self.multiButton.setIcon(QIcon('canmopsGUI/icons/icon_nodes.png'))
         self.multiButton.clicked.connect(self.multi_window.Ui_ApplicationWindow)
         configureCICBoxGroupBoxLayout.addWidget(self.multiButton)
-        configureCICBoxGroupBoxLayout.addWidget(opcuaLabel)
+        configureCICBoxGroupBoxLayout.addWidget(multiLabel)
         self.configureMultiBoxGroupBox.setLayout(configureCICBoxGroupBoxLayout)
-        
-        
+      
                 
     def configure_device_box(self):
         '''
         The function provides a frame for the configured devices  according to the file main_cfg.yml
         '''
-        self.configureDeviceBoxGroupBox = QGroupBox("Configured Devices")
-        plotframe = QFrame()
-        plotframe.setStyleSheet("QWidget { background-color: #eeeeec; }")
-        plotframe.setLineWidth(0.6)
-        
+        mops_child = mops_child_window.MopsChildWindow()
+        self.configureDeviceBoxGroupBox = QGroupBox("Configured Devices")       
         self.configureDeviceBoxLayout = QHBoxLayout()
         deviceLabel = QLabel()
         self.deviceButton = QPushButton("")
         self.deviceButton.setStatusTip('Choose the configuration yaml file')
         if self.__devices[0] == "None":
             deviceLabel.setText("Configure Device")
-            self.deviceButton.setIcon(QIcon('graphicsUtils/icons/icon_question.png'))
-            self.deviceButton.clicked.connect(self.update_device_box)
+            self.deviceButton.setIcon(QIcon('canmopsGUI/icons/icon_question.png'))
+            self.deviceButton.clicked.connect(lambda: mops_child.update_device_box(device = "None", mainWindow = self))
         else:
             deviceLabel.setText("[" + self.__devices[0] + "]")
-            self.update_device_box()
+            deviceName, version, icon_dir, nodeIds, dictionary_items, adc_channels_reg,\
+            self.__adc_index, self.__chipId, self.__index_items, self.__conf_index, \
+            self.__mon_index,self.__resistor_ratio, self.__refresh_rate, self.__ref_voltage =  mops_child.update_device_box(device = self.__devices[0], mainWindow = self)
+        self.set_deviceName(deviceName)
         self.configureDeviceBoxLayout.addWidget(deviceLabel)
         self.configureDeviceBoxLayout.addWidget(self.deviceButton)
-        plotframe.setLayout(self.configureDeviceBoxLayout)
         self.configureDeviceBoxGroupBox.setLayout(self.configureDeviceBoxLayout)
 
-    def update_device_box(self):
-        '''
-        The function Will update the configured device section with the registered devices according to the file main_cfg.yml
-        '''
-        if self.__devices[0] == "None":
-            conf = self.child.open()
-        else:
-            conf = AnalysisUtils().open_yaml_file(file=config_dir + self.__devices[0] + "_cfg.yml", directory=lib_dir)
-        mops_child = mops_child_window.MopsChildWindow()
-        deviceName, version, icon_dir, nodeIds, dictionary_items, adc_channels_reg,\
-         self.__adc_index, self.__chipId, self.__index_items, self.__conf_index, \
-         self.__mon_index,self.__resistor_ratio, self.__refresh_rate, self.__ref_voltage  = mops_child.configure_devices(conf)
-        
+
+    # def update_device_box(self):
+    #     '''
+    #     The function Will update the configured device section with the registered devices according to the file main_cfg.yml
+    #     '''
+    #     if self.__devices[0] == "None":
+    #         conf = self.child.open()
+    #     else:
+    #         conf = AnalysisUtils().open_yaml_file(file=config_dir + self.__devices[0] + "_cfg.yml", directory=lib_dir)
+    #     mops_child = mops_child_window.MopsChildWindow()
+    #     deviceName, version, icon_dir, nodeIds, dictionary_items, adc_channels_reg,\
+    #      self.__adc_index, self.__chipId, self.__index_items, self.__conf_index, \
+    #      self.__mon_index,self.__resistor_ratio, self.__refresh_rate, self.__ref_voltage  = mops_child.configure_devices(conf)
+    #
+
         # Load ADC calibration constants
         # adc_calibration = pd.read_csv(config_dir + "adc_calibration.csv", delimiter=",", header=0)
         # condition = (adc_calibration["chip"] == chipId)
         # chip_parameters = adc_calibration[condition]
         # print(chip_parameters["calib_a"],chip_parameters["calib_b"] )
-        self.__devices.append(deviceName)
-        self.set_deviceName(deviceName)
-        self.set_version(version)
-        self.set_icon_dir(icon_dir)
-        self.set_nodeList(nodeIds)
-        self.set_dictionary_items(dictionary_items) 
-        self.set_adc_channels_reg(adc_channels_reg)            
-        try:
-            self.deviceButton.deleteLater()
-            self.configureDeviceBoxLayout.removeWidget(self.deviceButton)
-            self.deviceButton = QPushButton("")
-            self.deviceButton.setIcon(QIcon(self.get_icon_dir()))
-            self.deviceButton.clicked.connect(self.show_deviceWindow)
-            self.configureDeviceBoxLayout.addWidget(self.deviceButton)
-        except:
-            pass
+        # self.__devices.append(deviceName)
+        #self.set_deviceName(deviceName)
+        # self.set_version(version)
+        # self.set_icon_dir(icon_dir)
+        # self.set_nodeList(nodeIds)
+        # self.set_dictionary_items(dictionary_items) 
+        # self.set_adc_channels_reg(adc_channels_reg)            
+        # try:
+        #     self.deviceButton.deleteLater()
+        #     self.configureDeviceBoxLayout.removeWidget(self.deviceButton)
+        #     self.deviceButton = QPushButton("")
+        #     self.deviceButton.setIcon(QIcon(self.get_icon_dir()))
+        #     self.deviceButton.clicked.connect(self.show_deviceWindow)
+        #     self.configureDeviceBoxLayout.addWidget(self.deviceButton)
+        # except:
+        #     pass
          
     def load_settings_file(self, interface = None, channel = None):
         filename = lib_dir + config_dir + interface + "_CANSettings.yml"
@@ -597,11 +604,13 @@ class MainWindow(QMainWindow):
             e.g [bitrate, Sjw, Sample point,....]
         Second: Communication with CAN wrapper will begin
         ''' 
+        icon_red = "canmopsGUI/icons/icon_red.png"
+        icon_green = "canmopsGUI/icons/icon_green.png" 
         if self.connectButton.isChecked():
             _interface = self.get_interface()   
             _default_channel = self.get_channel()
             try: 
-                    # Default settings from yml file
+                # Default settings from yml file
                 _channel,_ipAddress, _bitrate,_sample_point, _sjw,_tseg1, _tseg2 =  self.load_settings_file(interface = _interface, channel = _default_channel)              
                 # Update settings
                 self.wrapper = CanWrapper(interface=_interface,
@@ -611,15 +620,37 @@ class MainWindow(QMainWindow):
                                           tseg1=_tseg1,
                                           tseg2=_tseg2,
                                           ipAddress=_ipAddress,
-                                          channel=int(_channel))
-                self.control_logger = self.wrapper.logger
+                                          channel=int(_channel),
+                                          load_config = True)
+                self.control_logger = self.wrapper.logger  
+                self.connectButton.setChecked(True) 
+                self.connectButton.setEnabled(True)
+                self.update_bus_status_box(on=True)
+                self.statusBoxVar.setText("ON") 
+                self.connectButton.setIcon(QIcon('canmopsGUI/icons/icon_connect.jpg'))          
             except:
-                self.logger.error("Cannot Connect to the CAN bus")
+                self.connectButton.setIcon(QIcon('canmopsGUI/icons/icon_disconnect.jpg'))
+                self.update_bus_status_box(on=False)
+                self.statusBoxVar.setText("OFF")  
+                self.logger.error("Cannot Connect to the CAN bus")  
                 self.connectButton.setChecked(False)
         else:
+           self.update_bus_status_box(on=False)
+           self.statusBoxVar.setText("OFF")  
+           self.connectButton.setIcon(QIcon('canmopsGUI/icons/icon_disconnect.jpg'))
+           self.connectButton.setChecked(False)
            self.stop_server()
            self.stop_random_timer()
-    
+
+    def update_bus_status_box(self, port_id=None, on=False, off=False):
+        icon_red = "canmopsGUI/icons/icon_red.png"
+        icon_green = "canmopsGUI/icons/icon_green.png" 
+        if on:
+            pixmap = QPixmap(icon_green)
+        else:
+            pixmap = QPixmap(icon_red)
+        self.bus_alarm_led.setPixmap(pixmap.scaled(20, 20))   
+
     def stop_server(self):
         '''
         Stop the communication with CAN wrapper
@@ -658,20 +689,23 @@ class MainWindow(QMainWindow):
             self.interfaceComboBox.SelectedText = _interface
             self.channelComboBox.SelectedText = str(_channel)
             # Save the settings into a file
-            dict_file = {"CAN_Interfaces": _interface,
-                       "channel" + str(_channels[0]): {"bitrate":_bitrate,
-                                                       "channel":int(_channels[0]) ,
-                                                       "samplePoint":_sample_point,
-                                                       "SJW":_sjw,
-                                                       "tseg1":_tseg1,
-                                                       "tseg2":_tseg2,
-                                                       "ipAddress":str(_ipAddress),
-                                                       "timeout":_timeout}                             
-                                                                 }
             self.logger.info("Saving CAN settings to the file %s" % lib_dir + config_dir + _interface + "_CANSettings.yml") 
-            self.logger.info("Please restart your bus from the tools menu (Interface >> %s >> Reset_%s_interface )to apply the new settings " % (_interface, _interface))
-            AnalysisUtils().dump_yaml_file(directory=lib_dir + config_dir , file=_interface + "_CANSettings.yml", loaded=dict_file)
+            #Load current settings
+            _canSettings = AnalysisUtils().open_yaml_file(file=config_dir + _interface + "_CANSettings.yml", directory=lib_dir)
+            #    Apply New settings
+            _canSettings["channel" + str(_channels[0])]["bitrate"] = _bitrate
+            _canSettings["channel" + str(_channels[0])]["channel"] =int(_channels[0]) 
+            _canSettings["channel" + str(_channels[0])]["samplePoint"]=_sample_point
+            _canSettings["channel" + str(_channels[0])]["SJW"]= _sjw
+            _canSettings["channel" + str(_channels[0])]["tseg1"] = _tseg1
+            _canSettings["channel" + str(_channels[0])]["tseg2"]=_tseg2
+            _canSettings["channel" + str(_channels[0])]["ipAddress"] = str(_ipAddress)
+            _canSettings["channel" + str(_channels[0])]["timeout"] = _timeout
+            
+            AnalysisUtils().dump_yaml_file(directory=lib_dir + config_dir , file=_interface + "_CANSettings.yml", loaded=_canSettings)
             # Set the channel
+            #self.logger.info("Please restart your bus from the tools menu (Interface >> %s >> Reset_%s_interface )to apply the new settings " % (_interface, _interface))
+            
             self.hardware_config(bitrate=int(_bitrate),
                                          interface=_interface,
                                          sjw=int(_sjw),
@@ -691,28 +725,31 @@ class MainWindow(QMainWindow):
                               tseg1=_tseg1,
                               tseg2=_tseg2,
                               ipAddress=str(_ipAddress),
-                              channel=int(_channel))            
+                              channel=int(_channel),
+                              load_config = True)            
                 # the the connect button to checked
                 self.connectButton.setChecked(True)
         except Exception:
             self.error_message(text="Please choose an interface or close the window")
- 
+            
     def hardware_config(self, bitrate, channel, interface, sjw,samplepoint,tseg1,tseg2):
         '''
         Pass channel string (example 'can0') to configure OS level drivers and interface.
         '''
+        self.logger.info("Applying Hardware configurations")
         if interface == "socketcan":
             _bus_type = "can"
             _can_channel = _bus_type + channel
             self.logger.info('Configure CAN hardware drivers for channel %s' % _can_channel)
-            os.system(". " + lib_dir + "/canmops/socketcan_wrapper_enable.sh %i %s %s %s %s %s %s" % (bitrate, samplepoint, sjw, _can_channel, _bus_type,tseg1,tseg2))
+            os.system(". " + lib_dir + "canmops/socketcan_wrapper_enable.sh %i %s %s %s %s %i %i" % (bitrate, samplepoint, sjw, _can_channel, _bus_type,tseg1,tseg2))
         elif interface == "virtual":
             _bus_type = "vcan"
             _can_channel = _bus_type + channel
             self.logger.info('Configure CAN hardware drivers for channel %s' % _can_channel)
-            os.system(". " + lib_dir + "/canmops/socketcan_wrapper_enable.sh %i %s %s %s %s %s %s" % (bitrate, samplepoint, sjw, _can_channel, _bus_type,tseg1,tseg2))
+            os.system(". " + lib_dir + "canmops/socketcan_wrapper_enable.sh %i %s %s %s %s %i %i" % (bitrate, samplepoint, sjw, _can_channel, _bus_type,tseg1,tseg2))
         else:
             _can_channel = channel
+            
         self.logger.info('%s[%s] Interface is initialized....' % (interface,_can_channel))
         
     def set_canchannel(self, arg=None, interface=None, default_channel=None):
@@ -727,21 +764,21 @@ class MainWindow(QMainWindow):
                     _bus_type = "can"
                     _can_channel = _bus_type + str(_channel)
                     self.logger.info('Configure CAN hardware drivers for channel %s' % _can_channel)
-                    os.system(". " + rootdir[:-14] + "/canmops/socketcan_wrapper_enable.sh %i %s %s %s %s" % (_bitrate, _sample_point, _sjw, _can_channel, _bus_type))
+                    os.system(". " + rootdir[:-14] + "/canmops/socketcan_wrapper_enable.sh %i %s %s %s %s %s %s" % (_bitrate, _sample_point, _sjw, _can_channel, _bus_type, _tseg1, _tseg2))
                     self.logger.info('SocketCAN[%s] is initialized....' % _can_channel)
                     
                 if (arg == "virtual" and interface == "virtual"):
                     _bus_type = "vcan"             
                     _can_channel = _bus_type + str(_channel)
                     self.logger.info('Configure CAN hardware drivers for channel %s' % _can_channel)
-                    os.system(". " + rootdir[:-14] + "/canmops/socketcan_wrapper_enable.sh %i %s %s %s %s" % (_bitrate, _sample_point, _sjw, _can_channel, _bus_type))
+                    os.system(". " + rootdir[:-14] + "/canmops/socketcan_wrapper_enable.sh %i %s %s %s %s %s %s" % (_bitrate, _sample_point, _sjw, _can_channel, _bus_type, _tseg1, _tseg2))
                     self.logger.info('SocketCAN[%s] is initialized....' % _can_channel)
                     
                 if (arg == "restart" and interface == "socketcan"):
                     # This is An automatic bus-off recovery if too many errors occurred on the CAN bus
                     _bus_type = "restart" 
                     _can_channel = "can" + str(_channel)       
-                    os.system(". " + rootdir[:-14] + "/canmops/socketcan_wrapper_enable.sh %s %s %s %s %s" % ("_bitrate", "_sample_point", "_sjw", _can_channel, _bus_type))
+                    os.system(". " + rootdir[:-14] + "/canmops/socketcan_wrapper_enable.sh %s %s %s %s %s %s %s" % (_bitrate, _sample_point, _sjw, _can_channel, _bus_type, _tseg1, _tseg2))
                 
 
                 self.wrapper = CanWrapper(interface=interface,
@@ -751,7 +788,8 @@ class MainWindow(QMainWindow):
                               tseg1=_tseg1,
                               tseg2=_tseg2,
                               ipAddress=_ipAddress,
-                              channel=int(_channel))
+                              channel=int(_channel),
+                              load_config = True)
                 if (arg == "restart" and interface == "Kvaser"):
                     self.wrapper.restart_channel_connection(interface="Kvaser")
                                                 
@@ -775,14 +813,13 @@ class MainWindow(QMainWindow):
         3. Print the result if print_sdo is True
         The function is called by the following functions: 
            a) read_adc_channels
-           b)  read_monitoring_values    
+           b) read_monitoring_values    
            c) read_configuration_values
         """
         try:
             _index = int(self.get_index(), 16)
             _subIndex = int(self.get_subIndex(), 16)
-            _nodeId = self.get_nodeId()
-            _nodeId = int(_nodeId)
+            _nodeId = int(self.get_nodeId())
             _interface = self.get_interface()
             data_RX = asyncio.run(self.wrapper.read_sdo_can(_nodeId, _index, _subIndex, self.__timeout))
             return data_RX
@@ -937,7 +974,7 @@ class MainWindow(QMainWindow):
         v = QVBoxLayout()
         window = QWidget()
         window.setGeometry(200, 200, 250, 250)
-        icon_red = "graphicsUtils/icons/ICON_RED_LED2.gif" #icon_red.gif"
+        icon_red = "canmopsGUI/icons/ICON_RED_LED2.gif" #icon_red.gif"
         wait_label = QLabel()
         alarm_led = QMovie(icon_red)    
         alarm_led.setScaledSize(QSize().scaled(20, 20, Qt.KeepAspectRatio))
@@ -1006,8 +1043,8 @@ class MainWindow(QMainWindow):
         # A possibility to save the data into a file
         self.__default_file = self.get_default_file()
         if len(self.__default_file) != 0:
-            self.logger.notice("Preparing an output file [%s]..." % (lib_dir + "output_data/"+self.__default_file))
-            self.out_file_csv = AnalysisUtils().open_csv_file(outname=self.__default_file[:-4], directory=lib_dir + "output_data") 
+            self.logger.notice("Preparing an output file [%s]..." % (lib_dir + "/output_data/"+self.__default_file))
+            self.out_file_csv = AnalysisUtils().open_csv_file(outname=self.__default_file[:-4], directory=lib_dir + "/output_data") 
             
             # Write header to the data
             fieldnames = ['Time', 'Channel', "nodeId", "ADCChannel", "ADCData" , "ADCDataConverted"]
@@ -1219,43 +1256,43 @@ class MainWindow(QMainWindow):
         
         toolbar.isMovable()
         
-        canMessage_action = QAction(QIcon('graphicsUtils/icons/icon_msg.jpg'), '&CAN Message', mainwindow)
+        canMessage_action = QAction(QIcon('canmopsGUI/icons/icon_msg.jpg'), '&CAN Message', mainwindow)
         canMessage_action.setShortcut('Ctrl+M')
         canMessage_action.setStatusTip('CAN Message')
         canMessage_action.triggered.connect(self.show_CANMessageWindow)
 
-        settings_action = QAction(QIcon('graphicsUtils/icons/icon_settings.jpeg'), '&CAN Settings', mainwindow)
+        settings_action = QAction(QIcon('canmopsGUI/icons/icon_settings.jpeg'), '&CAN Settings', mainwindow)
         settings_action.setShortcut('Ctrl+L')
         settings_action.setStatusTip('CAN Settings')
         settings_action.triggered.connect(self.show_CANSettingsWindow)
 
-        dump_can_message_action = QAction(QIcon('graphicsUtils/icons/icon_dump.png'), '&CAN Dump', mainwindow)
+        dump_can_message_action = QAction(QIcon('canmopsGUI/icons/icon_dump.png'), '&CAN Dump', mainwindow)
         dump_can_message_action.setShortcut('Ctrl+D')
         dump_can_message_action.setStatusTip('Dump CAN messages from the bus')
         dump_can_message_action.triggered.connect(self.show_dump_child_window)
 
-        run_random_message_action = QAction(QIcon('graphicsUtils/icons/icon_right.jpg'), '&CAN Run', mainwindow)
+        run_random_message_action = QAction(QIcon('canmopsGUI/icons/icon_right.jpg'), '&CAN Run', mainwindow)
         run_random_message_action.setShortcut('Ctrl+R')
         run_random_message_action.setStatusTip('Send Random CAN messages to the bus every 5 seconds')
         run_random_message_action.triggered.connect(self.initiate_random_timer)
         
-        stop_dump_message_action = QAction(QIcon('graphicsUtils/icons/icon_stop.png'), '&CAN Stop', mainwindow)
+        stop_dump_message_action = QAction(QIcon('canmopsGUI/icons/icon_stop.png'), '&CAN Stop', mainwindow)
         stop_dump_message_action.setShortcut('Ctrl+C')
         stop_dump_message_action.setStatusTip('Stop Sending CAN messages')
         stop_dump_message_action.triggered.connect(self.stop_random_timer)
 
-        dump_random_message_action = QAction(QIcon('graphicsUtils/icons/icon_random.png'), '&CAN Random', mainwindow)
+        dump_random_message_action = QAction(QIcon('canmopsGUI/icons/icon_random.png'), '&CAN Random', mainwindow)
         dump_random_message_action.setShortcut('Ctrl+G')
         dump_random_message_action.setStatusTip('Send Random Messages to the bus')
         dump_random_message_action.triggered.connect(self.send_random_can)
         # fileMenu.addSeparator()
-        clear_action = QAction(QIcon('graphicsUtils/icons/icon_clear.png'), '&Clear', mainwindow)
+        clear_action = QAction(QIcon('canmopsGUI/icons/icon_clear.png'), '&Clear', mainwindow)
         clear_action.setShortcut('Ctrl+X')
         clear_action.setStatusTip('Clear All the menus')
         clear_action.triggered.connect(self.clear_textBox_message)
         clear_action.triggered.connect(self.clear_table_content)
         
-        plot_adc__action = QAction(QIcon('graphicsUtils/icons/icon_curve.png'), '&Plotting', mainwindow)
+        plot_adc__action = QAction(QIcon('canmopsGUI/icons/icon_curve.png'), '&Plotting', mainwindow)
         plot_adc__action.setShortcut('Ctrl+p')
         plot_adc__action.setStatusTip('Plotting feature')
         plot_adc__action.triggered.connect(self.show_adc_plotting_window)        
@@ -1301,21 +1338,21 @@ class MainWindow(QMainWindow):
             pass
 
     def show_dump_child_window(self):
-        if self.wrapper is not None: 
-            interface = self.get_interface()
-            if interface == "socketcan" or interface == "virtual":
-                self.logger.info("DumpingCAN bus traffic.")
-                print_command = "echo ============================ Dumping CAN bus traffic ============================\n"
-                candump_command = "candump any -x -c -t A"
-                os.system("gnome-terminal -e 'bash -c \"" + print_command + candump_command + ";bash\"'")
-            else:
-                self.read_can_message_thread(print_sdo=False)
+        #if self.wrapper is not None: 
+        interface = self.get_interface()
+        if interface == "socketcan" or interface == "virtual":
+            self.logger.info("DumpingCAN bus traffic.")
+            print_command = "echo ============================ Dumping CAN bus traffic ============================\n"
+            candump_command = "candump any -x -c -t A"
+            os.system("gnome-terminal -e 'bash -c \"" + print_command + candump_command + ";bash\"'")
         else:
-            #pass
-            self.DumpMessageWindow = QMainWindow()
-            child = childWindow.ChildWindow(parent = self.DumpMessageWindow)
-            self.dumptextBox = self.dump_child_window(self.DumpMessageWindow, mainWindow = self)
-            self.MessageWindow.show()
+            self.read_can_message_thread(print_sdo=False)
+        #else:
+        #    pass
+            # self.DumpMessageWindow = QMainWindow()
+            # child = childWindow.ChildWindow(parent = self.DumpMessageWindow)
+            # self.dumptextBox = self.dump_child_window(self.DumpMessageWindow, mainWindow = self)
+            # self.MessageWindow.show()
          
     def show_CANSettingsWindow(self):
         self.SettingsWindow = QMainWindow()
@@ -1342,13 +1379,13 @@ class MainWindow(QMainWindow):
     def show_deviceWindow(self):
         self.deviceWindow = QMainWindow()
         _channel = self.get_channel()
-        nodeItems = self.__nodeIds
+        _nodeItems = self.get_nodeList()
         n_channels = 33
         try:
-            self.wrapper.confirm_nodes(channel=int(channel),nodeIds = nodeItems)
+            asyncio.run(self.wrapper.confirm_nodes(channel=int(_channel),nodeIds = _nodeItems))
         except Exception:
             pass
-        self.channelValueBox, self.trendingBox , self.monValueBox , self.confValueBox, self.progressBar = mops_child_window.MopsChildWindow().device_child_window(childWindow=self.deviceWindow, mainWindow= self)
+        self.channelValueBox, self.trendingBox , self.monValueBox , self.confValueBox, self.progressBar = mops_child_window.MopsChildWindow().device_child_window(childWindow=self.deviceWindow, device =self.__deviceName, mainWindow= self)
         self.graphWidget = self.DataMonitoring.initiate_trending_figure(n_channels=n_channels)
         self.deviceWindow.show()
     '''
@@ -1495,7 +1532,10 @@ class MainWindow(QMainWindow):
             
     def set_ipAddress(self, x):
         self.__ipAddress = x
-               
+    
+    def set_refresh_rate(self, x):
+        self.__refresh_rate = x
+                       
     def set_subIndex(self, x):
         self.__subIndex = x
                 
@@ -1536,6 +1576,9 @@ class MainWindow(QMainWindow):
     def get_icon_dir(self):
         return  self.__appIconDir
     
+    def get_refresh_rate(self):
+        return self.__refresh_rate
+      
     def get_appName(self):
         return self.__appName
     

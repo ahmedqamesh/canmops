@@ -7,7 +7,7 @@ from PyQt5.QtWidgets import *
 from PyQt5 import QtGui
 from canmops.logger_main         import Logger 
 from canmops.analysis_utils import AnalysisUtils
-from graphicsUtils import main_gui_window, menu_window, data_monitoring, plotting_canvas, design_diagram
+from canmopsGUI import main_gui_window, menu_window, data_monitoring, plotting_canvas, design_diagram
 import numpy as np
 import time
 import os
@@ -31,7 +31,7 @@ class ChildWindow(QtWidgets.QMainWindow):
         childWindow.show()        
         childWindow.setObjectName("")
         childWindow.setWindowTitle("Add IP address to the list")
-        childWindow.setWindowIcon(QtGui.QIcon('graphicsUtils/icons/icon_ip.png'))
+        childWindow.setWindowIcon(QtGui.QIcon('canmopsGUI/icons/icon_ip.png'))
         mainLayout = QGridLayout()
         # Define a frame for that group
         plotframe = QFrame()
@@ -55,12 +55,12 @@ class ChildWindow(QtWidgets.QMainWindow):
             
         #Buttons section           
         add_button = QPushButton("")
-        add_button.setIcon(QIcon('graphicsUtils/icons/icon_start.png'))
+        add_button.setIcon(QIcon('canmopsGUI/icons/icon_start.png'))
         add_button.setStatusTip('Add the IP address to the list') 
         add_button.clicked.connect(_add_ip)   
 
         close_button = QPushButton("Close")
-        close_button.setIcon(QIcon('graphicsUtils/icons/icon_close.png'))
+        close_button.setIcon(QIcon('canmopsGUI/icons/icon_close.png'))
         close_button.clicked.connect(childWindow.close)
                 
         mainLayout.addWidget(ipLabel ,0,0)
@@ -73,7 +73,7 @@ class ChildWindow(QtWidgets.QMainWindow):
                                       
     def browse_client_child_window(self, childWindow, conf):
         childWindow.setWindowTitle("OPCUA Server settings")
-        childWindow.setWindowIcon(QtGui.QIcon('graphicsUtils/icons/icon_nodes.png'))
+        childWindow.setWindowIcon(QtGui.QIcon('canmopsGUI/icons/icon_nodes.png'))
         #childWindow.setGeometry(200, 200, 100, 100)
         #childWindow.adjustSize() 
         childWindow.setFixedSize(850, 300)
@@ -108,11 +108,11 @@ class ChildWindow(QtWidgets.QMainWindow):
 
         buttonLayout = QHBoxLayout() 
         close_button = QPushButton("Close")
-        close_button.setIcon(QIcon('graphicsUtils/icons/icon_close.png'))
+        close_button.setIcon(QIcon('canmopsGUI/icons/icon_close.png'))
         close_button.clicked.connect(childWindow.close)
         
         save_button = QPushButton("Save")
-        save_button.setIcon(QIcon('graphicsUtils/icons/icon_true.png'))
+        save_button.setIcon(QIcon('canmopsGUI/icons/icon_true.png'))
         save_button.clicked.connect(_save_items)       
        # buttonLayout.addWidget(save_button)
         buttonLayout.addWidget(close_button)
@@ -172,15 +172,15 @@ class ChildWindow(QtWidgets.QMainWindow):
         #Buttons section
         butteonLayout = QVBoxLayout()               
         add_button = QPushButton("")
-        add_button.setIcon(QIcon('graphicsUtils/icons/icon_plus.png'))
+        add_button.setIcon(QIcon('canmopsGUI/icons/icon_plus.png'))
         add_button.setStatusTip('Add the IP address to the list') 
         
         set_button = QPushButton("")
-        set_button.setIcon(QIcon('graphicsUtils/icons/icon_start.png'))
+        set_button.setIcon(QIcon('canmopsGUI/icons/icon_start.png'))
         set_button.setStatusTip('Set the IP address')  # show when move mouse to the icon
         
         remove_button = QPushButton("")
-        remove_button.setIcon(QIcon('graphicsUtils/icons/icon_minus.jpg'))
+        remove_button.setIcon(QIcon('canmopsGUI/icons/icon_minus.jpg'))
         remove_button.setStatusTip('Remove IP address from the List')  # show when move mouse to the icon
         
         set_button.clicked.connect(_set_ip_server)   
@@ -215,7 +215,7 @@ class ChildWindow(QtWidgets.QMainWindow):
         confLineEdit.setText(server_config_yaml)   
                 
         directoryButton = QPushButton("")
-        directoryButton.setIcon(QIcon('graphicsUtils/icons/icon_open.png'))
+        directoryButton.setIcon(QIcon('canmopsGUI/icons/icon_open.png'))
         directoryButton.setStatusTip('Select Server Configuration file [The file should follow a specific standard format]') 
         directoryButton.clicked.connect(lambda: self.get_config_file(confLineEdit,config_dir))
         
@@ -237,7 +237,7 @@ class ChildWindow(QtWidgets.QMainWindow):
         progress = self.progress_window()
         icon_spacer = QSpacerItem(10, 20, QtWidgets.QSizePolicy.Minimum, QtWidgets.QSizePolicy.Expanding)
         save_button = QPushButton("Match client configurations")
-        save_button.setIcon(QIcon('graphicsUtils/icons/icon_true.png'))
+        save_button.setIcon(QIcon('canmopsGUI/icons/icon_true.png'))
         save_button.clicked.connect(_set_yaml)   
                 
         confLayout.addWidget(confLabel)
@@ -253,7 +253,7 @@ class ChildWindow(QtWidgets.QMainWindow):
     def browse_server_child_window(self, childWindow, conf):
         childWindow.setObjectName("")
         childWindow.setWindowTitle("OPCUA Server settings")
-        childWindow.setWindowIcon(QtGui.QIcon('graphicsUtils/icons/icon_nodes.png'))
+        childWindow.setWindowIcon(QtGui.QIcon('canmopsGUI/icons/icon_nodes.png'))
         #childWindow.setGeometry(200, 200, 100, 100)
         childWindow.setFixedSize(500, 120)
         mainLayout = QGridLayout()
@@ -274,7 +274,7 @@ class ChildWindow(QtWidgets.QMainWindow):
         confLineEdit.setText(server_config_yaml)   
                 
         directoryButton = QPushButton("")
-        directoryButton.setIcon(QIcon('graphicsUtils/icons/icon_open.png'))
+        directoryButton.setIcon(QIcon('canmopsGUI/icons/icon_open.png'))
         directoryButton.setStatusTip('Select Server Configuration file [The file should follow a specific standard format]') 
         directoryButton.clicked.connect(lambda: self.get_config_file(confLineEdit,config_dir))
         doneLabel = QLabel()
@@ -290,7 +290,7 @@ class ChildWindow(QtWidgets.QMainWindow):
         icon_spacer = QSpacerItem(100, 20, QtWidgets.QSizePolicy.Minimum, QtWidgets.QSizePolicy.Expanding)
         
         close_button = QPushButton("Close")
-        close_button.setIcon(QIcon('graphicsUtils/icons/icon_close.png'))
+        close_button.setIcon(QIcon('canmopsGUI/icons/icon_close.png'))
         close_button.clicked.connect(childWindow.close)
         
         def _set_yaml():
@@ -308,7 +308,7 @@ class ChildWindow(QtWidgets.QMainWindow):
             
             
         save_button = QPushButton("set configurations")
-        save_button.setIcon(QIcon('graphicsUtils/icons/icon_true.png'))
+        save_button.setIcon(QIcon('canmopsGUI/icons/icon_true.png'))
         save_button.clicked.connect(_set_yaml)   
             
         buttonLayout.addItem(icon_spacer)
@@ -389,12 +389,12 @@ class ChildWindow(QtWidgets.QMainWindow):
         
         buttonBox = QHBoxLayout()
         send_button = QPushButton("Send")
-        send_button.setIcon(QIcon('graphicsUtils/icons/icon_true.png'))
+        send_button.setIcon(QIcon('canmopsGUI/icons/icon_true.png'))
         send_button.clicked.connect(_set_bus)
         send_button.clicked.connect(mainWindow.write_can_message)
         
         close_button = QPushButton("close")
-        close_button.setIcon(QIcon('graphicsUtils/icons/icon_close.jpg'))
+        close_button.setIcon(QIcon('canmopsGUI/icons/icon_close.jpg'))
         close_button.clicked.connect(ChildWindow.close)
 
         buttonBox.addWidget(send_button)
@@ -456,7 +456,6 @@ class ChildWindow(QtWidgets.QMainWindow):
         # Another group will be here for Bus parameters
         self.BusParametersGroupBox( mainWindow = mainWindow)
         
-        
         # FirstButton
         clear_button = QPushButton("Clear")
         clear_button.clicked.connect(childWindow.close)
@@ -489,7 +488,7 @@ class ChildWindow(QtWidgets.QMainWindow):
         # Define Third Group
         ThirdGridLayout = QHBoxLayout()
         close_button = QPushButton("close")
-        close_button.setIcon(QIcon('graphicsUtils/icons/icon_close.png'))
+        close_button.setIcon(QIcon('canmopsGUI/icons/icon_close.png'))
         close_button.clicked.connect(childWindow.close)
         ThirdGridLayout.addSpacing(100)
         ThirdGridLayout.addWidget(close_button)
@@ -553,7 +552,7 @@ class ChildWindow(QtWidgets.QMainWindow):
                     
         set_button = QPushButton("Set in all")
         set_button.setStatusTip('The button will apply the same settings for all CAN controllers')  # show when move mouse to the icon
-        set_button.setIcon(QIcon('graphicsUtils/icons/icon_true.png'))
+        set_button.setIcon(QIcon('canmopsGUI/icons/icon_true.png'))
         set_button.clicked.connect(_set_bus)
         set_button.clicked.connect(mainWindow.set_bus_settings)
         
@@ -596,7 +595,7 @@ class ChildWindow(QtWidgets.QMainWindow):
         
         buttonBox = QHBoxLayout()
         close_button = QPushButton("close")
-        close_button.setIcon(QIcon('graphicsUtils/icons/icon_close.jpg'))
+        close_button.setIcon(QIcon('canmopsGUI/icons/icon_close.jpg'))
         close_button.clicked.connect(ChildWindow.close)
         buttonBox.addWidget(close_button)
                  
@@ -639,7 +638,7 @@ class ChildWindow(QtWidgets.QMainWindow):
         self.adcPlotGridLayout =  QGridLayout()
 
         closeButton = QPushButton("close")
-        closeButton.setIcon(QIcon('graphicsUtils/icons/icon_close.jpg'))
+        closeButton.setIcon(QIcon('canmopsGUI/icons/icon_close.jpg'))
         closeButton.setStatusTip('close session')
         closeButton.clicked.connect(self.close)
         
@@ -659,7 +658,7 @@ class ChildWindow(QtWidgets.QMainWindow):
             else:
                 self.adcListBox.setEnabled(False)                    
         directoryButton = QPushButton("")
-        directoryButton.setIcon(QIcon('graphicsUtils/icons/icon_open.png'))
+        directoryButton.setIcon(QIcon('canmopsGUI/icons/icon_open.png'))
         directoryButton.setStatusTip('Select ADC data file [The file should follow a specific standard format]') 
         directoryButton.clicked.connect(lambda: self.get_file(self.filetextbox, output_dir))
         
@@ -720,7 +719,7 @@ class ChildWindow(QtWidgets.QMainWindow):
             fig_path = design.process_yaml(path=file_path,file_name =file_name[:-4],graphid_name = "MopsHub", file_end = ".yml")
         else:
             self.logger.error("File with Unknown extension")
-            fig_path = "graphicsUtils/icons/icon_minus.jpg"
+            fig_path = "canmopsGUI/icons/icon_minus.jpg"
             pass
         
         fig = QLabel()
@@ -870,7 +869,7 @@ class ChildWindow(QtWidgets.QMainWindow):
         inLayout = QVBoxLayout()  
         addLayout= QHBoxLayout()  
         add_button = QPushButton("Add")
-        add_button.setIcon(QIcon('graphicsUtils/icons/icon_add.png'))
+        add_button.setIcon(QIcon('canmopsGUI/icons/icon_add.png'))
         addLayout.addSpacing(80)
         addLayout.addWidget(add_button)
         
@@ -895,7 +894,7 @@ class ChildWindow(QtWidgets.QMainWindow):
             
         clearLayout= QHBoxLayout()  
         clear_button = QPushButton("Clear")
-        clear_button.setIcon(QIcon('graphicsUtils/icons/icon_clear.png'))
+        clear_button.setIcon(QIcon('canmopsGUI/icons/icon_clear.png'))
         clearLayout.addSpacing(80)
         clearLayout.addWidget(clear_button)
         outLayout.addWidget(fullListBox)
@@ -950,11 +949,11 @@ class ChildWindow(QtWidgets.QMainWindow):
          
         buttonLayout = QHBoxLayout()
         close_button = QPushButton("Close")
-        close_button.setIcon(QIcon('graphicsUtils/icons/icon_close.png'))
+        close_button.setIcon(QIcon('canmopsGUI/icons/icon_close.png'))
         close_button.clicked.connect(childWindow.close)
         
         save_button = QPushButton("Save")
-        save_button.setIcon(QIcon('graphicsUtils/icons/icon_true.png'))
+        save_button.setIcon(QIcon('canmopsGUI/icons/icon_true.png'))
         save_button.clicked.connect(_save_items)       
         buttonLayout.addWidget(save_button)
         buttonLayout.addWidget(close_button)

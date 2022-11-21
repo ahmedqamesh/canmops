@@ -54,7 +54,7 @@ class DataMonitoring(QMainWindow):
         Fig = self.graphWidget[s]
         #for i in np.arange(0, n_channels): self.graphWidget[i].clear()  # clear any old plots
         close_button = QPushButton("close")
-        close_button.setIcon(QIcon('graphicsUtils/icons/icon_close.jpg'))
+        close_button.setIcon(QIcon('canmopsGUI/icons/icon_close.jpg'))
         close_button.clicked.connect(__disable_figure)
         close_button.clicked.connect(childWindow.close)
         

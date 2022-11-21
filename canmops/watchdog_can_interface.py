@@ -24,14 +24,14 @@ class WATCHCan(Thread):
                 status = subprocess.run(["cat", f"/sys/class/net/can{bus_channel}/operstate", "/dev/null"], capture_output=True)
                 if "up" in status.stdout.decode("utf-8"):
                     pass
-                elif "down" in status.stdout.decode("utf-8"):
-                    if bus_channel == 0:
-                        self.logger_thread.warning(f"CAN bus_channel {bus_channel} is down -  going to restart")
-                        self.watchdog_notifier.raise_event("restart bus_channel", channel=0)
-                    elif bus_channel == 1:
-                        self.logger_thread.warning(f"CAN bus_channel {bus_channel} is down -  going to restart")
-                        self.watchdog_notifier.raise_event("restart bus_channel", channel=1)
-                        time.sleep(0.5)
+                # elif "down" in status.stdout.decode("utf-8"):
+                #     if bus_channel == 0:
+                #         self.logger_thread.warning(f"CAN bus_channel {bus_channel} is down -  going to restart")
+                #         self.watchdog_notifier.raise_event("restart bus_channel", channel=0)
+                #     elif bus_channel == 1:
+                #         self.logger_thread.warning(f"CAN bus_channel {bus_channel} is down -  going to restart")
+                #         self.watchdog_notifier.raise_event("restart bus_channel", channel=1)
+                #         time.sleep(0.5)
                     
                 else:
                     pass

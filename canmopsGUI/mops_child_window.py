@@ -6,7 +6,7 @@ from PyQt5.QtWidgets import *
 from PyQt5 import QtGui
 from canmops.analysis_utils import AnalysisUtils
 from canmops.logger_main    import Logger 
-from graphicsUtils import main_gui_window, menu_window, data_monitoring
+from canmopsGUI import main_gui_window, menu_window, data_monitoring
 import numpy as np
 import time
 import os
@@ -14,14 +14,15 @@ import binascii
 import yaml
 import logging
 rootdir = os.path.dirname(os.path.abspath(__file__)) 
-lib_dir = rootdir[:-13]
-config_dir = "config/"
+lib_dir = rootdir[:-11]
+config_dir = "config_files/"
+config_yaml =config_dir + "MOPS_cfg.yml" 
 class MopsChildWindow(QWidget):  
 
     def __init__(self, parent=None,console_loglevel=logging.INFO,opcua_config = "opcua_config.yaml"):
        super(MopsChildWindow, self).__init__(parent)
        self.logger = Logger().setup_main_logger(name=" MOPS GUI ", console_loglevel=console_loglevel)
-       dev = AnalysisUtils().open_yaml_file(file=config_dir + "MOPS_cfg.yml", directory=lib_dir)
+       dev = AnalysisUtils().open_yaml_file(file=config_yaml, directory=lib_dir)
        self.configure_devices(dev)
        max_mops_num = 4
        max_bus_num = 4
@@ -42,7 +43,7 @@ class MopsChildWindow(QWidget):
                     s = m
                     mopsBotton[m] = QPushButton("  ["+str(m)+"]")
                     mopsBotton[m].setObjectName("C"+str(c)+"M"+str(m)+"P"+str(b))
-                    mopsBotton[m].setIcon(QIcon('graphicsUtils/icons/icon_mops.png'))
+                    mopsBotton[m].setIcon(QIcon('canmopsGUI/icons/icon_mops.png'))
                     mopsBotton[m].setStatusTip("CIC NO."+str(c)+" MOPS No."+str(m)+" Port No."+str(b))
                     mopsBotton[m].clicked.connect(self.cic_group_action)
                     if s < col_len:
@@ -85,7 +86,41 @@ class MopsChildWindow(QWidget):
         return  self.__deviceName, self.__version, self.__appIconDir,self.__nodeIds, self.__dictionary_items, self.__adc_channels_reg,\
             self.__adc_index, self.__chipId, self.__index_items, self.__conf_index, self.__mon_index, self.__resistor_ratio, self.__refresh_rate, self.__ref_voltage
                
-            
+    def update_device_box(self,device = "None",mainWindow = None):
+        '''
+        The function Will update the configured device section with the registered devices according to the file main_cfg.yml
+        '''
+        if device == "None":
+            conf = mainWindow.child.open()
+        else:
+            pass
+        # Load ADC calibration constants
+        # adc_calibration = pd.read_csv(config_dir + "adc_calibration.csv", delimiter=",", header=0)
+        # condition = (adc_calibration["chip"] == chipId)
+        # chip_parameters = adc_calibration[condition]
+        # print(chip_parameters["calib_a"],chip_parameters["calib_b"] )
+        #mainWindow.__devices.append(self.__deviceName)
+        mainWindow.set_deviceName(self.__deviceName)
+        mainWindow.set_version(self.__version)
+        mainWindow.set_icon_dir(self.__appIconDir)
+        mainWindow.set_nodeList(self.__nodeIds)
+        mainWindow.set_dictionary_items(self.__dictionary_items) 
+        mainWindow.set_adc_channels_reg(self.__adc_channels_reg)            
+        try:
+            mainWindow.deviceButton.deleteLater()
+            mainWindow.configureDeviceBoxLayout.removeWidget(mainWindow.deviceButton)
+            mainWindow.deviceButton = QPushButton("")
+            mainWindow.deviceButton.setIcon(QIcon(mainWindow.get_icon_dir()))
+            mainWindow.deviceButton.clicked.connect(mainWindow.show_deviceWindow)
+            mainWindow.configureDeviceBoxLayout.addWidget(mainWindow.deviceButton)
+        except:
+            pass         
+        
+        return  self.__deviceName, self.__version, self.__appIconDir,self.__nodeIds, self.__dictionary_items, self.__adc_channels_reg,\
+            self.__adc_index, self.__chipId, self.__index_items, self.__conf_index, self.__mon_index, self.__resistor_ratio, self.__refresh_rate, self.__ref_voltage  
+
+    
+                             
     def define_object_dict_window(self,connected_node = None, mainWindow = None):
         def __set_bus():
             try:
@@ -153,19 +188,19 @@ class MopsChildWindow(QWidget):
         self.deviceInfoGroupBox = self.device_info_box(device = mainWindow.get_deviceName())
         BottonHLayout = QVBoxLayout()
         startButton = QPushButton("")
-        startButton.setIcon(QIcon('graphicsUtils/icons/icon_start.png'))
+        startButton.setIcon(QIcon('canmopsGUI/icons/icon_start.png'))
         startButton.setStatusTip('Send CAN message')  # show when move mouse to the icon
         startButton.clicked.connect(__set_bus)
         startButton.clicked.connect(mainWindow.read_sdo_can_thread)
 
         resetButton = QPushButton()
-        resetButton.setIcon(QIcon('graphicsUtils/icons/icon_reset.png'))
+        resetButton.setIcon(QIcon('canmopsGUI/icons/icon_reset.png'))
         _cobid_index = hex(0x700)
         resetButton.setStatusTip('Reset the chip [The %s chip should reply back with a cobid index %s]' % (mainWindow.get_deviceName(), str(_cobid_index)))
         resetButton.clicked.connect(__reset_device)
                        
         restartButton = QPushButton()
-        restartButton.setIcon(QIcon('graphicsUtils/icons/icon_restart.png'))
+        restartButton.setIcon(QIcon('canmopsGUI/icons/icon_restart.png'))
         restartButton.setStatusTip('Restart the chip [The %s chip should reply back with a cobid 0x00]' % mainWindow.get_deviceName())
         restartButton.clicked.connect(__restart_device)
         
@@ -210,24 +245,23 @@ class MopsChildWindow(QWidget):
         GridLayout.addLayout(VLayout, 0, 3, 0, 4)
         return GridLayout
                                 
-    def device_child_window(self, childWindow, device = "MOPS", cic = None, port = None , mops = None, mainWindow = None, readout_thread = None): 
+    def device_child_window(self, childWindow,device_config =None,  device = "MOPS", cic = None, port = None , mops = None, mainWindow = None, readout_thread = None): 
         '''
         The function will Open a special window for the device [MOPS] .
         The calling function for this is show_deviceWindow
         '''
+        #mainWindow.set_deviceName(device)
         try:
-            self.MenuBar.create_device_menuBar(childWindow)
+            self.MenuBar.create_device_menuBar(childWindow,device_config)
         except Exception:
             self.MenuBar = menu_window.MenuWindow(self)
-            self.MenuBar.create_device_menuBar(childWindow)
+            self.MenuBar.create_device_menuBar(childWindow,device_config)
             
         self.DataMonitoring = data_monitoring.DataMonitoring(self)    
         if device:
             _device_name = device
         else:
             _device_name = self.__deviceName 
-            
-
         n_channels = 33
         nodeItems = self.__nodeIds
 
@@ -246,6 +280,9 @@ class MopsChildWindow(QWidget):
         self.devicetTabs = QTabWidget()  
         self.tab2 = QWidget()        
         self.devicetTabs.addTab(self.tab2, "Device Channels")         
+        HLayout = QHBoxLayout()
+        close_button = QPushButton("close")
+        close_button.setIcon(QIcon('canmopsGUI/icons/icon_close.jpg'))
         if cic is None:
             _channel = mainWindow.get_channel()        
             try:
@@ -298,13 +335,13 @@ class MopsChildWindow(QWidget):
             tabLayout.addLayout(nodeHLayout, 1, 0)
             HBox = QHBoxLayout()
             send_button = QPushButton("run ")
-            send_button.setIcon(QIcon('graphicsUtils/icons/icon_start.png'))
+            send_button.setIcon(QIcon('canmopsGUI/icons/icon_start.png'))
             send_button.clicked.connect(__set_bus_timer)
             send_button.clicked.connect(__check_file_box)
             send_button.clicked.connect(mainWindow.initiate_adc_timer)
     
             stop_button = QPushButton("stop ")
-            stop_button.setIcon(QIcon('graphicsUtils/icons/icon_stop.png')) 
+            stop_button.setIcon(QIcon('canmopsGUI/icons/icon_stop.png')) 
             stop_button.clicked.connect(mainWindow.stop_adc_timer)
     
             # update a progress bar for the bus statistics
@@ -324,17 +361,18 @@ class MopsChildWindow(QWidget):
             mainLayout.addLayout(progressHLayout, 5, 1)
             self.devicetTabs.addTab(self.tab1, "Object Dictionary")
             self.device_info_box(device=device, cic = cic, port = port , mops = mops,data_file = _default_file)  
+            close_button.clicked.connect(mainWindow.stop_adc_timer)
+            close_button.clicked.connect(childWindow.close)
         else:
-            self.progressBar = None               
-            self.device_info_box(device=device, cic = cic, port = port , mops = mops)
+            self.progressBar = None
+                    
+            self.device_info_box(device=device, cic = cic, port = port , mops = mops,data_file = None)
             self.graphWidget = self.DataMonitoring.initiate_trending_figure(n_channels=n_channels)
+            close_button.clicked.connect(lambda: mainWindow.stop_adc_timer(cic = cic, port = port , mops = mops))
+            close_button.clicked.connect(childWindow.close)
 
 
-        HLayout = QHBoxLayout()
-        close_button = QPushButton("close")
-        close_button.setIcon(QIcon('graphicsUtils/icons/icon_close.jpg'))
-        close_button.clicked.connect(mainWindow.stop_adc_timer)
-        close_button.clicked.connect(childWindow.close)
+
         HLayout.addSpacing(350)
         HLayout.addWidget(close_button)
         # Add Adc channels tab [These values will be updated with the timer self.initiate_adc_timer]
@@ -366,7 +404,7 @@ class MopsChildWindow(QWidget):
         # Icon
         iconLayout = QHBoxLayout()
         icon = QLabel(self)
-        pixmap = QPixmap('graphicsUtils/icons/icon_mops.png')
+        pixmap = QPixmap('canmopsGUI/icons/icon_mops.png')
         icon.setPixmap(pixmap.scaled(100, 100))
         iconLayout.addSpacing(50)
         iconLayout.addWidget(icon)    
@@ -439,7 +477,7 @@ class MopsChildWindow(QWidget):
             self.saveDirCheckBox = QCheckBox("")
             self.saveDirCheckBox.setChecked(True)
             self.saveDirCheckBox.toggled.connect(lambda:_dir_stat_change(self.saveDirCheckBox))
-            self.SaveDirTextBox.setStatusTip("The file where the ADC value are saved after scanning[%s]"%(lib_dir + "output_data/"+self.__default_file+".csv"))
+            self.SaveDirTextBox.setStatusTip("The file where the ADC value are saved after scanning[%s]"%(lib_dir + "/output_data/"+self.__default_file+".csv"))
             dataLayout.addWidget(SaveDirLabel)
             dataLayout.addWidget(self.SaveDirTextBox)
             dataLayout.addWidget(self.saveDirCheckBox)  
@@ -493,14 +531,14 @@ class MopsChildWindow(QWidget):
                 labelChannel[s].setText(subindex_description_item[25:29] + " [V]:")
                 icon = QLabel(self)
                 if _adc_channels_reg[str(subindex)] == "V": 
-                    icon_dir = 'graphicsUtils/icons/icon_voltage.png'
+                    icon_dir = 'canmopsGUI/icons/icon_voltage.png'
                 else: 
-                    icon_dir = 'graphicsUtils/icons/icon_thermometer.png'
+                    icon_dir = 'canmopsGUI/icons/icon_thermometer.png'
                 pixmap = QPixmap(icon_dir)
                 icon.setPixmap(pixmap.scaled(20, 20))
                 self.trendingBotton[s] = QPushButton()
                 self.trendingBotton[s].setObjectName(str(subindex))
-                self.trendingBotton[s].setIcon(QIcon('graphicsUtils/icons/icon_trend.jpg'))
+                self.trendingBotton[s].setIcon(QIcon('canmopsGUI/icons/icon_trend.jpg'))
                 self.trendingBotton[s].setStatusTip('Data Trending for %s' % subindex_description_item[25:29])
                 if cic is not None:
                     self.trendingBotton[s].clicked.connect(lambda: mainWindow.show_trendWindow(int(cic),int(port),int(mops)))

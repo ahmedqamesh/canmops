@@ -1,6 +1,5 @@
 # This File is setting up the CAN Channels on the RPI on the beginning
 # Possible updates: Watchdog on Channel Health while system is running
-
 import logging
 try:
     import can
@@ -22,7 +21,7 @@ except:
 
 config_file = "socketcan_CANSettings.yml"
 rootdir = os.path.dirname(os.path.abspath(__file__))
-config_dir = "config"
+config_dir = "config_files"
 lib_dir = rootdir[:-8]
 class CanConfig(WATCHCan):
     """description of class"""

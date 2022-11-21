@@ -73,12 +73,19 @@ class AnalysisUtils(object):
         """Returns project root folder."""
         return Path(__file__).parent.parent
     
-    def open_csv_file(self,outname=None, directory=None, fieldnames = ['TimeStamp', 'Channel', "Id", "ADCChannel", "ADCData" , "ADCDataConverted"]):
+    def open_csv_file(self,outname=None, directory=None, fieldnames = ['A', 'B']):
         if not os.path.exists(directory):
             os.mkdir(directory)
         filename = os.path.join(directory, outname) 
         out_file_csv = open(filename + '.csv', 'w+')
         return out_file_csv
+ 
+    def build_data_base(self,fieldnames=["A","B"],outputname = False, directory = False):
+        out_file_csv = self.open_csv_file(outname=outputname, directory=directory)
+        writer = csv.DictWriter(out_file_csv, fieldnames=fieldnames)
+        writer.writeheader()    
+        csv_writer = csv.writer(out_file_csv)  # , delimiter=',', quotechar='"', quoting=csv.QUOTE_MINIMAL)          
+        return csv_writer
     
     def save_adc_data(self,directory = None,channel = None):
         File = tb.open_file(directory + "ch_"+str(channel)+ ".h5", 'w')

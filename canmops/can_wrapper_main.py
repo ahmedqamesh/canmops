@@ -79,10 +79,10 @@ except:
     logger.warning("AnaGate Package is not installed....."+"[Please ignore the warning if No AnaGate controllers used.]")
 
 rootdir = os.path.dirname(os.path.abspath(__file__))
-config_dir = "config/"
+config_dir = "config_files/"
 lib_dir = rootdir[:-8]
 
-class CanWrapper(WATCHCan):#READSocketcan):#Instead of object
+class CanWrapper(object):#READSocketcan):#Instead of object
 
     def __init__(self,
                  interface=None, channel=None,
@@ -96,10 +96,10 @@ class CanWrapper(WATCHCan):#READSocketcan):#Instead of object
                  console_loglevel=logging.INFO):
        
         super(CanWrapper, self).__init__()  # super keyword to call its methods from a subclass:        
-        #Initialize a watchdog
+        #Initialize a watchdog (to be done)
         WATCHCan.__init__(self)
-        self.start()
-        #Begin a thread settings
+        #self.start()
+        #Begin a thread settings (to be done)
         self.sem_read_block = threading.Semaphore(value=0)
         self.sem_recv_block = threading.Semaphore(value=0)
         self.sem_config_block = threading.Semaphore()
@@ -113,7 +113,6 @@ class CanWrapper(WATCHCan):#READSocketcan):#Instead of object
         self.logger = Logger().setup_main_logger(name = "CAN Wrapper",console_loglevel=console_loglevel, logger_file = False)
         self.logger_file = Logger().setup_file_logger(name = "CANWrapper",console_loglevel=console_loglevel, logger_file = ts)#for later usage
         self.logger.info(f'Existing logging Handler: {ts}'+'log')
-    
         if load_config:
            # Read CAN settings from a file 
             self.__channels, self.__ipAddress,self.__bitrate, self.__samplePoint,\
@@ -205,8 +204,12 @@ class CanWrapper(WATCHCan):#READSocketcan):#Instead of object
             self.logger_file.info(f'{self.__interface}:Using {self.ch0}, Bitrate:{self.__bitrate}') 
             return f'Using {self.ch0}, Bitrate:{self.__bitrate}'
         else:
-            self.logger_file.info(f'{self.__interface}: Using {self.ch0.channel_info}, Bitrate:{self.__bitrate}') 
-            return f'Using {self.ch0.channel_info}, Bitrate:{self.__bitrate}'
+            if self.ch0 != None:
+                self.logger_file.info(f'{self.__interface}: Using {self.ch0.channel_info}, Bitrate:{self.__bitrate}') 
+                return f'Using {self.ch0.channel_info}, Bitrate:{self.__bitrate}'
+            if self.ch1 != None:
+                self.logger_file.info(f'{self.__interface}: Using {self.ch1.channel_info}, Bitrate:{self.__bitrate}') 
+                return f'Using {self.ch1.channel_info}, Bitrate:{self.__bitrate}'
                     
     async def  confirm_nodes(self, channel=0, timeout=100,nodeIds = ["1","2"]):
         self.logger.notice('Checking MOPS status ...')
@@ -244,7 +247,8 @@ class CanWrapper(WATCHCan):#READSocketcan):#Instead of object
             _sample_point = _canSettings['channel' + str(channel)]["samplePoint"]
             _sjw = _canSettings['channel' + str(channel)]["SJW"]
             _tseg1 = _canSettings['channel' + str(channel)]["tseg1"]
-            _tseg2 = _canSettings['channel' + str(channel)]["tseg2"] 
+            _tseg2 = _canSettings['channel' + str(channel)]["tseg2"]
+            self.logger.info("Found channel%s with bitrate:%s, sample point:%s, SJW:%s, tesg1:%s, tseg2:%s" %(str(channel),_bitrate,_sample_point, _sjw,_tseg1, _tseg2)) 
             return _channel,_ipAddress, _bitrate,_sample_point, _sjw,_tseg1, _tseg2, _can_channels, _canSettings
         except:
           self.logger.error("Channel %s settings for %s interface Not found" % (str(channel),interface)) 
@@ -278,11 +282,12 @@ class CanWrapper(WATCHCan):#READSocketcan):#Instead of object
             else:
                 channel = "can" + str(self.__channel)
                 self.ch0= can.interface.Bus(bustype=interface, channel=channel, bitrate=self.__bitrate) 
-                  
+            self.logger.success(str(self))      
         except Exception:
             self.logger.error("TCP/IP or USB socket error in %s interface" % interface)
             self.logger_file.error("Channel definition is %s with interface %s " % (self.ch0,interface)) 
-        self.logger.success(str(self))        
+            sys.exit(1)
+            #self.logger.success(str(self))        
     
     def start_channel_connection(self, interface =None):
         """
@@ -318,7 +323,52 @@ class CanWrapper(WATCHCan):#READSocketcan):#Instead of object
             pass
         self.__canMsgThread = Thread(target=self.read_can_message_thread)
         self.__canMsgThread.start()
-        
+
+    async def read_mopshub_buses(self, file, directory , nodeId, outputname, outputdir, n_readings):
+        SDO_TX=0x600 
+        SDO_RX=0x580
+        index = 0x1000
+        Byte0= cmd = 0x40 #Defines a read (reads data only from the node) dictionary object in CANOPN standard
+        Byte1, Byte2 = index.to_bytes(2, 'little') # divide it into two groups(bytes) of 8 bits each
+        Byte3 = subindex = 0
+        self.logger.info(f'Reading ADC channels of Mops with ID {nodeId}')
+        dev = AnalysisUtils().open_yaml_file(file=file, directory=directory)
+        # yaml file is needed to get the object dictionary items
+        _adc_channels_reg = dev["adc_channels_reg"]["adc_channels"]
+        _adc_index = list(dev["adc_channels_reg"]["adc_index"])[0]
+        _channelItems = [int(channel) for channel in list(_adc_channels_reg)]
+        # Write header to the data
+        fieldnames = ["time","bus","R/W","CAN msg","Status"]
+        csv_writer = AnalysisUtils().build_data_base(fieldnames=fieldnames,outputname =outputname, directory = outputdir)
+        monitoringTime = time.time()
+        count = 0
+        n = n_readings
+        pbar = tqdm(total=n*n*0.5+1, desc="MOPSHUB scan", iterable=True)
+        while count<=n:
+            for bus_id in np.arange(0,1):
+                data = [Byte0,Byte1,Byte2,Byte3,0,0,0,bus_id]
+                await self.write_can_message(cobid = SDO_TX + nodeId, 
+                                          data = data, 
+                                          flag=0, 
+                                          timeout=30)
+                ts = time.time()
+                elapsedtime = ts - monitoringTime                
+                csv_writer.writerow((str(elapsedtime),
+                                     str(bus_id),
+                                     str("W"),
+                                     str(data),
+                                     0))
+            await asyncio.sleep(0.01)
+            
+            pbar.update(count)
+            count+=1
+        pbar.close()
+        self.logger.notice("MOPSHUB data are saved to %s/%s" % (outputdir,outputname))
+            
+    
+    
+    
+    
     async def read_adc_channels(self, file, directory , nodeId, outputname, outputdir, n_readings):
         """Start actual CANopen communication
         This function contains an endless loop in which it is looped over all
@@ -332,16 +382,13 @@ class CanWrapper(WATCHCan):#READSocketcan):#Instead of object
         _adc_index = list(dev["adc_channels_reg"]["adc_index"])[0]
         _channelItems = [int(channel) for channel in list(_adc_channels_reg)]
         # Write header to the data
-        out_file_csv = AnalysisUtils().open_csv_file(outname=outputname, directory=outputdir)
         fieldnames = ['Time', 'Channel', "nodeId", "ADCChannel", "ADCData" , "ADCDataConverted"]
-        writer = csv.DictWriter(out_file_csv, fieldnames=fieldnames)
-        writer.writeheader()    
-        csv_writer = csv.writer(out_file_csv)  # , delimiter=',', quotechar='"', quoting=csv.QUOTE_MINIMAL)          
+        csv_writer = AnalysisUtils().build_data_base(fieldnames=fieldnames,outputname = outputname, directory = outputdir)
         monitoringTime = time.time()
         for point in np.arange(0, n_readings): 
             # Read ADC channels
-            pbar = tqdm(total=len(_channelItems) + 1 , desc="ADC channels", iterable=True)
-            for c in np.arange(len(_channelItems)):
+            #pbar = tqdm(total=len(_channelItems)*100, desc="ADC channels", iterable=True)
+            for c in tqdm(np.arange(len(_channelItems))):
                 channel =  _channelItems[c]
                 subindex = channel - 2
                 data_point =  await self.read_sdo_can(nodeId, int(_adc_index, 16), subindex, 1000)
@@ -363,8 +410,8 @@ class CanWrapper(WATCHCan):#READSocketcan):#Instead of object
                                          str(data_point),
                                          str(adc_converted)))
                     self.logger.info(f'Got data for channel {channel}: = {adc_converted}')
-                pbar.update(1)
-            pbar.close()
+                #pbar.update(point)
+            #pbar.close()
         self.logger.notice("ADC data are saved to %s/%s" % (outputdir,outputname))
 
     def restart_channel_connection(self, interface = None):
@@ -824,6 +871,7 @@ class CanWrapper(WATCHCan):#READSocketcan):#Instead of object
         #sudo chown root:root socketcan_wrapper_enable.sh
         #sudo chmod 4775 socketcan_wrapper_enable.sh
         #sudo bash socketcan_wrapper_enable.sh 111111 0.5 4 can0 can 5 6
+        
         if channel == 0:
             if interface == "socketcan":
                 _bus_type = "can"

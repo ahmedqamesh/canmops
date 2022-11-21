@@ -2,7 +2,7 @@ Application:
   chipId: '3'
   device_name: MOPS
   device_version: v1.2
-  icon_dir: graphicsUtils/icons/icon_mops.png
+  icon_dir: canmopsGUI/icons/icon_mops.png
   refresh_rate: '100'
   index_items:
     '0x1000':
@@ -114,10 +114,11 @@ Application:
         1F: <html><u>subindex 1F</u>:Ch33</html>
         '20': <html><u>subindex 20</u>:Ch34</html>
   nodeIds:
+  - '0'
   - '1'
 Hardware:
   resistor_ratio: '1'
-  ref_voltage : 1.226
+  ref_voltage: 1.226
 adc_channels_reg:
   adc_channels:
     '3': T
@@ -129,7 +130,7 @@ adc_channels_reg:
     '9': V
     '10': V
     '11': V
-    '12': V
+    '12': T
     '13': V
     '14': V
     '15': V
