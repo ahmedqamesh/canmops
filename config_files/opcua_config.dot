@@ -1,0 +1,22 @@
+digraph graphid_name {
+13 [label="Converter: Temperature\n"]15 [label="Converter: Voltage\nAlias: EOS humidity sensor\n"]9 [label="Port: 0\nMopsID: 5\nStatus: 5\n"]9 -> 13[color=grey penwidth=3 arrowhead=normal] [label="ADC Channel 2"];
+9 -> 15[color=grey penwidth=3 arrowhead=normal] [label="ADC Channel 8"];
+22 [label="Converter: Temperature\n"]24 [label="Converter: Voltage\nAlias: EOS humidity sensor\n"]18 [label="Port: 0\nMopsID: 9\nStatus: 5\n"]18 -> 22[color=grey penwidth=3 arrowhead=normal] [label="ADC Channel 2"];
+18 -> 24[color=grey penwidth=3 arrowhead=normal] [label="ADC Channel 8"];
+8 [label=""]8 -> 9[color=grey penwidth=3 arrowhead=normal] [label="MOPS 0"];
+8 -> 18[color=grey penwidth=3 arrowhead=normal] [label="MOPS 1"];
+33 [label="Converter: Voltage\nAlias: Powering Voltage\n"]36 [label="Converter: Voltage\nAlias: Powering Voltage\n"]39 [label="Converter: Temperature\nAlias: Stave cooling\n"]28 [label="Status: 5\nPort: 0\nMopsID: 5\nLocation: Optopanel 1\n"]28 -> 33[color=grey penwidth=3 arrowhead=normal] [label="ADC Channel 0"];
+28 -> 36[color=grey penwidth=3 arrowhead=normal] [label="ADC Channel 1"];
+28 -> 39[color=grey penwidth=3 arrowhead=normal] [label="ADC Channel 31"];
+27 [label=""]27 -> 28[color=grey penwidth=3 arrowhead=normal] [label="MOPS 0"];
+48 [label="Converter: Voltage\nAlias: Powering Voltage\n"]51 [label="Converter: Voltage\nAlias: Powering Voltage\n"]54 [label="Converter: Temperature\nAlias: Stave cooling\n"]43 [label="Status: 5\nPort: 0\nMopsID: 5\nLocation: Optopanel 1\n"]43 -> 48[color=grey penwidth=3 arrowhead=normal] [label="ADC Channel 0"];
+43 -> 51[color=grey penwidth=3 arrowhead=normal] [label="ADC Channel 1"];
+43 -> 54[color=grey penwidth=3 arrowhead=normal] [label="ADC Channel 31"];
+61 [label="Converter: Temperature\n"]63 [label="Converter: Voltage\nAlias: EOS humidity sensor\n"]57 [label="Port: 0\nMopsID: 9\nStatus: 5\n"]57 -> 61[color=grey penwidth=3 arrowhead=normal] [label="ADC Channel 2"];
+57 -> 63[color=grey penwidth=3 arrowhead=normal] [label="ADC Channel 8"];
+42 [label=""]42 -> 43[color=grey penwidth=3 arrowhead=normal] [label="MOPS 0"];
+42 -> 57[color=grey penwidth=3 arrowhead=normal] [label="MOPS 1"];
+1 [label="Crate ID: 1\nADC Channel Default Converter: Raw\nMOPS Default Location: Optobox 3\nMOPS Default Status: 0\nMOPS Default Port: 5\nMOPS Configuration Default Trimming: 0\n"]1 -> 8[color=grey penwidth=3 arrowhead=diamond] [label="CIC 0"];
+1 -> 27[color=grey penwidth=3 arrowhead=diamond] [label="CIC 1"];
+1 -> 42[color=grey penwidth=3 arrowhead=diamond] [label="CIC 3"];
+}

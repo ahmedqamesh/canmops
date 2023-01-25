@@ -20,7 +20,7 @@ async def test_can_wrapper():
     
     #Example (1):Write/read CAN messages
     #write CAN message [read dictionary request from master to node]
-    await wrapper.read_mopshub_buses(file ="MOPS_cfg.yml", #Yaml configurations
+    await wrapper.read_mopshub_buses(file ="mops_config.yml", #Yaml configurations
                               directory=rootdir+"/config_files", # direstory of the yaml file
                               nodeId = NodeIds[0], # Node Id
                               outputname = "mopshub_data", # Data file name

@@ -23,9 +23,10 @@ from threading import Thread, Event, Lock
 import subprocess
 import threading
 import numpy as np
-from pip._internal.cli.cmdoptions import pre
-from lxml.html.builder import PRE
+#from pip._internal.cli.cmdoptions import pre
+#from lxml.html.builder import PRE
 from _socket import socket
+from asyncio.tasks import sleep
 try:
     from .analysis import Analysis
     from .logger_main import Logger
@@ -90,7 +91,7 @@ class CanWrapper(object):#READSocketcan):#Instead of object
                  sjw=None,ipAddress=None,
                  tseg1 = None, tseg2 = None,
                  nodeid =None,
-                 conf_file="main_cfg.yml",
+                 trim_mode =None,
                  file_loglevel=logging.INFO, 
                  logdir=None,load_config = False, 
                  console_loglevel=logging.INFO):
@@ -163,7 +164,6 @@ class CanWrapper(object):#READSocketcan):#Instead of object
         """:obj:`int` : Internal attribute for the channel index"""
         if channel is not None:
             self.__channel = channel
-        
         self.logger_file.info("Updating settings channel:%s bitrate:%s  sjw:%s tseg1:%s tseg2:%s IP Address:%s"%(self.__channel,
                                                                                                                self.__bitrate, 
                                                                                                                self.__sjw, 
@@ -185,6 +185,8 @@ class CanWrapper(object):#READSocketcan):#Instead of object
         self.__kvaserLock = Lock()
         self.logger.success('....Done Initialization!')
         self.logger_file.success('....Done Initialization!')
+        if trim_mode == True:
+            asyncio.run(self.trim_nodes(channel==channel))    
         
         if nodeid is not None:
             asyncio.run(self.confirm_nodes(nodeIds = [str(nodeid)]))
@@ -211,27 +213,46 @@ class CanWrapper(object):#READSocketcan):#Instead of object
                 self.logger_file.info(f'{self.__interface}: Using {self.ch1.channel_info}, Bitrate:{self.__bitrate}') 
                 return f'Using {self.ch1.channel_info}, Bitrate:{self.__bitrate}'
                     
-    async def  confirm_nodes(self, channel=0, timeout=100,nodeIds = ["1","2"]):
+    async def  confirm_nodes(self, channel=0, timeout=200,nodeIds = ["1","2"]):
         self.logger.notice('Checking MOPS status ...')
         _nodeIds = nodeIds 
         self.set_nodeList(_nodeIds)
-        self.logger.info(f'Connection to channel {channel} has been verified.')
         for nodeId in _nodeIds: 
             # Send the status message
             cobid_TX = 0x700 + int(nodeId,16)
-            cobid_RX = 0x700 + int(nodeId,16)
-            await self.write_can_message(cobid_TX, [0, 0, 0, 0, 0, 0, 0, 0], flag=0, timeout=200)
+            #cobid_RX = 0x700 + int(nodeId,16)
+            await self.write_can_message(cobid_TX, [0, 0, 0, 0, 0, 0, 0, 0], flag=0, timeout=timeout)
             # receive the message
             readCanMessage = self.read_can_message()
-            if readCanMessage is not None:
+            response = all(x is None for x in readCanMessage) 
+            if not response:
                 cobid_RX, data, _, _, _, _ = readCanMessage
-            if cobid_RX == cobid_TX and (data[0] == 0x85 or data[0] == 0x05):
-                self.logger.info(f'Connection to MOPS with nodeId {nodeId} in channel {channel} has been '
-                                 f'verified.')
+                if cobid_RX == cobid_TX and (data[0] == 0x85 or data[0] == 0x05):
+                    self.logger.info(f'Connection to MOPS with nodeId {nodeId} in channel {channel} has been '
+                                     f'verified.')
             else:
                self.logger.error(f'Connection to MOPS with nodeId {nodeId} in channel {channel} failed')
 
-         
+    async def trim_nodes(self, channel=0, timeout=200):
+        self.logger.notice(f'Start Trimming MOPS in channel {channel} ...')
+        # Send the trim  message
+        await self.write_can_message(0x555, [0xAA, 0xAA, 0xAA, 0xAA, 0xAA, 0xAA, 0xAA, 0xAA], flag=0, timeout=timeout)
+        # receive the message
+        time.sleep(1)
+        readCanMessage = self.read_can_message()
+        response = all(x is None for x in readCanMessage) 
+        if not response:
+            cobid_RX, data, _, _, _, _ = readCanMessage
+            if data[0] == 0x85 or data[0] == 0x05:
+                self.logger.info(f'Trimming MOPS in channel {channel} has been '
+                                 f'verified.')
+            else:
+                self.logger.error(f'Trimming MOPS in channel {channel} has been '
+                                  f'failed.')
+        else:
+            self.logger.error(f'Trimming MOPS in channel {channel} has been '
+                              f'failed.')                
+
     def load_settings_file(self, interface = None, channel = None):
         filename = lib_dir + config_dir + interface + "_CANSettings.yml"
         filename = os.path.join(lib_dir, config_dir + interface + "_CANSettings.yml")
@@ -248,7 +269,7 @@ class CanWrapper(object):#READSocketcan):#Instead of object
             _sjw = _canSettings['channel' + str(channel)]["SJW"]
             _tseg1 = _canSettings['channel' + str(channel)]["tseg1"]
             _tseg2 = _canSettings['channel' + str(channel)]["tseg2"]
-            self.logger.info("Found channel%s with bitrate:%s, sample point:%s, SJW:%s, tesg1:%s, tseg2:%s" %(str(channel),_bitrate,_sample_point, _sjw,_tseg1, _tseg2)) 
+            self.logger.info("Found channel:%s with bitrate:%s, sample point:%s, SJW:%s, tesg1:%s, tseg2:%s" %(str(channel),_bitrate,_sample_point, _sjw,_tseg1, _tseg2)) 
             return _channel,_ipAddress, _bitrate,_sample_point, _sjw,_tseg1, _tseg2, _can_channels, _canSettings
         except:
           self.logger.error("Channel %s settings for %s interface Not found" % (str(channel),interface)) 
@@ -658,6 +679,7 @@ class CanWrapper(object):#READSocketcan):#Instead of object
             with self.__lock:
                 # check the message validity [nodid, msg size,...]
                 for i, (cobid_ret, ret, dlc, flag, t) in zip(range(len(self.__canMsgQueue)), self.__canMsgQueue):
+
                     messageValid = (dlc == 8 
                                     and cobid_ret == SDO_RX + nodeId
                                     and ret[0] in [0x80, 0x43, 0x47, 0x4b, 0x4f, 0x42] 
@@ -850,16 +872,26 @@ class CanWrapper(object):#READSocketcan):#Instead of object
     def can_setup(self, channel: int, interface : str):
         self.logger.info("Resetting CAN Interface as soon as communication threads are finished")
         self.sem_config_block.acquire()
-        self.logger.info("Resetting CAN Interface")
         self.set_interface(interface)
-        if channel == self.can_0_settings['channel']:
-            if self.__busOn0:
-                self.ch0.shutdown()
-                self.hardware_config(channel = channel,interface = interface)
-        elif channel == self.can_1_settings['channel']:
-            if self.__busOn1:
-                self.ch1.shutdown()
-                self.hardware_config(channel = channel,interface = interface)
+        try:
+            if channel == self.can_0_settings['channel']:
+                #check if the bus is on
+                if self.__busOn0:
+                    self.ch0.shutdown()
+                    self.hardware_config(channel = channel,interface = interface)
+            elif channel == self.can_1_settings['channel']:
+                if self.__busOn1:
+                    self.ch1.shutdown()
+                    self.hardware_config(channel = channel,interface = interface)
+        except:
+            if channel == 0:
+                if self.__busOn0:
+                    self.ch0.shutdown()
+                    self.hardware_config(channel = channel,interface = interface)
+            elif channel == 1:
+                if self.__busOn1:
+                    self.ch1.shutdown()
+                    self.hardware_config(channel = channel,interface = interface)            
         self.logger.info(f"Channel {channel} is set")
         self.sem_config_block.release()
         self.logger.info("Resetting of CAN Interface finished. Returning to communication.")
@@ -872,11 +904,15 @@ class CanWrapper(object):#READSocketcan):#Instead of object
         #sudo chmod 4775 socketcan_wrapper_enable.sh
         #sudo bash socketcan_wrapper_enable.sh 111111 0.5 4 can0 can 5 6
         
-        if channel == 0:
-            if interface == "socketcan":
-                _bus_type = "can"
+        
+        if interface == "socketcan":
+            _bus_type = "can"
+            if channel == 0:
                 _can_channel = _bus_type + f"{self.can_0_settings['channel']}"
-                self.logger.info('Configure CAN hardware drivers for channel %s' % _can_channel)
+            if channel == 1:
+                _can_channel = _bus_type + f"{self.can_1_settings['channel']}"
+            self.logger.info('Configure CAN hardware drivers for channel %s' % _can_channel)
+            if channel == 0:
                 #os.system("." + rootdir + "/socketcan_wrapper_enable.sh %i %s %s %s %s %s %s" % (bitrate, samplepoint, sjw, _can_channel, _bus_type,tseg1,tseg2))
                 os.system("bash " + rootdir + "/socketcan_wrapper_enable.sh %s %s %s %s %s %s %s" % (f"{self.can_0_settings['bitrate']}",
                                  f"{self.can_0_settings['samplePoint']}",f"{self.can_0_settings['SJW']}",_can_channel,_bus_type,
@@ -885,21 +921,38 @@ class CanWrapper(object):#READSocketcan):#Instead of object
                 #                  f"{self.can_0_settings['samplePoint']}",f"{self.can_0_settings['SJW']}",_can_channel,_bus_type,
                 #                  f"{self.can_0_settings['tseg1']}", f"{self.can_0_settings['tseg2']}"],
                 #                  cwd=rootdir)
-                            
-            elif interface == "virtual":
-                _bus_type = "vcan"
+            if channel == 1:
+                #os.system("." + rootdir + "/socketcan_wrapper_enable.sh %i %s %s %s %s %s %s" % (bitrate, samplepoint, sjw, _can_channel, _bus_type,tseg1,tseg2))
+                os.system("bash " + rootdir + "/socketcan_wrapper_enable.sh %s %s %s %s %s %s %s" % (f"{self.can_0_settings['bitrate']}",
+                                 f"{self.can_0_settings['samplePoint']}",f"{self.can_0_settings['SJW']}",_can_channel,_bus_type,
+                                 f"{self.can_0_settings['tseg1']}", f"{self.can_0_settings['tseg2']}"))
+                # subprocess.call(['sh', 'bash socketcan_wrapper_enable.sh', f"{self.can_0_settings['bitrate']}",
+                #                  f"{self.can_0_settings['samplePoint']}",f"{self.can_0_settings['SJW']}",_can_channel,_bus_type,
+                #                  f"{self.can_0_settings['tseg1']}", f"{self.can_0_settings['tseg2']}"],
+                #                  cwd=rootdir)                  
+        elif interface == "virtual":
+            _bus_type = "vcan"
+            if channel == 0:
                 _can_channel = _bus_type + f"{self.can_0_settings['channel']}"
-                self.logger.info('Configure CAN hardware drivers for channel %s' % _can_channel)
-                #os.system(". sudo " + rootdir + "/socketcan_wrapper_enable.sh %i %s %s %s %s %s %s" % (bitrate, samplepoint, sjw, _can_channel, _bus_type,tseg1,tseg2))
+            if channel == 1:
+                _can_channel = _bus_type + f"{self.can_1_settings['channel']}"
+            self.logger.info('Configure CAN hardware drivers for channel %s' % _can_channel)
+            #os.system(". sudo " + rootdir + "/socketcan_wrapper_enable.sh %i %s %s %s %s %s %s" % (bitrate, samplepoint, sjw, _can_channel, _bus_type,tseg1,tseg2))
+            if channel == 0:
                 subprocess.call(['sh', 'sudo  ./socketcan_wrapper_enable.sh', f"{self.can_0_settings['bitrate']}",
                                  f"{self.can_0_settings['samplePoint']}",f"{self.can_0_settings['SJW']}",_can_channel,_bus_type,
                                  f"{self.can_0_settings['tseg1']}", f"{self.can_0_settings['tseg2']}"],
                                  cwd=rootdir)
-            else:
-                #Do nothing because it is not CAN
-                _can_channel = str(channel)
-        if channel == 1:
-            pass
+            if channel == 1:
+                subprocess.call(['sh', 'sudo  ./socketcan_wrapper_enable.sh', f"{self.can_1_settings['bitrate']}",
+                                 f"{self.can_1_settings['samplePoint']}",f"{self.can_1_settings['SJW']}",_can_channel,_bus_type,
+                                 f"{self.can_1_settings['tseg1']}", f"{self.can_1_settings['tseg2']}"],
+                                 cwd=rootdir)
+                
+
+        else:
+            #Do nothing because it is not CAN
+            _can_channel = str(channel)
         self.logger.info('%s[%s] Interface is initialized....' % (interface,_can_channel))
            
     def read_can_message_thread(self):
@@ -970,6 +1023,7 @@ class CanWrapper(object):#READSocketcan):#Instead of object
                     cobid, data, dlc, flag, t , error_frame = (frame.arbitration_id, frame.data,
                                                                frame.dlc, frame.is_extended_id,
                                                                frame.timestamp, frame.is_error_frame)
+            self.dumpMessage(cobid, data, dlc, flag, t)
             return cobid, data, dlc, flag, t, error_frame
         except:  # (canlib.CanNoMsg, analib.CanNoMsg,can.CanError):
             return None, None, None, None, None, None
@@ -1247,6 +1301,9 @@ def main():
                         default=0,
                         help='Node Id of the MOPS chip under test')
         
+    cGroup.add_argument('-trim', '--trim_mode', metavar='trim_mode',
+                        default=False,type=bool,
+                        help='Trim the chip')
     # Logging configuration
     lGroup = parser.add_argument_group('Logging settings')
     lGroup.add_argument('-cl', '--console_loglevel',
@@ -1257,7 +1314,6 @@ def main():
                         help='Level of console logging')
 
     args = parser.parse_args()
-    
     # Start the server
     wrapper = CanWrapper(**vars(args))  
     

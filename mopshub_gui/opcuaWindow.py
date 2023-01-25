@@ -30,8 +30,7 @@ except Exception as e:
 rootdir = os.path.dirname(os.path.abspath(__file__))
 lib_dir = rootdir[:-12]
 config_dir = "config/"
-
-
+config_yaml =config_dir + "mops_config.yml"
 class OpcuaWindow(QWidget):
 
     def __init__(self, console_loglevel=logging.INFO):
@@ -67,7 +66,7 @@ class OpcuaWindow(QWidget):
         '''
         The function Will update the configured device section with the registered devices according to the file main_cfg.yml
         '''
-        conf = AnalysisUtils().open_yaml_file(file=config_dir + "MOPS_cfg.yml", directory=lib_dir)
+        conf = AnalysisUtils().open_yaml_file(file=config_dir + config_yaml, directory=lib_dir)
         mops_child = mopsChildWindow.MopsChildWindow()
         deviceName, version, icon_dir, nodeIds, self.__dictionary_items, adc_channels_reg, self.__adc_index, self.__chipId, self.__index_items, self.__conf_index, self.__mon_index, self.__resistor_ratio = mops_child.configure_devices(
             conf)

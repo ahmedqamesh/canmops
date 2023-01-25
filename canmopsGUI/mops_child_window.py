@@ -16,7 +16,7 @@ import logging
 rootdir = os.path.dirname(os.path.abspath(__file__)) 
 lib_dir = rootdir[:-11]
 config_dir = "config_files/"
-config_yaml =config_dir + "MOPS_cfg.yml" 
+config_yaml =config_dir + "mops_config.yml" 
 class MopsChildWindow(QWidget):  
 
     def __init__(self, parent=None,console_loglevel=logging.INFO,opcua_config = "opcua_config.yaml"):
@@ -245,7 +245,7 @@ class MopsChildWindow(QWidget):
         GridLayout.addLayout(VLayout, 0, 3, 0, 4)
         return GridLayout
                                 
-    def device_child_window(self, childWindow,device_config =None,  device = "MOPS", cic = None, port = None , mops = None, mainWindow = None, readout_thread = None): 
+    def device_child_window(self, childWindow,device_config =None,  device = "mops", cic = None, port = None , mops = None, mainWindow = None, readout_thread = None): 
         '''
         The function will Open a special window for the device [MOPS] .
         The calling function for this is show_deviceWindow
@@ -286,7 +286,7 @@ class MopsChildWindow(QWidget):
         if cic is None:
             _channel = mainWindow.get_channel()        
             try:
-                self.wrapper.confirm_nodes(channel=int(_channel))
+                mainWindow.confirm_nodes(channel=int(_channel))
             except Exception:
                 pass
         
@@ -298,7 +298,13 @@ class MopsChildWindow(QWidget):
             for item in list(map(str, nodeItems)): self.deviceNodeComboBox.addItem(item)
             
             _connectedNode = self.deviceNodeComboBox.currentText()
-                             
+            
+            trimLabel = QLabel()
+            trimLabel.setText("Trim bus :")
+            trim_button = QPushButton("")
+            trim_button.setIcon(QIcon('canmopsGUI/icons/icon_trim.png'))
+            trim_button.clicked.connect(mainWindow.trim_nodes)        
+                          
             def __set_bus_timer():
                 _nodeid = self.deviceNodeComboBox.currentText()
                 mainWindow.set_nodeId(_nodeid) 
@@ -331,8 +337,15 @@ class MopsChildWindow(QWidget):
             nodeHLayout = QHBoxLayout()
             nodeHLayout.addWidget(nodeLabel)
             nodeHLayout.addWidget(self.deviceNodeComboBox)
-            nodeHLayout.addSpacing(400)
+            nodeHLayout.addSpacing(500)
+            
+            trimHLayout = QHBoxLayout()
+            trimHLayout.addWidget(trimLabel)
+            trimHLayout.addWidget(trim_button)
+            trimHLayout.addSpacing(500)
+            
             tabLayout.addLayout(nodeHLayout, 1, 0)
+            tabLayout.addLayout(trimHLayout, 2, 0)
             HBox = QHBoxLayout()
             send_button = QPushButton("run ")
             send_button.setIcon(QIcon('canmopsGUI/icons/icon_start.png'))
@@ -364,8 +377,7 @@ class MopsChildWindow(QWidget):
             close_button.clicked.connect(mainWindow.stop_adc_timer)
             close_button.clicked.connect(childWindow.close)
         else:
-            self.progressBar = None
-                    
+            self.progressBar = None     
             self.device_info_box(device=device, cic = cic, port = port , mops = mops,data_file = None)
             self.graphWidget = self.DataMonitoring.initiate_trending_figure(n_channels=n_channels)
             close_button.clicked.connect(lambda: mainWindow.stop_adc_timer(cic = cic, port = port , mops = mops))
@@ -409,7 +421,6 @@ class MopsChildWindow(QWidget):
         iconLayout.addSpacing(50)
         iconLayout.addWidget(icon)    
         
-  
         # CIC Name
         if cic is not None:
             cicLayout = QHBoxLayout()

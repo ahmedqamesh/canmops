@@ -2,15 +2,15 @@
 # variables
 
 echo "Initializing SocketCAN...."
-for bus in 0 1 2
+for bus in 0 1
 do
 	#bus=1
 	BITRATE=125000
 	CHANNEL="can"
 	SAMPLEPOINT=0.5
-	SJW=2
-	PHASESEG1=7
-	PHASESEG2=8
+	SJW=4
+	PHASESEG1=3
+	PHASESEG2=4
 	#while true; do cansend can1 600#DeadBeefDeadBeef; sleep 0.9; done
 	echo "Setting the bus to a bitrate of $BITRATE [Sample Point $SAMPLEPOINT]"
 	# SocketCAN script

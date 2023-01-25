@@ -28,11 +28,12 @@ git clone ssh://git@gitlab.cern.ch:7999/aqamesh/canmops.git
 Make sure that the CAN interface is connected and the needed software is installed.
 Simply in the home directory run:
 ```
-python CANMOPS_test.py
+python canmops_test.py
 ```
 ### Scanning the Node Ids connected on the bus:
 In order to make sure that all the connected nodes [Mops] on the bus are healthy and ready for communication, the user need to know the exact pre-defined Node Id of the Node-under-test. 
 ```
-python canmops/canWrapper.py -S -b 111111 -sp 0.3 -sjw 4 -tseg1 5 -tseg2 6
+python3.8 canmops/can_wrapper_main.py -S -b 111111 -sp 0.3 -sjw 4 -tseg1 5 -tseg2 6 -nodeid 0
 ```
 Users should replace the argument -S according to the used interface [-S for socket, -K for Kvaser and -A for Anagate].
+remember to change the nodeid argument according to the specified node id of the chip.

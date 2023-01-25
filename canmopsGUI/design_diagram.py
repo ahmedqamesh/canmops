@@ -8,6 +8,9 @@ from graphviz import Source
 from QGraphViz.QGraphViz import QGraphViz, QGraphVizManipulationMode
 from QGraphViz.DotParser import Graph, GraphType
 from QGraphViz.Engines import Dot
+rootdir = os.path.dirname(os.path.abspath(__file__)) 
+lib_dir = rootdir[:-11]
+config_dir = "config_files/"
 class DesignDiagram(object):  
 
     def __init__(self, console_loglevel=logging.INFO, file_path = None, file_name = None):
@@ -26,11 +29,10 @@ class DesignDiagram(object):
        else:
         full_path =path+"/"+file_name 
         del_command = "rm "
-        
         with open(full_path+".dot") as f:
             dot_graph = f.read()
         graph=Source(dot_graph)
-        graph.render(path+"/"+file_name,format = 'png', view=False)
+        graph.render(full_path,format = 'png', view=False)
         os.system(del_command+full_path+'.dot')
         os.system(del_command+full_path)
         return full_path+'.png'
@@ -115,7 +117,8 @@ class DesignDiagram(object):
         else:
             pass
 if   __name__  == "__main__":
-    test_file = "/home/dcs/git/canmops/config/opcua_config.yaml"
+    #test_file = "/home/dcs/git/canmops/config/opcua_config.yaml"
+    test_file = os.path.join(lib_dir+"/"+config_dir, "opcua_config.yaml")
     file_name = os.path.basename(test_file)
     file_path= file_path = os.path.dirname(os.path.realpath(test_file))
     design = DesignDiagram(file_path =file_path, file_name = file_name[:-5])

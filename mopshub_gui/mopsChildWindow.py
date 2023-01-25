@@ -18,12 +18,13 @@ import logging
 rootdir = os.path.dirname(os.path.abspath(__file__)) 
 lib_dir = rootdir[:-12]
 config_dir = "config/"
+config_yaml =config_dir + "mops_config.yml" 
 class MopsChildWindow(QWidget):  
 
     def __init__(self, parent=None, console_loglevel=logging.INFO, opcua_config="opcua_config.yaml"):
        super(MopsChildWindow, self).__init__(parent)
        self.logger = Logger().setup_main_logger(name=" MOPS GUI", console_loglevel=console_loglevel)
-       dev = AnalysisUtils().open_yaml_file(file=config_dir + "MOPS_cfg.yml", directory=lib_dir)
+       dev = AnalysisUtils().open_yaml_file(file=config_dir + config_yaml, directory=lib_dir)
        
        self.configure_devices(dev)
 

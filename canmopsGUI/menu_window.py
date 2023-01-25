@@ -29,11 +29,11 @@ class MenuWindow(QWidget):
         self.set_device_settings_menu(menuBar, mainwindow,device_config)
         self.set_plotting_menu(menuBar, mainwindow)
         
-    def create_opcua_menuBar(self,mainwindow,device_config):
+    def create_opcua_menuBar(self,mainwindow,config_yaml):
         menuBar = mainwindow.menuBar()
         menuBar.setNativeMenuBar(False)  # only for MacOS 
         self.set_file_menu(menuBar, mainwindow)  
-        self.set_opcua_settings_menu(menuBar, mainwindow,device_config)
+        self.set_opcua_settings_menu(menuBar, mainwindow,config_yaml)
         self.set_help_main_menu(menuBar, mainwindow)         
        
     
@@ -73,11 +73,11 @@ class MenuWindow(QWidget):
         plotADC.triggered.connect(show_adc_plotting_window)
         plottingMenu.addAction(plotADC) 
 
-    def set_opcua_settings_menu(self, menuBar, mainwindow,device):      
+    def set_opcua_settings_menu(self, menuBar, mainwindow,config_yaml):      
         settingsMenu = menuBar.addMenu('&settings')
         #self.MainWindow.update_device_box()    
-        self.__device = device#self.MainWindow.get_deviceName()
-        conf = AnalysisUtils().open_yaml_file(file=config_dir + self.__device + "_cfg.yml" , directory=lib_dir)
+        #self.__device = device#self.MainWindow.get_deviceName()
+        conf = AnalysisUtils().open_yaml_file(file= config_yaml , directory=lib_dir)
         self.__appIconDir = conf["Application"]["icon_dir"]
                 
         def _show_browse_client_child_window():
@@ -105,7 +105,7 @@ class MenuWindow(QWidget):
                 
     def set_device_settings_menu(self, menuBar, mainwindow,device_config):      
         settingsMenu = menuBar.addMenu('&settings')
-        conf = AnalysisUtils().open_yaml_file(file=config_dir + device_config + "_cfg.yml" , directory=lib_dir)
+        conf = AnalysisUtils().open_yaml_file(file=config_dir + device_config + "_config.yml" , directory=lib_dir)
         self.__appIconDir = conf["Application"]["icon_dir"]
         
         def show_edit_device_settings():
@@ -150,8 +150,8 @@ class MenuWindow(QWidget):
             self.list_device_info(msg = msg)
         
         # Set the bus
-        def _set_socketchannel():
-            _arg = "socketcan"
+        def _set_socketchannel(arg = "socketcan"):
+            _arg = arg
             _interface = "socketcan"
             _default_channel = "0"
             self.socketWindow = QMainWindow()

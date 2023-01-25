@@ -17,7 +17,6 @@ async def test_can_wrapper():
     Byte0= cmd = 0x40 #Defines a read (reads data only from the node) dictionary object in CANOPN standard
     Byte1, Byte2 = index.to_bytes(2, 'little') # divide it into two groups(bytes) of 8 bits each
     Byte3 = subindex = 0
-    
     #Example (1):Write/read CAN messages
     #write CAN message [read dictionary request from master to node]
     await wrapper.write_can_message(cobid = SDO_TX + NodeIds[0], 
@@ -47,7 +46,7 @@ async def test_can_wrapper():
 
      #Example (3): Read all the ADC channels and Save it to a file in the directory output_data
      # PS. To visualise the data, Users can use the file $HOME/test_files/plot_adc.py
-    await wrapper.read_adc_channels(file ="MOPS_cfg.yml", #Yaml configurations
+    await wrapper.read_adc_channels(file ="mops_config.yml", #Yaml configurations
                               directory=rootdir+"/config_files", # direstory of the yaml file
                               nodeId = NodeIds[0], # Node Id
                               outputname = "adc_data_trial", # Data file name
@@ -71,16 +70,17 @@ async def test_can_wrapper():
     
 if __name__=='__main__':
     channel = 0
-    #wrapper = canWrapper.CanWrapper(interface = "AnaGate",channel = channel, load_config = True)
-    wrapper = CanWrapper(interface = "socketcan",channel = channel, load_config = True)
-    #wrapper =  CanWrapper(interface = "Kvaser",channel = channel, load_config = True)
-    loop = asyncio.get_event_loop()
+    #wrapper = canWrapper.CanWrapper(interface = "AnaGate",channel = channel, load_config = True, trim_mode = True)
+    wrapper = CanWrapper(interface = "socketcan",channel = channel, load_config = True, trim_mode = True)
+    #wrapper =  CanWrapper(interface = "Kvaser",channel = channel, load_config = True, trim_mode = True)
+    loop = asyncio.new_event_loop()
+    asyncio.set_event_loop(loop)
     try:
         asyncio.ensure_future(test_can_wrapper())
         loop.run_forever()
     finally: 
         #can_config.stop_channel(channel)
-        #can_config.stop()
+        can_config.stop()
         loop.close()
 
     
