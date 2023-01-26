@@ -31,10 +31,12 @@ try:
     from .analysis import Analysis
     from .logger_main import Logger
     from .analysis_utils import AnalysisUtils
+    from .watchdog_can_interface import WATCHCan
 except (ImportError, ModuleNotFoundError):
     from analysis import Analysis
     from logger_main   import Logger
     from analysis_utils import AnalysisUtils
+    from watchdog_can_interface import WATCHCan
   
 # Third party modules
 from collections import deque, Counter
@@ -50,34 +52,27 @@ from random import randint
 
 #from csv import writer
 logger = Logger().setup_main_logger(name = " Lib Check ",console_loglevel=logging.INFO, logger_file = False)
+ 
 try:
     import can
     try:
         from .can_bus_config import can_config
         from .can_thread_reader import READSocketcan
-        from .watchdog_can_interface import WATCHCan
     except (ImportError, ModuleNotFoundError):
         from can_bus_config import can_config
-        from watchdog_can_interface import WATCHCan
         from can_thread_reader import READSocketcan          
-
-except:
-     logger.warning("SocketCAN Package is not installed....."+"[Please ignore the warning if No SocketCAN drivers used.]")
+except: logger.warning("SocketCAN Package is not installed....."+"[Please ignore the warning if No SocketCAN drivers used.]")
 
 # Import canlib for Kvaser
 try:
     from canlib import canlib, Frame
     from canlib.canlib.exceptions import CanGeneralError
     #from canlib.canlib import ChannelData
-except:
-    
-    logger.warning("Canlib  Package is not installed....."+"[Please ignore the warning if CANLib packages are not required (in case SocketCAN is used)]")
+except: logger.warning("Canlib  Package is not installed....."+"[Please ignore the warning if CANLib packages are not required (in case SocketCAN is used)]")
      
 # Import analib for AnaGate
-try:
-    import analib
-except:
-    logger.warning("AnaGate Package is not installed....."+"[Please ignore the warning if No AnaGate controllers used.]")
+try: import analib
+except: logger.warning("AnaGate Package is not installed....."+"[Please ignore the warning if No AnaGate controllers used.]")
 
 rootdir = os.path.dirname(os.path.abspath(__file__))
 config_dir = "config_files/"
@@ -98,7 +93,10 @@ class CanWrapper(object):#READSocketcan):#Instead of object
        
         super(CanWrapper, self).__init__()  # super keyword to call its methods from a subclass:        
         #Initialize a watchdog (to be done)
-        WATCHCan.__init__(self)
+        if interface =="socketcan":
+            WATCHCan.__init__(self)
+        else:
+            pass
         #self.start()
         #Begin a thread settings (to be done)
         self.sem_read_block = threading.Semaphore(value=0)
@@ -242,7 +240,8 @@ class CanWrapper(object):#READSocketcan):#Instead of object
         readCanMessage = self.read_can_message()
         response = all(x is None for x in readCanMessage) 
         if not response:
-            cobid_RX, data, _, _, _, _ = readCanMessage
+            cobid_RX, data, dlc, flag, t, _ = readCanMessage
+            self.dumpMessage(cobid_RX, data, dlc, flag, t)
             if data[0] == 0x85 or data[0] == 0x05:
                 self.logger.info(f'Trimming MOPS in channel {channel} has been '
                                  f'verified.')
@@ -1023,7 +1022,7 @@ class CanWrapper(object):#READSocketcan):#Instead of object
                     cobid, data, dlc, flag, t , error_frame = (frame.arbitration_id, frame.data,
                                                                frame.dlc, frame.is_extended_id,
                                                                frame.timestamp, frame.is_error_frame)
-            self.dumpMessage(cobid, data, dlc, flag, t)
+            #self.dumpMessage(cobid, data, dlc, flag, t)
             return cobid, data, dlc, flag, t, error_frame
         except:  # (canlib.CanNoMsg, analib.CanNoMsg,can.CanError):
             return None, None, None, None, None, None
@@ -1117,10 +1116,7 @@ class CanWrapper(object):#READSocketcan):#Instead of object
         self.__ipAddress = x
         
     def set_bitrate(self, bitrate):
-        if self.__interface == 'Kvaser':
-            self.__bitrate = bitrate
-        else:
-            self.__bitrate = bitrate 
+        self.__bitrate = bitrate 
  
     def set_sample_point(self, x):
         self.__sample_point = float(x)
