@@ -23,7 +23,7 @@ Under development: https://canmops.readthedocs.io/en/latest/installation.html
 ### Installation and usage
 Clone the repository to get a copy of the source code (for developers):
 ```
-git clone ssh://git@gitlab.cern.ch:7999/aqamesh/canmops.git
+ssh://git@gitlab.cern.ch:7999/mops/canmops.git
 ```
 Make sure that the CAN interface is connected and the needed software is installed.
 Simply in the home directory run:
