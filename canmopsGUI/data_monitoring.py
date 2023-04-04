@@ -17,7 +17,7 @@ import pyqtgraph as pg
 from pyqtgraph import *
 import time
 import matplotlib as mpl
-
+icon_location = "canmopsGUI/icons/"
 class DataMonitoring(QMainWindow):
 
     def __init__(self, parent=None):
@@ -54,7 +54,7 @@ class DataMonitoring(QMainWindow):
         Fig = self.graphWidget[s]
         #for i in np.arange(0, n_channels): self.graphWidget[i].clear()  # clear any old plots
         close_button = QPushButton("close")
-        close_button.setIcon(QIcon('canmopsGUI/icons/icon_close.jpg'))
+        close_button.setIcon(QIcon(icon_location+'icon_close.jpg'))
         close_button.clicked.connect(__disable_figure)
         close_button.clicked.connect(childWindow.close)
         
@@ -98,7 +98,7 @@ class DataMonitoring(QMainWindow):
         The function will update the graphWidget with ADC data.
         '''  
         s = int(subindex) - 3  # the first ADC channel is channel 3 
-        data_line = graphWidget.plot(self.x[s], self.y[s], pen=pg.mkPen(color=self.get_color(s), width=3), name="Ch%i" % subindex)
+        data_line = graphWidget.plot(self.x[s], self.y[s], pen=pg.mkPen(self.get_color(s)) ,width=10, name="Ch%i" % subindex)
         self.x[s] = np.append(self.x[s], self.x[s][-1] + 1)  # Add a new value 1 higher than the last
         self.y[s].append(data)  # Add a new value.
         data_line.setData(self.x[s][1:], self.y[s][1:])  # Update the data line.

@@ -6,7 +6,7 @@ Application:
   app_version: v1.2
   user: Ahmed Qamesh
   multi_mode: False
-  mopshub_mode: False
+  mopshub_mode: True
   trim_mode: True
 channel_ports:
   "0":

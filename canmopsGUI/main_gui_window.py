@@ -29,6 +29,7 @@ rootdir = os.path.dirname(os.path.abspath(__file__))
 lib_dir = rootdir[:-11]
 config_dir = "config_files/"
 config_yaml = config_dir + "gui_mainSettings.yml"
+icon_location = "canmopsGUI/icons/"
 class MainWindow(QMainWindow):
 
     def __init__(self, console_loglevel=logging.INFO):
@@ -98,7 +99,7 @@ class MainWindow(QMainWindow):
         
         logo_layout = QHBoxLayout()
         uni_logo_label = QLabel()
-        pixmap = QPixmap("canmopsGUI/icons/icon_wuppertal_banner.png")
+        pixmap = QPixmap(icon_location+"icon_wuppertal_banner.png")
         uni_logo_label.setPixmap(pixmap.scaled(150, 50)) 
         icon_spacer = QSpacerItem(250, 50, QtWidgets.QSizePolicy.Minimum, QtWidgets.QSizePolicy.Expanding)
         logo_layout.addItem(icon_spacer) 
@@ -170,8 +171,8 @@ class MainWindow(QMainWindow):
         
         self.connectButton = QPushButton("")
         icon = QIcon()
-        icon.addPixmap(QPixmap('canmopsGUI/icons/icon_connect.jpg'), QIcon.Active, QIcon.On)
-        icon.addPixmap(QPixmap('canmopsGUI/icons/icon_disconnect.jpg'), QIcon.Normal, QIcon.Off)
+        icon.addPixmap(QPixmap(icon_location+'icon_connect.jpg'), QIcon.Active, QIcon.On)
+        icon.addPixmap(QPixmap(icon_location+'icon_disconnect.jpg'), QIcon.Normal, QIcon.Off)
         self.connectButton.setIcon(icon)
         #self.connectButton.setIconSize(QtCore.QSize(20,20))
         self.connectButton.setCheckable(True)
@@ -204,8 +205,8 @@ class MainWindow(QMainWindow):
     
     def def_alert_leds(self, bus_alarm=None, mops_alarm=None, mops=None, bus = None, icon_state=False):
         if mops_alarm is True:
-            icon_red = "canmopsGUI/icons/icon_disconnected_device.png" #icon_red.gif"
-            icon_green = "canmopsGUI/icons/icon_green.gif"
+            icon_red = icon_location+"icon_disconnected_device.png" #icon_red.gif"
+            icon_green = icon_location+"icon_green.gif"
             if icon_state:
                 alarm_led = QMovie(icon_green)
             else: 
@@ -215,8 +216,8 @@ class MainWindow(QMainWindow):
             return alarm_led         
         
         if bus_alarm is True:
-            icon_red = "canmopsGUI/icons/icon_red.png"
-            icon_green = "canmopsGUI/icons/icon_green.png"
+            icon_red = icon_location+"icon_red.png"
+            icon_green = icon_location+"icon_green.png"
             alarm_led = QLabel() 
             if icon_state:
                 pixmap = QPixmap(icon_green)
@@ -270,7 +271,7 @@ class MainWindow(QMainWindow):
                 self.error_message(text="Make sure that the CAN interface is connected")
                 
         self.startButton = QPushButton("")
-        self.startButton.setIcon(QIcon('canmopsGUI/icons/icon_start.png'))
+        self.startButton.setIcon(QIcon(icon_location+'icon_start.png'))
         self.startButton.setStatusTip('Send CAN message')
         self.startButton.clicked.connect(__set_bus)
         self.startButton.clicked.connect(self.read_sdo_can_thread)                 
@@ -494,7 +495,7 @@ class MainWindow(QMainWindow):
         self.multiButton = QPushButton("")
         self.multiButton.setStatusTip('Open MOPSHUB window')
         multiLabel.setText("")
-        self.multiButton.setIcon(QIcon('canmopsGUI/icons/icon_nodes.png'))
+        self.multiButton.setIcon(QIcon(icon_location+'icon_nodes.png'))
         self.multiButton.clicked.connect(self.mopshubWindow.Ui_ApplicationWindow)
         configureCICBoxGroupBoxLayout.addWidget(self.multiButton)
         configureCICBoxGroupBoxLayout.addWidget(multiLabel)
@@ -510,7 +511,7 @@ class MainWindow(QMainWindow):
         self.multiButton = QPushButton("")
         self.multiButton.setStatusTip('MUlti MOPS connected to several buses')
         multiLabel.setText("")
-        self.multiButton.setIcon(QIcon('canmopsGUI/icons/icon_nodes.png'))
+        self.multiButton.setIcon(QIcon(icon_location+'icon_nodes.png'))
         self.multiButton.clicked.connect(self.multi_window.Ui_ApplicationWindow)
         configureCICBoxGroupBoxLayout.addWidget(self.multiButton)
         configureCICBoxGroupBoxLayout.addWidget(multiLabel)
@@ -529,7 +530,7 @@ class MainWindow(QMainWindow):
         self.deviceButton.setStatusTip('Choose the configuration yaml file')
         if self.__devices[0] == "None":
             deviceLabel.setText("Configure Device")
-            self.deviceButton.setIcon(QIcon('canmopsGUI/icons/icon_question.png'))
+            self.deviceButton.setIcon(QIcon(icon_location+'icon_question.png'))
             self.deviceButton.clicked.connect(lambda: mops_child.update_device_box(device = "None", mainWindow = self))
         else:
             deviceLabel.setText("[" + self.__devices[0] + "]")
@@ -605,8 +606,8 @@ class MainWindow(QMainWindow):
             e.g [bitrate, Sjw, Sample point,....]
         Second: Communication with CAN wrapper will begin
         ''' 
-        icon_red = "canmopsGUI/icons/icon_red.png"
-        icon_green = "canmopsGUI/icons/icon_green.png" 
+        icon_red = icon_location+"icon_red.png"
+        icon_green = icon_location+"icon_green.png" 
         if self.connectButton.isChecked():
             _interface = self.get_interface()   
             _default_channel = self.get_channel()
@@ -628,9 +629,9 @@ class MainWindow(QMainWindow):
                 self.connectButton.setEnabled(True)
                 self.update_bus_status_box(on=True)
                 self.statusBoxVar.setText("ON") 
-                self.connectButton.setIcon(QIcon('canmopsGUI/icons/icon_connect.jpg'))          
+                self.connectButton.setIcon(QIcon(icon_location+'icon_connect.jpg'))          
             except:
-                self.connectButton.setIcon(QIcon('canmopsGUI/icons/icon_disconnect.jpg'))
+                self.connectButton.setIcon(QIcon(icon_location+'icon_disconnect.jpg'))
                 self.update_bus_status_box(on=False)
                 self.statusBoxVar.setText("OFF")  
                 self.logger.error("Cannot Connect to the CAN bus")  
@@ -638,14 +639,14 @@ class MainWindow(QMainWindow):
         else:
            self.update_bus_status_box(on=False)
            self.statusBoxVar.setText("OFF")  
-           self.connectButton.setIcon(QIcon('canmopsGUI/icons/icon_disconnect.jpg'))
+           self.connectButton.setIcon(QIcon(icon_location+'icon_disconnect.jpg'))
            self.connectButton.setChecked(False)
            self.stop_server()
            self.stop_random_timer()
 
     def update_bus_status_box(self, port_id=None, on=False, off=False):
-        icon_red = "canmopsGUI/icons/icon_red.png"
-        icon_green = "canmopsGUI/icons/icon_green.png" 
+        icon_red = icon_location+"icon_red.png"
+        icon_green = icon_location+"icon_green.png" 
         if on:
             pixmap = QPixmap(icon_green)
         else:
@@ -822,7 +823,7 @@ class MainWindow(QMainWindow):
             _subIndex = int(self.get_subIndex(), 16)
             _nodeId = int(self.get_nodeId())
             _interface = self.get_interface()
-            data_RX = asyncio.run(self.wrapper.read_sdo_can(nodeId = _nodeId,index = _index, subindex = _subIndex, timeout = self.__timeout))
+            data_RX,_,_,_,_,_ = asyncio.run(self.wrapper.read_sdo_can(nodeId = _nodeId,index = _index, subindex = _subIndex, timeout = self.__timeout))
             return data_RX
             
         except Exception:
@@ -981,7 +982,7 @@ class MainWindow(QMainWindow):
         v = QVBoxLayout()
         window = QWidget()
         window.setGeometry(200, 200, 250, 250)
-        icon_red = "canmopsGUI/icons/icon_red_alarm.gif" #icon_red.gif"
+        icon_red = icon_location+"icon_red_alarm.gif" #icon_red.gif"
         wait_label = QLabel()
         alarm_led = QMovie(icon_red)    
         alarm_led.setScaledSize(QSize().scaled(20, 20, Qt.KeepAspectRatio))
@@ -1046,7 +1047,7 @@ class MainWindow(QMainWindow):
             pass
             
         self.logger.notice("Reading ADC data...")
-        self.__monitoringTime = time.time()
+        self.__mon_time = time.time()
         # A possibility to save the data into a file
         self.__default_file = self.get_default_file()
         if len(self.__default_file) != 0:
@@ -1163,38 +1164,46 @@ class MainWindow(QMainWindow):
         _dictionary = self.__dictionary_items
         _adc_indices = list(self.__adc_index)
         csv_writer = writer(self.out_file_csv)  # Add contents of list as last row in the csv file
-        data_point = [0] * 33
+        #data_point = [0] * 33
         for i in np.arange(len(_adc_indices)):
             _subIndexItems = list(AnalysisUtils().get_subindex_yaml(dictionary=_dictionary, index=_adc_indices[i], subindex="subindex_items"))
             self.set_index(_adc_indices[i])  # set index for later usage
-            adc_converted = []
+            #adc_converted = []
             _start_a = 3  # to ignore the first subindex it is not ADC
             for subindex in np.arange(_start_a, len(_subIndexItems) + _start_a - 1):
                 s = subindex - _start_a
                 s_correction = subindex - 2
                 self.set_subIndex(_subIndexItems[s_correction])
                 # read SDO CAN messages
-                data_point[s] = self.read_sdo_can()  # _thread(print_sdo=False)
+                data_point = self.read_sdo_can()  # _thread(print_sdo=False)
                 ts = time.time()
-                elapsedtime = ts - self.__monitoringTime
-                adc_converted = np.append(adc_converted, Analysis().adc_conversion(_adc_channels_reg[str(subindex)], data_point[s], int(self.__resistor_ratio), int(self.__ref_voltage)))
+                if data_point is None: 
+                    self.logger.warning("No responses in the Bus")
+                    self.stop_adc_timer()
+                    break
+                else:
+                    adc_converted = Analysis().adc_conversion(_adc_channels_reg[str(subindex)], 
+                                                                                   data_point, 
+                                                                                   int(self.__resistor_ratio),
+                                                                                   int(self.__ref_voltage))
+                elapsedtime = ts - self.__mon_time
                 # update the progression bar to show bus statistics
-                self.progressBar.setValue(subindex)
-                if adc_converted[s] is not None:
-                    self.channelValueBox[s].setText(str(round(adc_converted[s], 3)))
-                    csv_writer.writerow((str(round(elapsedtime, 1)),
-                                         str(self.get_channel()),
-                                         str(self.get_nodeId()),
-                                         str(subindex),
-                                         str(data_point[s]),
-                                         str(round(adc_converted[s], 3))))
+                self.progressBar.setValue(subindex)    
+                csv_writer.writerow((str(round(elapsedtime, 1)),
+                                     str(self.get_channel()),
+                                     str(self.get_nodeId()),
+                                     str(subindex),
+                                     str(data_point),
+                                     str(adc_converted)))
+                if adc_converted is not None:
+                    self.channelValueBox[s].setText(str(round(adc_converted, 3)))
                     if self.trendingBox[s] == True:
                         # Monitor a window of 100 points is enough to avoid Memory issues
                         if len(self.x[s]) >= 100:
-                            self.DataMonitoring.reset_data_holder(adc_converted[s],s)
-                        self.DataMonitoring.update_figure(data=adc_converted[s], subindex=subindex, graphWidget = self.graphWidget[s])
+                            self.DataMonitoring.reset_data_holder(adc_converted,s)
+                        self.DataMonitoring.update_figure(data=adc_converted, subindex=subindex, graphWidget = self.graphWidget[s])
                 else:
-                    self.channelValueBox[s].setText(str(adc_converted[s]))
+                    self.channelValueBox[s].setText(str(adc_converted))
         return adc_converted
 
     def update_monitoring_values(self):
@@ -1212,7 +1221,7 @@ class MainWindow(QMainWindow):
             for s in np.arange(0, len(_subIndexItems)):
                 self.set_subIndex(_subIndexItems[s])
                 data_point = self.read_sdo_can()  # _thread(print_sdo=False)
-                self.monValueBox[a].setText(str(Analysis().convertion(data_point)))
+                self.monValueBox[a].setText(str(Analysis().adc_conversion(adc_channels_reg = None, value = data_point)))
                 a = a + 1
       
     def update_configuration_values(self):
@@ -1230,7 +1239,7 @@ class MainWindow(QMainWindow):
             for s in np.arange(0, len(_subIndexItems)):
                 self.set_subIndex(_subIndexItems[s])
                 data_point = self.read_sdo_can()  # _thread(print_sdo=False)
-                self.confValueBox[a].setText(str(Analysis().convertion(data_point)))
+                self.confValueBox[a].setText(str(Analysis().adc_conversion(adc_channels_reg = None, value = data_point)))
                 a = a + 1
     
     def error_message(self, text=False):
@@ -1263,43 +1272,43 @@ class MainWindow(QMainWindow):
         
         toolbar.isMovable()
         
-        canMessage_action = QAction(QIcon('canmopsGUI/icons/icon_msg.jpg'), '&CAN Message', mainwindow)
+        canMessage_action = QAction(QIcon(icon_location+'icon_msg.jpg'), '&CAN Message', mainwindow)
         canMessage_action.setShortcut('Ctrl+M')
         canMessage_action.setStatusTip('CAN Message')
         canMessage_action.triggered.connect(self.show_CANMessageWindow)
 
-        settings_action = QAction(QIcon('canmopsGUI/icons/icon_settings.jpeg'), '&CAN Settings', mainwindow)
+        settings_action = QAction(QIcon(icon_location+'icon_settings.jpeg'), '&CAN Settings', mainwindow)
         settings_action.setShortcut('Ctrl+L')
         settings_action.setStatusTip('CAN Settings')
         settings_action.triggered.connect(self.show_CANSettingsWindow)
 
-        dump_can_message_action = QAction(QIcon('canmopsGUI/icons/icon_dump.png'), '&CAN Dump', mainwindow)
+        dump_can_message_action = QAction(QIcon(icon_location+'icon_dump.png'), '&CAN Dump', mainwindow)
         dump_can_message_action.setShortcut('Ctrl+D')
         dump_can_message_action.setStatusTip('Dump CAN messages from the bus')
         dump_can_message_action.triggered.connect(self.show_dump_child_window)
 
-        run_random_message_action = QAction(QIcon('canmopsGUI/icons/icon_right.jpg'), '&CAN Run', mainwindow)
+        run_random_message_action = QAction(QIcon(icon_location+'icon_right.jpg'), '&CAN Run', mainwindow)
         run_random_message_action.setShortcut('Ctrl+R')
         run_random_message_action.setStatusTip('Send Random CAN messages to the bus every 5 seconds')
         run_random_message_action.triggered.connect(self.initiate_random_timer)
         
-        stop_dump_message_action = QAction(QIcon('canmopsGUI/icons/icon_stop.png'), '&CAN Stop', mainwindow)
+        stop_dump_message_action = QAction(QIcon(icon_location+'icon_stop.png'), '&CAN Stop', mainwindow)
         stop_dump_message_action.setShortcut('Ctrl+C')
         stop_dump_message_action.setStatusTip('Stop Sending CAN messages')
         stop_dump_message_action.triggered.connect(self.stop_random_timer)
 
-        dump_random_message_action = QAction(QIcon('canmopsGUI/icons/icon_random.png'), '&CAN Random', mainwindow)
+        dump_random_message_action = QAction(QIcon(icon_location+'icon_random.png'), '&CAN Random', mainwindow)
         dump_random_message_action.setShortcut('Ctrl+G')
         dump_random_message_action.setStatusTip('Send Random Messages to the bus')
         dump_random_message_action.triggered.connect(self.send_random_can)
         # fileMenu.addSeparator()
-        clear_action = QAction(QIcon('canmopsGUI/icons/icon_clear.png'), '&Clear', mainwindow)
+        clear_action = QAction(QIcon(icon_location+'icon_clear.png'), '&Clear', mainwindow)
         clear_action.setShortcut('Ctrl+X')
         clear_action.setStatusTip('Clear All the menus')
         clear_action.triggered.connect(self.clear_textBox_message)
         clear_action.triggered.connect(self.clear_table_content)
         
-        plot_adc__action = QAction(QIcon('canmopsGUI/icons/icon_curve.png'), '&Plotting', mainwindow)
+        plot_adc__action = QAction(QIcon(icon_location+'icon_curve.png'), '&Plotting', mainwindow)
         plot_adc__action.setShortcut('Ctrl+p')
         plot_adc__action.setStatusTip('Plotting feature')
         plot_adc__action.triggered.connect(self.show_adc_plotting_window)        
@@ -1392,7 +1401,7 @@ class MainWindow(QMainWindow):
         try:
             if self.trim_mode == True:
                 asyncio.run(self.wrapper.trim_nodes(channel=int(_channel))) 
-            asyncio.run(self.wrapper.confirm_nodes(channel=int(_channel),nodeIds = _nodeItems))
+            asyncio.run(self.wrapper.confirm_nodes(channel=int(_channel),nodeIds = _nodeItems, trim =self.trim_mode))
         except Exception:
             pass
         self.channelValueBox, self.trendingBox , self.monValueBox , self.confValueBox, self.progressBar = mops_child_window.MopsChildWindow().device_child_window(childWindow=self.deviceWindow, 

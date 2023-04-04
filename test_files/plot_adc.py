@@ -7,7 +7,7 @@ plt.style.use('ggplot')
 import os
 import numpy as np
 rootdir = os.path.dirname(os.path.abspath(__file__))
-file_name = rootdir[:-11] +"/output_data/adc_data_1.csv"
+file_name = rootdir[:-11] +"/output_data/mopshub_data_32.csv"
 pdf_file = file_name[:-3]+"pdf"
 def get_color(i):
     col_row = ["#000000", "#3a3487", "#f7e5b2", "b", "g", "r", "y", "c", "m", "lime", "#943ca6", "#df529e", "#f49cae", "tab:blue",

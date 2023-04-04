@@ -1,9 +1,13 @@
+Hardware:
+  resistor_ratio: '1'
+  ref_voltage: 1.226
+  
 Application:
-  chipId: '3'
+  chipId: '5'
   device_name: MOPS
   device_version: v1.2
   icon_dir: canmopsGUI/icons/icon_mops.png
-  refresh_rate: '100'
+  refresh_rate: 100
   index_items:
     '0x1000':
       description_items: <html><b> Device type</b> [Default 191(hex)]</b></html>
@@ -116,9 +120,8 @@ Application:
   nodeIds:
   - '0'
   - '1'
-Hardware:
-  resistor_ratio: '1'
-  ref_voltage: 1.226
+  - '2'
+
 adc_channels_reg:
   adc_channels:
     '3': T

@@ -10,7 +10,7 @@ rootdir = os.path.dirname(os.path.abspath(__file__))
 # All the can configurations of the CAN controller should be set first from $HOME/config/main_cfg.yml
 async def test_can_wrapper():
     # Define parameters
-    NodeIds = [1,8]
+    NodeIds = [0,1]
     SDO_TX = 0x600
     SDO_RX = 0x580
     index = 0x1000
@@ -20,12 +20,13 @@ async def test_can_wrapper():
     
     #Example (1):Write/read CAN messages
     #write CAN message [read dictionary request from master to node]
-    await wrapper.read_mopshub_buses(file ="mops_config.yml", #Yaml configurations
-                              directory=rootdir+"/config_files", # direstory of the yaml file
-                              nodeId = NodeIds[0], # Node Id
-                              outputname = "mopshub_data", # Data file name
-                              outputdir = rootdir +"/output_data", # # Data directory
-                              n_readings = 100) # Number of Iterations
+    await wrapper.read_mopshub_buses(bus_range = [1], 
+                                     file ="mops_config.yml", #Yaml configurations
+                                     directory=rootdir+"/config_files", # direstory of the yaml file
+                                     nodeId = NodeIds, # Node Id
+                                     outputname = "mopshub_data_32", # Data file name
+                                     outputdir = rootdir +"/output_data", # # Data directory
+                                     n_readings = 50) # Number of Iterations
     wrapper.stop()  
 
 

@@ -17,6 +17,7 @@ rootdir = os.path.dirname(os.path.abspath(__file__))
 lib_dir = rootdir[:-11]
 config_dir = "config_files/"
 config_yaml =config_dir + "mops_config.yml" 
+icon_location = "canmopsGUI/icons/"
 class MopsChildWindow(QWidget):  
 
     def __init__(self, parent=None,console_loglevel=logging.INFO,opcua_config = "opcua_config.yaml"):
@@ -43,7 +44,7 @@ class MopsChildWindow(QWidget):
                     s = m
                     mopsBotton[m] = QPushButton("  ["+str(m)+"]")
                     mopsBotton[m].setObjectName("C"+str(c)+"M"+str(m)+"P"+str(b))
-                    mopsBotton[m].setIcon(QIcon('canmopsGUI/icons/icon_mops.png'))
+                    mopsBotton[m].setIcon(QIcon(icon_location+'icon_mops.png'))
                     mopsBotton[m].setStatusTip("CIC NO."+str(c)+" MOPS No."+str(m)+" Port No."+str(b))
                     mopsBotton[m].clicked.connect(self.cic_group_action)
                     if s < col_len:
@@ -188,19 +189,19 @@ class MopsChildWindow(QWidget):
         self.deviceInfoGroupBox = self.device_info_box(device = mainWindow.get_deviceName())
         BottonHLayout = QVBoxLayout()
         startButton = QPushButton("")
-        startButton.setIcon(QIcon('canmopsGUI/icons/icon_start.png'))
+        startButton.setIcon(QIcon(icon_location+'icon_start.png'))
         startButton.setStatusTip('Send CAN message')  # show when move mouse to the icon
         startButton.clicked.connect(__set_bus)
         startButton.clicked.connect(mainWindow.read_sdo_can_thread)
 
         resetButton = QPushButton()
-        resetButton.setIcon(QIcon('canmopsGUI/icons/icon_reset.png'))
+        resetButton.setIcon(QIcon(icon_location+'icon_reset.png'))
         _cobid_index = hex(0x700)
         resetButton.setStatusTip('Reset the chip [The %s chip should reply back with a cobid index %s]' % (mainWindow.get_deviceName(), str(_cobid_index)))
         resetButton.clicked.connect(__reset_device)
                        
         restartButton = QPushButton()
-        restartButton.setIcon(QIcon('canmopsGUI/icons/icon_restart.png'))
+        restartButton.setIcon(QIcon(icon_location+'icon_restart.png'))
         restartButton.setStatusTip('Restart the chip [The %s chip should reply back with a cobid 0x00]' % mainWindow.get_deviceName())
         restartButton.clicked.connect(__restart_device)
         
@@ -282,7 +283,7 @@ class MopsChildWindow(QWidget):
         self.devicetTabs.addTab(self.tab2, "Device Channels")         
         HLayout = QHBoxLayout()
         close_button = QPushButton("close")
-        close_button.setIcon(QIcon('canmopsGUI/icons/icon_close.jpg'))
+        close_button.setIcon(QIcon(icon_location+'icon_close.jpg'))
         if cic is None:
             _channel = mainWindow.get_channel()        
             try:
@@ -302,7 +303,7 @@ class MopsChildWindow(QWidget):
             trimLabel = QLabel()
             trimLabel.setText("Trim bus :")
             trim_button = QPushButton("")
-            trim_button.setIcon(QIcon('canmopsGUI/icons/icon_trim.png'))
+            trim_button.setIcon(QIcon(icon_location+'icon_trim.png'))
             trim_button.clicked.connect(mainWindow.trim_nodes)        
                           
             def __set_bus_timer():
@@ -348,13 +349,13 @@ class MopsChildWindow(QWidget):
             tabLayout.addLayout(trimHLayout, 2, 0)
             HBox = QHBoxLayout()
             send_button = QPushButton("run ")
-            send_button.setIcon(QIcon('canmopsGUI/icons/icon_start.png'))
+            send_button.setIcon(QIcon(icon_location+'icon_start.png'))
             send_button.clicked.connect(__set_bus_timer)
             send_button.clicked.connect(__check_file_box)
             send_button.clicked.connect(mainWindow.initiate_adc_timer)
     
             stop_button = QPushButton("stop ")
-            stop_button.setIcon(QIcon('canmopsGUI/icons/icon_stop.png')) 
+            stop_button.setIcon(QIcon(icon_location+'icon_stop.png')) 
             stop_button.clicked.connect(mainWindow.stop_adc_timer)
     
             # update a progress bar for the bus statistics
@@ -416,7 +417,7 @@ class MopsChildWindow(QWidget):
         # Icon
         iconLayout = QHBoxLayout()
         icon = QLabel(self)
-        pixmap = QPixmap('canmopsGUI/icons/icon_mops.png')
+        pixmap = QPixmap(icon_location+'icon_mops.png')
         icon.setPixmap(pixmap.scaled(100, 100))
         iconLayout.addSpacing(50)
         iconLayout.addWidget(icon)    
@@ -542,14 +543,14 @@ class MopsChildWindow(QWidget):
                 labelChannel[s].setText(subindex_description_item[25:29] + " [V]:")
                 icon = QLabel(self)
                 if _adc_channels_reg[str(subindex)] == "V": 
-                    icon_dir = 'canmopsGUI/icons/icon_voltage.png'
+                    icon_dir = icon_location+'icon_voltage.png'
                 else: 
-                    icon_dir = 'canmopsGUI/icons/icon_thermometer.png'
+                    icon_dir = icon_location+'icon_thermometer.png'
                 pixmap = QPixmap(icon_dir)
                 icon.setPixmap(pixmap.scaled(20, 20))
                 self.trendingBotton[s] = QPushButton()
                 self.trendingBotton[s].setObjectName(str(subindex))
-                self.trendingBotton[s].setIcon(QIcon('canmopsGUI/icons/icon_trend.jpg'))
+                self.trendingBotton[s].setIcon(QIcon(icon_location+'icon_trend.jpg'))
                 self.trendingBotton[s].setStatusTip('Data Trending for %s' % subindex_description_item[25:29])
                 if cic is not None:
                     self.trendingBotton[s].clicked.connect(lambda: mainWindow.show_trendWindow(int(cic),int(port),int(mops)))
@@ -628,65 +629,55 @@ class MopsChildWindow(QWidget):
         self.ThirdGroupBox.setLayout(ThirdGridLayout)
         return self.confValueBox       
         
-        
-    def read_adc_channels(self):
-        _dictionary = self.__dictionary_items
-        _adc_indices = list(self.__adc_index)
-        for i in np.arange(len(_adc_indices)):
-            _subIndexItems = list(AnalysisUtils().get_subindex_yaml(dictionary=_dictionary, index=_adc_indices[i], subindex="subindex_items"))
-            _start_a = 3  # to ignore the first subindex it is not ADC
-            
-            for subindex in np.arange(_start_a, len(_subIndexItems) + _start_a - 1):
-                s = subindex - _start_a
-                adc_value = np.random.randint(0,100)
-                self.channelValueBox[s].setText(str(adc_value))   
-                if self.trendingBox[s] == True:
-                    if len(self.x[s]) >= 10:# Monitor a window of 100 points is enough to avoid Memory issues 
-                        self.DataMonitoring.reset_data_holder(adc_value,s) 
-                    self.DataMonitoring.update_figure(data=adc_value, subindex=subindex, graphWidget = self.graphWidget[s])     
-            #This will be used later for limits 
-            if adc_value <=95:
-                self.channelValueBox[s].setStyleSheet("color: black;")
-            else:
-                self.channelValueBox[s].setStyleSheet(" background-color: red;")  
-        
-        try:                        
-            for c in np.arange(len(self.confValueBox)):
-                adc_value = np.random.randint(0,100)
-                self.confValueBox[c].setText(str(adc_value))      
-                
-                #This will be used later for limits 
-                if adc_value <=95:
-                    self.confValueBox[c].setStyleSheet("color: black;")
-                else:
-
-                    self.confValueBox[c].setStyleSheet(" background-color: red;")
-                    
-        except:
-            pass          
-        
-        try:    
-            for m in np.arange(len(self.monValueBox)):
-                adc_value = np.random.randint(0,100)
-                self.monValueBox[m].setText(str(adc_value))
-                #This will be used later for limits 
-                if adc_value <=95:
-                    self.monValueBox[m].setStyleSheet("color: black;")
-                else:
-
-                    self.monValueBox[m].setStyleSheet(" background-color: red;")
-        except:
-            pass      
-
-    def show_trendWindow(self):
-        trend = QMainWindow(self)
-        subindex = self.sender().objectName()
-        s = int(subindex) - 3     
-        self.trendingBox[s] = True  
-        n_channels = 33
-        for i in np.arange(0, n_channels): self.graphWidget[i].clear()  # clear any old plots
-        self.x, self.y = self.DataMonitoring.trend_child_window(childWindow=trend, subindex=int(subindex), n_channels=n_channels)
-        trend.show()
+    #
+    # def read_adc_channels(self):
+    #     _dictionary = self.__dictionary_items
+    #     _adc_indices = list(self.__adc_index)
+    #     for i in np.arange(len(_adc_indices)):
+    #         _subIndexItems = list(AnalysisUtils().get_subindex_yaml(dictionary=_dictionary, index=_adc_indices[i], subindex="subindex_items"))
+    #         _start_a = 3  # to ignore the first subindex it is not ADC
+    #
+    #         for subindex in np.arange(_start_a, len(_subIndexItems) + _start_a - 1):
+    #             s = subindex - _start_a
+    #             adc_value = np.random.randint(0,100)
+    #             self.channelValueBox[s].setText(str(adc_value))   
+    #             if self.trendingBox[s] == True:
+    #                 if len(self.x[s]) >= 10:# Monitor a window of 100 points is enough to avoid Memory issues 
+    #                     self.DataMonitoring.reset_data_holder(adc_value,s) 
+    #                 self.DataMonitoring.update_figure(data=adc_value, subindex=subindex, graphWidget = self.graphWidget[s])     
+    #         #This will be used later for limits 
+    #         if adc_value <=95:
+    #             self.channelValueBox[s].setStyleSheet("color: black;")
+    #         else:
+    #             self.channelValueBox[s].setStyleSheet(" background-color: red;")  
+    #
+    #     try:                        
+    #         for c in np.arange(len(self.confValueBox)):
+    #             adc_value = np.random.randint(0,100)
+    #             self.confValueBox[c].setText(str(adc_value))      
+    #
+    #             #This will be used later for limits 
+    #             if adc_value <=95:
+    #                 self.confValueBox[c].setStyleSheet("color: black;")
+    #             else:
+    #
+    #                 self.confValueBox[c].setStyleSheet(" background-color: red;")
+    #
+    #     except:
+    #         pass          
+        #
+        # try:    
+        #     for m in np.arange(len(self.monValueBox)):
+        #         adc_value = np.random.randint(0,100)
+        #         self.monValueBox[m].setText(str(adc_value))
+        #         #This will be used later for limits 
+        #         if adc_value <=95:
+        #             self.monValueBox[m].setStyleSheet("color: black;")
+        #         else:
+        #
+        #             self.monValueBox[m].setStyleSheet(" background-color: red;")
+        # except:
+        #     pass      
 
     def set_default_file(self,x):
         self.__default_file = x

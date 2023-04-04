@@ -13,25 +13,25 @@ import binascii
 import yaml
 import logging
 import sys
-try:
-    from canmopsGUI          import menu_window, mops_child_window, data_monitoring
-    from canmops.analysis       import Analysis
-    from canmops.logger_main    import Logger 
-    from canmops.analysis_utils  import AnalysisUtils
-    from canmops.mops_readout_thread import READMops
-except:
-    pass
+#try:
+from canmopsGUI          import menu_window, mops_child_window,data_monitoring
+from canmops.analysis       import Analysis
+from canmops.logger_main    import Logger 
+from canmops.analysis_utils  import AnalysisUtils
+    #from canmops.mops_readout_thread import READMops
+#except:
+#    pass
 rootdir = os.path.dirname(os.path.abspath(__file__)) 
 lib_dir = rootdir[:-11]
 config_dir = "config_files/"
 config_yaml =config_dir + "mops_config.yml"
-
+icon_location = "canmopsGUI/icons/"
 class mopshubWindow(QWidget): 
 
     def __init__(self, console_loglevel=logging.INFO):
        super(mopshubWindow, self).__init__(None)
        self.logger = Logger().setup_main_logger(name="MOPS-HUB GUI", console_loglevel=console_loglevel)
-       self.MenuBar = menu_window.MenuWindow(self)
+       #self.MenuBar = menu_window.MenuWindow(self)
        self.MOPSChildWindow = mops_child_window.MopsChildWindow(self, opcua_config="opcua_config.yaml")
        self.DataMonitoring = data_monitoring.DataMonitoring(self)
        self.update_opcua_config_box()
@@ -126,7 +126,7 @@ class mopshubWindow(QWidget):
         
         childWindow.setObjectName("MOPS-HUB Network")
         childWindow.setWindowTitle("MOPS-HUB Network")
-        childWindow.setWindowIcon(QtGui.QIcon("canmopsGUI/icons/icon_nodes.png"))
+        childWindow.setWindowIcon(QtGui.QIcon(icon_location+'icon_nodes.png'))
         childWindow.adjustSize()    
         bus_num = self.__bus_num
         cic_num = self.__cic_num
@@ -140,7 +140,7 @@ class mopshubWindow(QWidget):
        # childWindow.resize(childWindow.sizeHint().width,childWindow.size().height() + plotframe.sizeHint().height()) 
         logo_layout = QHBoxLayout()
         uni_logo_label = QLabel()
-        pixmap = QPixmap("canmopsGUI/icons/icon_wuppertal_banner.png")
+        pixmap = QPixmap(icon_location+'icon_wuppertal_banner.png')
         uni_logo_label.setPixmap(pixmap.scaled(150, 50)) 
         #icon_spacer = QSpacerItem(250, 50, QtWidgets.QSizePolicy.Minimum, QtWidgets.QSizePolicy.Expanding)
         interfaceLabel = QLabel()
@@ -182,7 +182,7 @@ class mopshubWindow(QWidget):
         #close button
         buttonLayout = QHBoxLayout() 
         close_button = QPushButton("Close")
-        close_button.setIcon(QIcon('canmopsGUI/icons/icon_close.png'))
+        close_button.setIcon(QIcon(icon_location+'icon_close.png'))
         close_button.resize(50, 50)
         close_button.clicked.connect(self.stop_mopshub)
         buttonLayout.addSpacing(cic_num*250)
@@ -232,8 +232,8 @@ class mopshubWindow(QWidget):
     
     def def_bus_frame(self, c, b, true_bus_number): 
         icon = QIcon()
-        icon.addPixmap(QPixmap('canmopsGUI/icons/icon_connect.jpg'), QIcon.Normal, QIcon.On)
-        icon.addPixmap(QPixmap('canmopsGUI/icons/icon_disconnect.jpg'), QIcon.Normal, QIcon.Off)
+        icon.addPixmap(QPixmap(icon_location+'icon_connect.jpg'), QIcon.Normal, QIcon.On)
+        icon.addPixmap(QPixmap(icon_location+'icon_disconnect.jpg'), QIcon.Normal, QIcon.Off)
         BusGridLayout = QGridLayout()  
         StatLayout = QGridLayout()  
         ADCGroupBox = self.def_adc_frame(c,b)
@@ -261,8 +261,8 @@ class mopshubWindow(QWidget):
     def def_alert_leds(self, bus_alarm=None, mops_alarm=None, cic=None, mops=None, bus = None, icon_state=False):
         cic_num = self.__cic_num
         if mops_alarm is True:
-            icon_red = "canmopsGUI/icons/icon_disconnected_device.png" #icon_red.gif"
-            icon_green = "canmopsGUI/icons/icon_green.gif"
+            icon_red = icon_location+'icon_disconnected_device.png' #icon_red.gif"
+            icon_green = icon_location+'icon_green.gif'
             if icon_state:
                 alarm_led = QMovie(icon_green)
             else: 
@@ -272,8 +272,8 @@ class mopshubWindow(QWidget):
             return alarm_led         
         
         if bus_alarm is True:
-            icon_red = "canmopsGUI/icons/icon_red.png"
-            icon_green = "canmopsGUI/icons/icon_green.png"
+            icon_red = icon_location+'icon_red.png'
+            icon_green = icon_location+'icon_green.png'
             alarm_led = [0] * cic_num
             alarm_led[cic] = QLabel() 
             if icon_state:
@@ -288,7 +288,7 @@ class mopshubWindow(QWidget):
         # # Details for each MOPS
         mops_num = self.__mops_num
         bus_num =self.__bus_num
-        icon_mops = 'canmopsGUI/icons/icon_mops.png'
+        icon_mops = icon_location+'icon_mops.png'
         mopsBottonLayout = QGridLayout()
         self.update_device_box()
         for m in np.arange(mops_num):   
@@ -344,7 +344,7 @@ class mopshubWindow(QWidget):
     def def_mops(self,b,c,true_bus_number):
         mops_num = self.__mops_num
         mopsBotton = [k for k in np.arange(mops_num)]
-        icon_mops = 'canmopsGUI/icons/icon_mops.png'
+        icon_mops = icon_location+'icon_mops.png'
         for m in np.arange(mops_num):
             status = self.check_mops(c, b, m)
             mopsBotton[m] = QPushButton("  [" + str(m) + "]")
@@ -380,8 +380,8 @@ class mopshubWindow(QWidget):
         bus_alarm_led = [k for k in np.arange(bus_num) ]
         statusLabelVar = [k for k in np.arange(bus_num) ]        
         icon = QIcon()
-        icon.addPixmap(QPixmap('canmopsGUI/icons/icon_connect.jpg'), QIcon.Normal, QIcon.On)
-        icon.addPixmap(QPixmap('canmopsGUI/icons/icon_disconnect.jpg'), QIcon.Normal, QIcon.Off)
+        icon.addPixmap(QPixmap(icon_location+'icon_connect.jpg'), QIcon.Normal, QIcon.On)
+        icon.addPixmap(QPixmap(icon_location+'icon_disconnect.jpg'), QIcon.Normal, QIcon.Off)
         for b in np.arange(bus_num):
             true_bus_number = self.get_true_bus_number(b, cic)
             en_button[b] = QPushButton("")
@@ -520,18 +520,18 @@ class mopshubWindow(QWidget):
         else: pass  
                 
     def update_bus_status_box(self, cic_id=None, port_id=None, on=False, off=False):
-        icon_red = "canmopsGUI/icons/icon_red.png"
-        icon_green = "canmopsGUI/icons/icon_green.png" 
+        icon_red = icon_location+'icon_red.png'
+        icon_green = icon_location+'icon_green.png' 
         if on:
             pixmap = QPixmap(icon_green)
-            self.en_button[int(cic_id)][int(port_id)].setIcon(QIcon('canmopsGUI/icons/icon_connect.jpg'))    
+            self.en_button[int(cic_id)][int(port_id)].setIcon(QIcon(icon_location+'icon_connect.jpg'))    
             self.statusBoxVar[int(cic_id)][int(port_id)].setText("ON")
             self.en_button[int(cic_id)][int(port_id)].setChecked(True)
             self.bus_alarm_led[int(cic_id)][int(port_id)]
         else:
             pixmap = QPixmap(icon_red)
             self.statusBoxVar[int(cic_id)][int(port_id)].setText("OFF")
-            self.en_button[int(cic_id)][int(port_id)].setIcon(QIcon('canmopsGUI/icons/icon_disconnect.jpg'))    
+            self.en_button[int(cic_id)][int(port_id)].setIcon(QIcon(icon_location+'icon_disconnect.jpg'))    
             self.en_button[int(cic_id)][int(port_id)].setChecked(False)
             self.bus_alarm_led[int(cic_id)][int(port_id)]
         self.bus_alarm_led[int(cic_id)][int(port_id)].setPixmap(pixmap.scaled(20, 20))   
@@ -539,9 +539,9 @@ class mopshubWindow(QWidget):
     def update_alarm_status(self, on=False, off=False, warning=False, button=None, button_type = "Movie"):
      
         if button_type == "Movie":
-            icon_red = "canmopsGUI/icons/icon_red_alarm.gif"
-            icon_green = "canmopsGUI/icons/icon_green.gif"
-            icon_yellow = "canmopsGUI/icons/icon_yellow.gif"  
+            icon_red = icon_location+'icon_red_alarm.gif'
+            icon_green = icon_location+'icon_green.gif'
+            icon_yellow = icon_location+'icon_yellow.gif'  
         
             if on: 
                 alarm_led = QMovie(icon_green)
@@ -554,9 +554,9 @@ class mopshubWindow(QWidget):
             button.setMovie(alarm_led) 
             
         if button_type == "Label":
-            icon_red = "canmopsGUI/icons/icon_red_alarm.png"
-            icon_green = "canmopsGUI/icons/icon_green.png"
-            icon_yellow = "canmopsGUI/icons/icon_yellow.png"  
+            icon_red = icon_location+'icon_red_alarm.png'
+            icon_green = icon_location+'icon_green.png'
+            icon_yellow = icon_location+'icon_yellow.png'  
             if on: 
                 pixmap = QPixmap(icon_green)
             if off:

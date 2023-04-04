@@ -13,6 +13,7 @@ import numpy as np
 rootdir = os.path.dirname(os.path.abspath(__file__)) 
 config_dir = "config_files/"
 lib_dir = rootdir[:-11]
+icon_location='canmopsGUI/icons/'
 class MenuWindow(QWidget):  
     
     def __init__(self, parent=main_gui_window):
@@ -48,7 +49,7 @@ class MenuWindow(QWidget):
     def set_file_menu(self, menuBar, mainwindow):
                
         fileMenu = menuBar.addMenu('&File')
-        exit_action = QAction(QIcon('canmopsGUI/icons/icon_exit.png'), '&Exit', mainwindow)
+        exit_action = QAction(QIcon(icon_location+'icon_exit.png'), '&Exit', mainwindow)
         exit_action.setShortcut('Ctrl+Q')
         exit_action.setStatusTip('Exit program')
         exit_action.triggered.connect(self.stop)
@@ -68,7 +69,7 @@ class MenuWindow(QWidget):
                                         plot_prefix="adc_data")
             plottingWindow.show()
                     
-        plotADC = QAction(QIcon('canmopsGUI/icons/icon_curve.png'),'Plot ADC', mainwindow)
+        plotADC = QAction(QIcon(icon_location+'icon_curve.png'),'Plot ADC', mainwindow)
         plotADC.setStatusTip("Plot ADC channels")
         plotADC.triggered.connect(show_adc_plotting_window)
         plottingMenu.addAction(plotADC) 
@@ -107,7 +108,7 @@ class MenuWindow(QWidget):
         settingsMenu = menuBar.addMenu('&settings')
         conf = AnalysisUtils().open_yaml_file(file=config_dir + device_config + "_config.yml" , directory=lib_dir)
         self.__appIconDir = conf["Application"]["icon_dir"]
-        
+        self.__device = conf["Application"]["device_name"].lower()
         def show_edit_device_settings():
             self.NodeWindow = QMainWindow()
             self.edit_device_settings(self.NodeWindow, conf)
@@ -324,7 +325,7 @@ class MenuWindow(QWidget):
         inLayout = QVBoxLayout()  
         addLayout= QHBoxLayout()  
         add_button = QPushButton("Add")
-        add_button.setIcon(QIcon('canmopsGUI/icons/icon_add.png'))
+        add_button.setIcon(QIcon(icon_location+'icon_add.png'))
         addLayout.addSpacing(80)
         addLayout.addWidget(add_button)
         
@@ -349,7 +350,7 @@ class MenuWindow(QWidget):
             
         clearLayout= QHBoxLayout()  
         clear_button = QPushButton("Clear")
-        clear_button.setIcon(QIcon('canmopsGUI/icons/icon_clear.png'))
+        clear_button.setIcon(QIcon(icon_location+'icon_clear.png'))
         clearLayout.addSpacing(80)
         clearLayout.addWidget(clear_button)
         outLayout.addWidget(fullListBox)
@@ -382,7 +383,7 @@ class MenuWindow(QWidget):
                 _parameters = [parameterListBox.item(x).text() for x in range(parameterListBox.count())]
                 for i in range(len(_adc_channels)):
                     conf["adc_channels_reg"]["adc_channels"][_adc_channels[i]] = _parameters[i]
-                file = config_dir + self.__device + "_cfg.yml"
+                file = config_dir + self.__device + "_config.yml"
                 AnalysisUtils().dump_yaml_file(file=file,
                                                loaded = conf,
                                                directory=lib_dir)
@@ -404,11 +405,11 @@ class MenuWindow(QWidget):
          
         buttonLayout = QHBoxLayout()
         close_button = QPushButton("Close")
-        close_button.setIcon(QIcon('canmopsGUI/icons/icon_close.png'))
+        close_button.setIcon(QIcon(icon_location+'icon_close.png'))
         close_button.clicked.connect(childWindow.close)
         
         save_button = QPushButton("Save")
-        save_button.setIcon(QIcon('canmopsGUI/icons/icon_true.png'))
+        save_button.setIcon(QIcon(icon_location+'icon_true.png'))
         save_button.clicked.connect(_save_items)       
         buttonLayout.addWidget(save_button)
         buttonLayout.addWidget(close_button)
@@ -443,10 +444,10 @@ class MenuWindow(QWidget):
         nodeSpinBox = QSpinBox()
         
         add_button = QPushButton("Add")
-        add_button.setIcon(QIcon('canmopsGUI/icons/icon_add.png'))
+        add_button.setIcon(QIcon(icon_location+'icon_add.png'))
 
         clear_button = QPushButton("Clear")
-        clear_button.setIcon(QIcon('canmopsGUI/icons/icon_clear.png'))
+        clear_button.setIcon(QIcon(icon_location+'icon_clear.png'))
                     
         inLayout.addWidget(nodeSpinBox)
         inLayout.addWidget(add_button)
@@ -509,7 +510,7 @@ class MenuWindow(QWidget):
             if (nodeListBox.count() != 0):
                 _nodes = [nodeListBox.item(x).text() for x in range(nodeListBox.count())]
                 conf["Application"]["nodeIds"] = _nodes
-                file = config_dir + self.__device + "_cfg.yml"
+                file = config_dir + self.__device + "_config.yml"
                 AnalysisUtils().dump_yaml_file(file=file,
                                                loaded = conf,
                                                directory=lib_dir)
@@ -521,11 +522,11 @@ class MenuWindow(QWidget):
         clear_button.clicked.connect(_clear_item)
         buttonLayout = QHBoxLayout()
         close_button = QPushButton("Close")
-        close_button.setIcon(QIcon('canmopsGUI/icons/icon_close.png'))
+        close_button.setIcon(QIcon(icon_location+'icon_close.png'))
         close_button.clicked.connect(childWindow.close)
         
         save_button = QPushButton("Save")
-        save_button.setIcon(QIcon('canmopsGUI/icons/icon_true.png'))
+        save_button.setIcon(QIcon(icon_location+'icon_true.png'))
         save_button.clicked.connect(_save_items)       
         buttonLayout.addWidget(save_button)
         buttonLayout.addWidget(close_button)
@@ -579,10 +580,10 @@ class MenuWindow(QWidget):
         
         busComboBox.currentTextChanged.connect(_busComboBox_changed)
         add_button = QPushButton("Reset")
-        add_button.setIcon(QIcon('canmopsGUI/icons/icon_start.png'))
+        add_button.setIcon(QIcon(icon_location+'icon_start.png'))
         add_button.clicked.connect(_set)
         close_button = QPushButton("Close")
-        close_button.setIcon(QIcon('canmopsGUI/icons/icon_close.png'))
+        close_button.setIcon(QIcon(icon_location+'icon_close.png'))
         close_button.clicked.connect(childWindow.close)
         buttonLayout.addWidget(add_button)  
         buttonLayout.addWidget(close_button) 
