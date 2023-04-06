@@ -37,13 +37,13 @@ test:software:
       #Installing python-can package
       - pip install python-can
       #Installing libsocketcan package
-      - git clone https://git.pengutronix.de/git/tools/libsocketcan
-      - cd libsocketcan
-      - ./autogen.sh
-      - ./configure  #--disable-dependency-tracking
-      - make CFLAGS='-fPIC' # to compile the package
-      - make install #to install the programs and any data files
-      - cd ..
+      #- git clone https://git.pengutronix.de/git/tools/libsocketcan
+      #- cd libsocketcan
+      #- ./autogen.sh
+      #- ./configure  #--disable-dependency-tracking
+      #- make CFLAGS='-fPIC' # to compile the package
+      #- make install #to install the programs and any data files
+      #- cd ..
       #Installing SocketCAN can-utils
       - sudo apt-get install can-utils
       #Installing Canlib package
@@ -71,7 +71,6 @@ test:software:
       - cd ..
     script:
       - sudo apt-get install -y build-essential
-      #- python CANMOPS_test.py
+      -python canmops_test.py
       #- python CANMOPS_GUI.py
-      # Try to activate conda evironment in the newest broken miniconda docker
 
