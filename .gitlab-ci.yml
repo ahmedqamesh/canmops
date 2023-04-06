@@ -27,11 +27,12 @@ test:software:
       - source ~/.bashrc  # since ==> For changes to take effect, close and re-open your current shell. <==
       - conda activate  # to link properly to pytest
       - conda update --yes conda
-      - conda install --yes python=3.7 bitarray contextlib2 cython ipython matplotlib mock nose numba numpy pyqt pyserial pytables pyyaml pyzmq qtpy scipy
+      - conda install --yes python bitarray contextlib2 cython ipython matplotlib mock nose pyqt pyserial pytables pyyaml pyzmq qtpy scipy pyqtgraph pandas numpy colorlog coloredlogs verboselogs termcolor numba lxml seaborn aenum
+      - conda install -c anaconda graphviz python-graphviz
       - conda install -c bioconda aenum
       - conda install -c bioconda/label/cf201901 aenum
-      - pip install lxml tqdm kafe seaborn aenum verboselogs qtawesome coloredlogs termcolor progressbar-latest pyvisa pyvisa-py pyqtgraph
-    # Installing CAN packages
+      - pip install kafe BeautifulSoup4 event-notifier colorama QGraphViz
+      # Installing CAN packages
       #Installing SocketCAN devices
       #Installing python-can package
       - pip install python-can
