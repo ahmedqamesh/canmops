@@ -37,6 +37,7 @@ test:software:
       #Installing python-can package
       - pip install python-can
       #Installing libsocketcan package
+      - pip install socketcan
       #- git clone https://git.pengutronix.de/git/tools/libsocketcan
       #- cd libsocketcan
       #- ./autogen.sh
