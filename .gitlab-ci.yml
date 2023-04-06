@@ -27,7 +27,7 @@ test:software:
       - source ~/.bashrc  # since ==> For changes to take effect, close and re-open your current shell. <==
       - conda activate  # to link properly to pytest
       - conda update --yes conda
-      - conda install --yes python bitarray contextlib2 cython ipython matplotlib mock nose pyqt pyserial pytables pyyaml pyzmq qtpy scipy pyqtgraph pandas numpy colorlog coloredlogs verboselogs termcolor numba lxml seaborn aenum
+      - conda install --yes python=3.9 bitarray contextlib2 cython ipython matplotlib mock nose pyqt pyserial pytables pyyaml pyzmq qtpy scipy pyqtgraph pandas numpy colorlog coloredlogs verboselogs termcolor numba lxml seaborn aenum
       - conda install -c anaconda graphviz python-graphviz
       - conda install -c bioconda aenum
       - conda install -c bioconda/label/cf201901 aenum
