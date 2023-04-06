@@ -73,6 +73,7 @@ test:software:
     script:
       - sudo apt-get install -y build-essential
       - pip install --upgrade pip setuptools
+      - pip install symbol-please
       - python canmops_test.py
       #- python CANMOPS_GUI.py
 
