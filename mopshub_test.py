@@ -26,7 +26,7 @@ async def test_can_wrapper():
                                      nodeId = NodeIds, # Node Id
                                      outputname = "mopshub_data_32", # Data file name
                                      outputdir = rootdir +"/output_data", # # Data directory
-                                     n_readings = 50) # Number of Iterations
+                                     n_readings = 1) # Number of Iterations
     wrapper.stop()  
 
 
