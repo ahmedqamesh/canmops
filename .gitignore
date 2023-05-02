@@ -38,18 +38,14 @@ coverage.xml
 .mr.developer.cfg
 .project
 .pydevproject
-
-# Rope
+.settings
+*DS_Store
+__pycashe__
 .ropeproject
-
-# Django stuff:
 *.log
 *.pot
 *.kafe
 *.vscode
-*.pydevproject
-*.project
-*DS_Store
-__pycashe__
+
 # Sphinx documentation
 docs/_build/
