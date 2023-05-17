@@ -117,7 +117,7 @@ terminado==0.8.3
 testpath==0.4.4
 timeout-decorator==0.4.1
 toml==0.10.1
-tornado==6.0.4
+tornado==6.3.2
 tqdm==4.46.0
 traitlets==4.3.3
 typing-extensions==3.7.4.3
