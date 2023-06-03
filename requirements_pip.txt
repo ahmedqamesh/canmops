@@ -102,7 +102,7 @@ pyzmq==18.1.1
 QtAwesome==0.6.1
 qtconsole==4.7.4
 QtPy==1.9.0
-reportlab==3.5.42
+reportlab==3.6.13
 requests==2.22.0
 ruamel-yaml==0.15.87
 scikit-learn==0.22.2.post1
