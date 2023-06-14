@@ -31,18 +31,18 @@ async def test_can_wrapper():
     # print('Writing example CAN Expedited read message ...')
    
     #Example (2): write/read SDO message
-    # VendorId = await wrapper.read_sdo_can_thread(nodeId=NodeIds[0], 
-    #                                                index=0x1000,
-    #                                                subindex=0,
-    #                                                timeout=3000,
-    #                                                SDO_TX=SDO_TX,
-    #                                                SDO_RX=SDO_RX,
-    #                                                cobid = SDO_TX+NodeIds[0])
-    # print(type(VendorId))
-    # if all(m is not None for m in VendorId):
-    #     print(f'Device type: {VendorId[1]:03X}')
-    # else:
-    #     print(f'Cannot read the SDO message')
+    VendorId = await wrapper.read_sdo_can_thread(nodeId=NodeIds[0], 
+                                                   index=0x1000,
+                                                   subindex=0,
+                                                   timeout=3000,
+                                                   SDO_TX=SDO_TX,
+                                                   SDO_RX=SDO_RX,
+                                                   cobid = SDO_TX+NodeIds[0])
+    print(type(VendorId))
+    if all(m is not None for m in VendorId):
+        print(f'Device type: {VendorId[1]:03X}')
+    else:
+        print(f'Cannot read the SDO message')
 
      #Example (3): Read all the ADC channels and Save it to a file in the directory output_data
      # PS. To visualise the data, Users can use the file $HOME/test_files/plot_adc.py
@@ -78,16 +78,17 @@ async def test_can_wrapper():
     #     print(f'Cannot read the SDO message')    
 
     #Example (3): write/read SDO message [For Developers]
-    adc_value = await wrapper.read_sdo_can(nodeId=NodeIds[0], 
-                                                index=0x1001,
-                                                subindex=0,
-                                                timeout=3000,
-                                                bus = 1)
-    if all(m is not None for m in adc_value):
-        print(f'Device type: {adc_value[1]:03X}')
-    else:
-        print(f'Cannot read the SDO message')  
-        
+    # adc_value = await wrapper.read_sdo_can(nodeId=NodeIds[0], 
+    #                                             index=0x1001,
+    #                                             subindex=0,
+    #                                             timeout=3000,
+    #                                             bus = 1)
+    # if all(m is not None for m in adc_value):
+    #     print(f'Device type: {adc_value[1]:03X}')
+    # else:
+    #     print(f'Cannot read the SDO message')  
+    #
+
     wrapper.stop()  
     
 if __name__=='__main__':

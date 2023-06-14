@@ -8,9 +8,9 @@ from canmops.analysis_utils import AnalysisUtils
 from canmops.can_wrapper_main   import CanWrapper
 rootdir = os.path.dirname(os.path.abspath(__file__)) 
 # All the can configurations of the CAN controller should be set first from $HOME/config/main_cfg.yml
-async def test_can_wrapper():
+async def read_adc_iterations():
     # Define parameters
-    NodeIds = [0,1]
+    NodeIds = [0]
     SDO_TX = 0x600
     SDO_RX = 0x580
     index = 0x1000
@@ -26,7 +26,7 @@ async def test_can_wrapper():
                                      nodeId = NodeIds, # Node Id
                                      outputname = "mopshub_data_32", # Data file name
                                      outputdir = rootdir +"/output_data", # # Data directory
-                                     n_readings = 1) # Number of Iterations
+                                     n_readings = 5) # Number of Iterations
     wrapper.stop()  
 
 
@@ -38,7 +38,7 @@ if __name__=='__main__':
     #wrapper =  CanWrapper(interface = "Kvaser",channel = channel, load_config = True)
     loop = asyncio.get_event_loop()
     try:
-        asyncio.ensure_future(test_can_wrapper())
+        asyncio.ensure_future(read_adc_iterations())
         loop.run_forever()
     finally: 
         #can_config.stop_channel(channel)

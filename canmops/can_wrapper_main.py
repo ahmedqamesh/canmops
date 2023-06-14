@@ -10,7 +10,7 @@ Note
 :Organization: Bergische Universität Wuppertal
 """
 # Standard library modules
-from __future__ import annotations
+#from __future__ import annotations
 from argparse import ArgumentParser, ArgumentDefaultsHelpFormatter
 from configparser import ConfigParser
 from typing import *
@@ -25,7 +25,7 @@ import threading
 import numpy as np
 #from pip._internal.cli.cmdoptions import pre
 #from lxml.html.builder import PRE
-from _socket import socket
+from socket import socket
 from asyncio.tasks import sleep
 try:
     from .analysis import Analysis
@@ -642,13 +642,13 @@ class CanWrapper(object):#READSocketcan):#Instead of object
         # 4 - ((ret[0] >> 2) & 0b11) for expedited transfer the object dictionary does not get larger than 4 bytes.
         n_data_bytes = 4 - ((ret[0] >> 2) & 0b11) if ret[0] != 0x42 else 4
         data = []
-        for i in range(n_data_bytes): 
+        for i in range(n_data_bytes-1): 
             data.append(ret[4 + i])
         self.logger.info(f'Got data: {data}')
         return cobid_ret, int.from_bytes(data, 'little')
     
     
-    async def read_sdo_can_thread(self, nodeId=None, index=None, subindex=None, timeout=100, max_data_bytes=8, SDO_TX=None, SDO_RX=None, cobid=None):
+    async def read_sdo_can_thread(self, nodeId=None, index=None, subindex=None, timeout=100, max_data_bytes=8, SDO_TX=None, SDO_RX=None, cobid=None,bus = 0):
         """Read an object via |SDO|
     
         Currently expedited and segmented transfer is supported by this method.
@@ -684,6 +684,7 @@ class CanWrapper(object):#READSocketcan):#Instead of object
         msg[0] = 0x40
         msg[1], msg[2] = index.to_bytes(2, 'little')
         msg[3] = subindex
+        msg[7] =bus
         try:
             await self.write_can_message(cobid, msg, timeout=timeout)
         except CanGeneralError:
@@ -698,7 +699,6 @@ class CanWrapper(object):#READSocketcan):#Instead of object
             with self.__lock:
                 # check the message validity [nodid, msg size,...]
                 for i, (cobid_ret, ret, dlc, flag, t) in zip(range(len(self.__canMsgQueue)), self.__canMsgQueue):
-
                     messageValid = (dlc == 8 
                                     and cobid_ret == SDO_RX + nodeId
                                     and ret[0] in [0x80, 0x43, 0x47, 0x4b, 0x4f, 0x42] 
@@ -706,12 +706,14 @@ class CanWrapper(object):#READSocketcan):#Instead of object
                                     and ret[3] == subindex)
                     # errorResponse is meant to deal with any disturbance in the signal due to the reset of the chip 
                     errorResponse = (dlc == 8 and cobid_ret == 0x88 and ret[0] in [0x00])
+            
             if (messageValid or errorResponse):
                 del self.__canMsgQueue[i]
                 break  
     
             if (messageValid):
                 break
+            
             if (errorResponse):
                 return cobid_ret, None
         else:
@@ -736,7 +738,7 @@ class CanWrapper(object):#READSocketcan):#Instead of object
         # 4 - ((ret[0] >> 2) & 0b11) for expedited transfer the object dictionary does not get larger than 4 bytes.
         n_data_bytes = 4 - ((ret[0] >> 2) & 0b11) if ret[0] != 0x42 else 4
         data = []
-        for i in range(n_data_bytes): 
+        for i in range(n_data_bytes-1): 
             data.append(ret[4 + i])
         self.logger.info(f'Got data: {data}')
         return cobid_ret, int.from_bytes(data, 'little')
@@ -792,7 +794,7 @@ class CanWrapper(object):#READSocketcan):#Instead of object
         if messageValid:
             nDatabytes = 4 - ((data_ret[0] >> 2) & 0b11) if data_ret[0] != 0x42 else 4
             data = []
-            for i in range(nDatabytes): 
+            for i in range(nDatabytes-1): 
                 data.append(data_ret[4 + i])
             return int.from_bytes(data, 'little'), messageValid
     

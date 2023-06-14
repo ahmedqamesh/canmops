@@ -22,16 +22,19 @@ Under development: https://canmops.readthedocs.io/en/latest/installation.html
 
 ### Installation and usage
 Clone the repository to get a copy of the source code (for developers):
+
 ```
 ssh://git@gitlab.cern.ch:7999/mops/canmops.git
 ```
 Make sure that the CAN interface is connected and the needed software is installed.
 Simply in the home directory run:
+
 ```
 python canmops_test.py
 ```
 ### Scanning the Node Ids connected on the bus:
 In order to make sure that all the connected nodes [Mops] on the bus are healthy and ready for communication, the user need to know the exact pre-defined Node Id of the Node-under-test. 
+
 ```
 python3.8 canmops/can_wrapper_main.py -S -b 111111 -sp 0.3 -sjw 4 -tseg1 5 -tseg2 6 -nodeid 0
 ```

@@ -1,4 +1,4 @@
-from __future__ import annotations
+#from __future__ import annotations
 from matplotlib.backends.qt_compat import QtCore, QtWidgets
 import signal
 import time
@@ -61,6 +61,7 @@ class MainWindow(QMainWindow):
         self.__deviceName = None
         self.index_description_items = None
         self.__subIndex = None
+        self.__busid = 0
         self.wrapper = None      
           
     def Ui_ApplicationWindow(self):
@@ -259,14 +260,20 @@ class MainWindow(QMainWindow):
         subIndexLabel = QLabel()
         subIndexLabel.setText("SubIndex [hex]")
         self.mainSubIndextextbox = QLineEdit("0")
-        self.mainSubIndextextbox.setFixedSize(80, 25)
-        
+        self.mainSubIndextextbox.setFixedSize(70, 25)
+
+        busIdLabel = QLabel()
+        busIdLabel.setText("   Bus Id   ")
+        self.busIdbox = QLineEdit("0")
+        self.busIdbox.setFixedSize(40, 25)
+                
         def __set_bus():
             try:
                 self.set_index(self.mainIndexTextBox.text())
                 self.set_subIndex(self.mainSubIndextextbox.text())
                 self.set_nodeId(self.nodetextBox.text())
                 self.set_canId_tx(self.CANIdComboBox.currentText())
+                self.set_busId(self.busIdbox.text())
             except Exception:
                 self.error_message(text="Make sure that the CAN interface is connected")
                 
@@ -285,8 +292,14 @@ class MainWindow(QMainWindow):
         defaultMessageWindowLayout.addWidget(self.mainIndexTextBox, 4, 2)        
         
         defaultMessageWindowLayout.addWidget(subIndexLabel, 3, 3)
-        defaultMessageWindowLayout.addWidget(self.mainSubIndextextbox, 4, 3)       
-        defaultMessageWindowLayout.addWidget(self.startButton, 4, 4)
+        defaultMessageWindowLayout.addWidget(self.mainSubIndextextbox, 4, 3) 
+        
+        defaultMessageWindowLayout.addWidget(busIdLabel, 3, 4)
+        defaultMessageWindowLayout.addWidget(self.busIdbox, 4, 4)         
+              
+        defaultMessageWindowLayout.addWidget(self.startButton, 4, 5)
+        
+        
         self.defaultMessageGroupBox.setLayout(defaultMessageWindowLayout)
                     
     def textOutputWindow(self):
@@ -852,27 +865,30 @@ class MainWindow(QMainWindow):
         SDO_TX = int(self.get_canId_tx(), 16)
         SDO_RX = self.get_canId_rx()
         _cobid_TX = SDO_TX + _nodeId
+        _busId = self.get_busId()
         _cobid_RX, data_RX = asyncio.run(self.wrapper.read_sdo_can_thread(nodeId=_nodeId,
-                                                              index=_index,
-                                                              subindex=_subIndex,
-                                                              timeout=self.__timeout,
-                                                              SDO_TX=SDO_TX,
-                                                              SDO_RX=SDO_RX,
-                                                              cobid=_cobid_TX))
+                                                                                  index=_index,
+                                                                                  subindex=_subIndex,
+                                                                                  timeout=self.__timeout,
+                                                                                  SDO_TX=SDO_TX,
+                                                                                  SDO_RX=SDO_RX,
+                                                                                  cobid=_cobid_TX,
+                                                                                  bus = int(_busId)))
         if print_sdo == True:
             # self.control_logger.disabled = False
-            self.print_sdo_can(index=_index, subIndex=_subIndex, response_from_node=data_RX, cobid_TX=_cobid_TX, cobid_RX=_cobid_RX)
+            self.print_sdo_can(index=_index, subIndex=_subIndex, response_from_node=data_RX, cobid_TX=_cobid_TX, cobid_RX=_cobid_RX, bus = int(_busId))
         return data_RX
        # except Exception:
        #     self.error_message(text="Make sure that the CAN interface is connected")
         
-    def print_sdo_can(self , index=None, subIndex=None, response_from_node=None, cobid_TX=None, cobid_RX=None):
+    def print_sdo_can(self , index=None, subIndex=None, response_from_node=None, cobid_TX=None, cobid_RX=None, bus = 0):
         # printing the read message with cobid = SDO_RX + nodeId
         max_data_bytes = 8
         msg = [0 for i in range(max_data_bytes)]
         msg[0] = 0x40  # Defines a read (reads data only from the node) dictionary object in CANOPN standard
         msg[1], msg[2] = index.to_bytes(2, 'little')
         msg[3] = subIndex
+        msg[7] = bus
         #  fill the Bytes/bits table
         self.set_table_content(bytes=msg, comunication_object="SDO_TX")
         # printing RX     
@@ -1180,6 +1196,7 @@ class MainWindow(QMainWindow):
                 if data_point is None: 
                     self.logger.warning("No responses in the Bus")
                     self.stop_adc_timer()
+                    adc_converted = 0
                     break
                 else:
                     adc_converted = Analysis().adc_conversion(_adc_channels_reg[str(subindex)], 
@@ -1564,6 +1581,9 @@ class MainWindow(QMainWindow):
     def set_cobid(self, x):
         self.__cobid = x
     
+    def set_busId(self,x):
+        self.__busid = x
+        
     def set_canId_tx(self, x):
         self.__canId_tx = x
     
@@ -1610,6 +1630,9 @@ class MainWindow(QMainWindow):
     def get_adc_channels_reg(self):
         return self.__adc_channels_reg
 
+    def get_busId(self):
+        return self.__busid
+        
     def get_nodeList(self):
         return self.__nodeIds
 
