@@ -82,11 +82,11 @@ ptyprocess==0.6.0
 pycosat==0.6.3
 pycparser==2.20
 pygit2==0.26.4
-Pygments==2.6.1
+Pygments==2.15.0
 pymongo==3.10.1
 pyOpenSSL==19.1.0
 pyparsing==2.4.7
-PyPDF2==1.26.0
+PyPDF2==1.27.9
 pyqtgraph==0.10.0
 pyrsistent==0.16.0
 pyserial==3.4
