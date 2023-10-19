@@ -43,8 +43,9 @@ class MainWindow(QMainWindow):
         self.__appVersion = self.__conf['Application']['app_version']
         self.__appIconDir = self.__conf["Application"]["app_icon_dir"]
         self.__devices = self.__conf["Application"]["Devices"]
-        self.multi_mode = self.__conf["Application"]["multi_mode"]
-        self.mopshub_mode = self.__conf["Application"]["mopshub_mode"]
+        self.__multi_mode = self.__conf["Application"]["multi_mode"]
+        self.__mopshub_mode = self.__conf["Application"]["mopshub_mode"]
+        self.__mopshub_communication_mode = self.__conf["Application"]["mopshub_communication_mode"]
         self.trim_mode = self.__conf["Application"]["trim_mode"] 
         self.__CANID_list = ['0x600'] 
         self.__bytes = ["40", "0", "10", "0", "0", "0", "0", "0"]
@@ -126,13 +127,13 @@ class MainWindow(QMainWindow):
         mainLayout.addWidget(self.monitorGroupBox, 3, 0, 2, 2)
         mainLayout.addWidget(self.configureDeviceBoxGroupBox, 5, 0, 1, 1)
 
-        if self.multi_mode is True:
+        if self.__multi_mode is True:
             self.multi_window = multi_device_window.MultiDeviceWindow()
             self.multi_device_box()
             mainLayout.addWidget(self.configureMultiBoxGroupBox, 5, 1, 1, 1)
             
         #moopshub child window
-        if self.mopshub_mode is True:   
+        if self.__mopshub_mode is True:   
             self.mopshubWindow = mopshub_child_window.mopshubWindow()
             self.configure_cic_box()
             mainLayout.addWidget(self.configureCICBoxGroupBox, 5, 1, 1, 1)
@@ -260,12 +261,12 @@ class MainWindow(QMainWindow):
         subIndexLabel = QLabel()
         subIndexLabel.setText("SubIndex [hex]")
         self.mainSubIndextextbox = QLineEdit("0")
-        self.mainSubIndextextbox.setFixedSize(70, 25)
+        self.mainSubIndextextbox.setFixedSize(80, 25)
 
         busIdLabel = QLabel()
         busIdLabel.setText("   Bus Id   ")
         self.busIdbox = QLineEdit("0")
-        self.busIdbox.setFixedSize(40, 25)
+        self.busIdbox.setFixedSize(60, 25)
                 
         def __set_bus():
             try:
@@ -509,7 +510,7 @@ class MainWindow(QMainWindow):
         self.multiButton.setStatusTip('Open MOPSHUB window')
         multiLabel.setText("")
         self.multiButton.setIcon(QIcon(icon_location+'icon_nodes.png'))
-        self.multiButton.clicked.connect(self.mopshubWindow.Ui_ApplicationWindow)
+        self.multiButton.clicked.connect(lambda: self.mopshubWindow.Ui_ApplicationWindow(mainWindow = self))
         configureCICBoxGroupBoxLayout.addWidget(self.multiButton)
         configureCICBoxGroupBoxLayout.addWidget(multiLabel)
         self.configureCICBoxGroupBox.setLayout(configureCICBoxGroupBoxLayout)
@@ -550,6 +551,7 @@ class MainWindow(QMainWindow):
             deviceName, version, icon_dir, nodeIds, dictionary_items, adc_channels_reg,\
             self.__adc_index, self.__chipId, self.__index_items, self.__conf_index, \
             self.__mon_index,self.__resistor_ratio, self.__refresh_rate, self.__ref_voltage =  mops_child.update_device_box(device = self.__devices[0], mainWindow = self)
+        
         self.set_deviceName(deviceName)
         self.configureDeviceBoxLayout.addWidget(deviceLabel)
         self.configureDeviceBoxLayout.addWidget(self.deviceButton)
@@ -836,7 +838,11 @@ class MainWindow(QMainWindow):
             _subIndex = int(self.get_subIndex(), 16)
             _nodeId = int(self.get_nodeId())
             _interface = self.get_interface()
-            data_RX,_,_,_,_,_ = asyncio.run(self.wrapper.read_sdo_can(nodeId = _nodeId,index = _index, subindex = _subIndex, timeout = self.__timeout))
+            _busId = self.get_busId()
+            data_RX,_,_,_,_,_ = asyncio.run(self.wrapper.read_sdo_can(nodeId = _nodeId,index = _index, 
+                                                                      subindex = _subIndex, 
+                                                                      timeout = self.__timeout,
+                                                                      bus =  int(_busId)))
             return data_RX
             
         except Exception:
@@ -984,7 +990,7 @@ class MainWindow(QMainWindow):
                     self.read_can_message_thread(thread=True)
                     #self.wrapper.restart_channel_connection()
             elif int(_cobid_TX, 16) >= 0x700:
-                self.read_can_message_thread(thread=False)
+                self.read_can_message_thread(thread=True)
                 #self.wrapper.restart_channel_connection()
                 wait_led = self.wait_alert_leds()
                 wait_led.show()
@@ -1415,16 +1421,20 @@ class MainWindow(QMainWindow):
         _nodeItems = self.get_nodeList()
         n_channels = 33
         device_config = "mops"
+        self.set_busId(self.busIdbox.text())
+        _busId = self.get_busId()
         try:
             if self.trim_mode == True:
                 asyncio.run(self.wrapper.trim_nodes(channel=int(_channel))) 
-            asyncio.run(self.wrapper.confirm_nodes(channel=int(_channel),nodeIds = _nodeItems, trim =self.trim_mode))
+            asyncio.run(self.wrapper.confirm_nodes(channel=int(_channel),nodeIds = _nodeItems, trim =self.trim_mode, busId = int(_busId)))
         except Exception:
             pass
         self.channelValueBox, self.trendingBox , self.monValueBox , self.confValueBox, self.progressBar = mops_child_window.MopsChildWindow().device_child_window(childWindow=self.deviceWindow, 
                                                                                                                                                                   device =self.__deviceName,
                                                                                                                                                                   device_config =device_config,
-                                                                                                                                                                  mainWindow= self)
+                                                                                                                                                                  mainWindow= self,
+                                                                                                                                                                  mopshub_mode = self.__mopshub_mode,
+                                                                                                                                                                  mopshub_communication_mode = self.__mopshub_communication_mode)
         self.graphWidget = self.DataMonitoring.initiate_trending_figure(n_channels=n_channels)
         self.deviceWindow.show()
     '''
@@ -1535,7 +1545,10 @@ class MainWindow(QMainWindow):
 
     def set_nodeList(self, x):
         self.__nodeIds = x 
-    
+
+    def set_busList(self, x):
+        self.__busids = x 
+            
     def set_channelPorts(self, x):
         self.__channelPorts = x 
                
@@ -1636,6 +1649,9 @@ class MainWindow(QMainWindow):
     def get_nodeList(self):
         return self.__nodeIds
 
+    def get_busList(self):
+        return self.__busids
+    
     def get_subIndex(self):
         return self.__subIndex
     

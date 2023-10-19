@@ -38,7 +38,7 @@ async def test_can_wrapper():
                                                    SDO_TX=SDO_TX,
                                                    SDO_RX=SDO_RX,
                                                    cobid = SDO_TX+NodeIds[0])
-    print(type(VendorId))
+    print(VendorId)
     if all(m is not None for m in VendorId):
         print(f'Device type: {VendorId[1]:03X}')
     else:

@@ -138,18 +138,20 @@ class MopsChildWindow(QWidget):
             _sdo_tx = hex(0x00)
             _cobid = _sdo_tx  # There is no need to add any Node Id
             mainWindow.set_cobid(_cobid)
-            mainWindow.set_bytes([0, 0, 0, 0, 0, 0, 0, 0]) 
+            _busid = self.deviceBusComboBox.currentText()
+            mainWindow.set_bytes([0, 0, 0, 0, 0, 0, 0, int(_busid)]) 
             self.logger.info("Restarting the %s device with a cobid of  %s" % (mainWindow.get_deviceName(), str(_cobid)))
             mainWindow.write_can_message()
 
         def __reset_device():
              # Apply bus settings
             _nodeid = self.deviceNodeComboBox.currentText()
+            _busid = self.deviceBusComboBox.currentText()
             _nodeid = int(_nodeid, 16)
             _sdo_tx = hex(0x700)
             _cobid = hex(0x700 + _nodeid)
             mainWindow.set_cobid(_cobid)
-            mainWindow.set_bytes([0, 0, 0, 0, 0, 0, 0, 0]) 
+            mainWindow.set_bytes([0, 0, 0, 0, 0, 0, 0, int(_busid)]) 
             self.logger.info("Resetting the %s device with a cobid of %s" % (mainWindow.get_deviceName(), str(_cobid)))
             mainWindow.write_can_message()
                     
@@ -246,7 +248,7 @@ class MopsChildWindow(QWidget):
         GridLayout.addLayout(VLayout, 0, 3, 0, 4)
         return GridLayout
                                 
-    def device_child_window(self, childWindow,device_config =None,  device = "mops", cic = None, port = None , mops = None, mainWindow = None, readout_thread = None): 
+    def device_child_window(self, childWindow,device_config =None,  device = "mops", cic = None, port = None , mops = None, mainWindow = None, readout_thread = None,mopshub_mode = None): 
         '''
         The function will Open a special window for the device [MOPS] .
         The calling function for this is show_deviceWindow
@@ -305,12 +307,25 @@ class MopsChildWindow(QWidget):
             trim_button = QPushButton("")
             trim_button.setIcon(QIcon(icon_location+'icon_trim.png'))
             trim_button.clicked.connect(mainWindow.trim_nodes)        
-                          
+            
+            busLabel = QLabel()
+            busLabel.setText("Connected bus :")
+            self.deviceBusComboBox = QComboBox()
+            if mopshub_mode is True: 
+                busItems =np.arange(0,32)
+            else:
+                busItems = [0]
+            mainWindow.set_busList(busItems)
+            for item in list(map(str, busItems)): self.deviceBusComboBox.addItem(item)  
+             
+                                       
             def __set_bus_timer():
                 _nodeid = self.deviceNodeComboBox.currentText()
                 mainWindow.set_nodeId(_nodeid) 
                 _sdo_tx = hex(0x600)
                 mainWindow.set_canId_tx(str(_sdo_tx))
+                _busid = self.deviceBusComboBox.currentText()
+                mainWindow.set_busId(_busid) 
             
             def __check_file_box(): 
                 self.saveDirCheckBox.setChecked(True)
@@ -321,17 +336,20 @@ class MopsChildWindow(QWidget):
                                     
             def _set_default_file():
                 _nodeid = self.deviceNodeComboBox.currentText()
-                _default_file = "adc_data_"+_nodeid+".csv"
+                _busid = self.deviceBusComboBox.currentText()
+                _default_file = "adc_data_"+_nodeid+"_"+_busid+".csv"
                 mainWindow.set_default_file(_default_file)
                 self.set_default_file(_default_file)
                 self.set_dir_text_box(_default_file)
             
             _nodeid = self.deviceNodeComboBox.currentText()
-            _default_file = "adc_data_"+_nodeid+".csv"
+            _busid = self.deviceBusComboBox.currentText()
+            _default_file = "adc_data_"+_nodeid+"_"+_busid+".csv"
             
             mainWindow.set_default_file(_default_file)
 
             self.deviceNodeComboBox.currentIndexChanged.connect(_set_default_file)
+            self.deviceBusComboBox.currentIndexChanged.connect(_set_default_file)
                         
             objectDictLayout = self.define_object_dict_window(connected_node = _connectedNode, mainWindow = mainWindow)
             self.tab1.setLayout(objectDictLayout) 
@@ -345,8 +363,15 @@ class MopsChildWindow(QWidget):
             trimHLayout.addWidget(trim_button)
             trimHLayout.addSpacing(500)
             
+            busHLayout = QHBoxLayout()
+            busHLayout.addWidget(busLabel)
+            busHLayout.addWidget(self.deviceBusComboBox)
+            busHLayout.addSpacing(500)
+
             tabLayout.addLayout(nodeHLayout, 1, 0)
             tabLayout.addLayout(trimHLayout, 2, 0)
+            tabLayout.addLayout(busHLayout, 3, 0)            
+            
             HBox = QHBoxLayout()
             send_button = QPushButton("run ")
             send_button.setIcon(QIcon(icon_location+'icon_start.png'))
@@ -394,8 +419,8 @@ class MopsChildWindow(QWidget):
         self.monValueBox = self.monitoring_values_window()
         self.confValueBox  =  self.configuration_values_window()
         
-        tabLayout.addWidget(self.devicetTabs, 3, 0)
-        tabLayout.addLayout(HLayout, 4, 0)
+        tabLayout.addWidget(self.devicetTabs, 4, 0)
+        tabLayout.addLayout(HLayout, 5, 0)
         mainLayout.addWidget(self.ADCGroupBox      , 0, 0, 4, 2)
         mainLayout.addWidget(self.deviceInfoGroupBox , 0, 3, 1, 2)
         mainLayout.addWidget(self.ThirdGroupBox      , 1, 3, 2, 2) 
@@ -628,56 +653,6 @@ class MopsChildWindow(QWidget):
                 a = a + 1
         self.ThirdGroupBox.setLayout(ThirdGridLayout)
         return self.confValueBox       
-        
-    #
-    # def read_adc_channels(self):
-    #     _dictionary = self.__dictionary_items
-    #     _adc_indices = list(self.__adc_index)
-    #     for i in np.arange(len(_adc_indices)):
-    #         _subIndexItems = list(AnalysisUtils().get_subindex_yaml(dictionary=_dictionary, index=_adc_indices[i], subindex="subindex_items"))
-    #         _start_a = 3  # to ignore the first subindex it is not ADC
-    #
-    #         for subindex in np.arange(_start_a, len(_subIndexItems) + _start_a - 1):
-    #             s = subindex - _start_a
-    #             adc_value = np.random.randint(0,100)
-    #             self.channelValueBox[s].setText(str(adc_value))   
-    #             if self.trendingBox[s] == True:
-    #                 if len(self.x[s]) >= 10:# Monitor a window of 100 points is enough to avoid Memory issues 
-    #                     self.DataMonitoring.reset_data_holder(adc_value,s) 
-    #                 self.DataMonitoring.update_figure(data=adc_value, subindex=subindex, graphWidget = self.graphWidget[s])     
-    #         #This will be used later for limits 
-    #         if adc_value <=95:
-    #             self.channelValueBox[s].setStyleSheet("color: black;")
-    #         else:
-    #             self.channelValueBox[s].setStyleSheet(" background-color: red;")  
-    #
-    #     try:                        
-    #         for c in np.arange(len(self.confValueBox)):
-    #             adc_value = np.random.randint(0,100)
-    #             self.confValueBox[c].setText(str(adc_value))      
-    #
-    #             #This will be used later for limits 
-    #             if adc_value <=95:
-    #                 self.confValueBox[c].setStyleSheet("color: black;")
-    #             else:
-    #
-    #                 self.confValueBox[c].setStyleSheet(" background-color: red;")
-    #
-    #     except:
-    #         pass          
-        #
-        # try:    
-        #     for m in np.arange(len(self.monValueBox)):
-        #         adc_value = np.random.randint(0,100)
-        #         self.monValueBox[m].setText(str(adc_value))
-        #         #This will be used later for limits 
-        #         if adc_value <=95:
-        #             self.monValueBox[m].setStyleSheet("color: black;")
-        #         else:
-        #
-        #             self.monValueBox[m].setStyleSheet(" background-color: red;")
-        # except:
-        #     pass      
 
     def set_default_file(self,x):
         self.__default_file = x

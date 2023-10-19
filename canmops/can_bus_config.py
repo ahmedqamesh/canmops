@@ -21,7 +21,8 @@ except:
 
 config_file = "socketcan_CANSettings.yml"
 rootdir = os.path.dirname(os.path.abspath(__file__))
-config_dir = "config_files"
+#config_dir = "config_files"
+config_dir = "config_files/"
 lib_dir = rootdir[:-8]
 class CanConfig(WATCHCan):
     """description of class"""
@@ -29,7 +30,7 @@ class CanConfig(WATCHCan):
 
         WATCHCan.__init__(self)
         self._file = file
-        self._directory = directory
+        self._directory = lib_dir+"/"+directory
         #self.logger = logging.getLogger('CAN config')
         self.logger = Logger().setup_main_logger(name = "CAN Config ",console_loglevel=logging.INFO, logger_file = False)
         

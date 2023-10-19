@@ -210,7 +210,7 @@ class CanWrapper(object):#READSocketcan):#Instead of object
                 self.logger_file.info(f'{self.__interface}: Using {self.ch1.channel_info}, Bitrate:{self.__bitrate}') 
                 return f'Using {self.ch1.channel_info}, Bitrate:{self.__bitrate}'
                     
-    async def  confirm_nodes(self, channel=0, timeout=200,nodeIds = ["1","2"], trim = False):
+    async def  confirm_nodes(self, channel=0, timeout=200,nodeIds = ["1","2"], trim = False, busId = 0):
         _nodeIds = nodeIds 
         self.set_nodeList(_nodeIds)
         if trim: pass
@@ -220,17 +220,20 @@ class CanWrapper(object):#READSocketcan):#Instead of object
                 # Send the status message
                 cobid_TX = 0x700 + int(nodeId,16)
                 #cobid_RX = 0x700 + int(nodeId,16)
-                await self.write_can_message(cobid_TX, [0, 0, 0, 0, 0, 0, 0, 0], flag=0, timeout=timeout)
+                await self.write_can_message(cobid_TX, [0, 0, 0, 0, 0, 0, 0, busId], flag=0, timeout=timeout)
                 # receive the message
+                
                 readCanMessage = self.read_can_message()
-                response = all(x is None for x in readCanMessage) 
-                if not response:
-                    cobid_RX, data, _, _, _, _ = readCanMessage
-                    if cobid_RX == cobid_TX and (data[0] == 0x85 or data[0] == 0x05):
+                response = all(x is None for x in readCanMessage[0:2]) 
+                if response:
+                   #await self.write_can_message(0x0, [0, 0, 0, 0, 0, 0, 0, busId], flag=0, timeout=timeout)
+                   #self.logger.info(f'Sending a restart Message to bus {busId}')
+                   self.logger.error(f'Connection to MOPS with nodeId {nodeId} in channel {channel} failed')
+                else:
+                    if readCanMessage[0] == cobid_TX and (readCanMessage[1][0] == 0x85 or readCanMessage[1][0] == 0x05):
                         self.logger.info(f'Connection to MOPS with nodeId {nodeId} in channel {channel} has been '
                                          f'verified.')
-                else:
-                   self.logger.error(f'Connection to MOPS with nodeId {nodeId} in channel {channel} failed')
+                   
 
     async def trim_nodes(self, channel=0, timeout=200):
         self.logger.notice(f'Start Trimming MOPS in channel {channel} ...')

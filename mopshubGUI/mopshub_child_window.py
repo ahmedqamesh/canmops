@@ -18,6 +18,7 @@ from canmopsGUI          import menu_window, mops_child_window,data_monitoring
 from canmops.analysis       import Analysis
 from canmops.logger_main    import Logger 
 from canmops.analysis_utils  import AnalysisUtils
+from canmops.can_wrapper_main     import CanWrapper
     #from canmops.mops_readout_thread import READMops
 #except:
 #    pass
@@ -42,10 +43,12 @@ class mopshubWindow(QWidget):
     def update_opcua_config_box(self):
         self.conf_cic = AnalysisUtils().open_yaml_file(file=config_dir + "mopshub_config.yaml", directory=lib_dir)
         self.__CrateID = self.conf_cic["Crate ID"]
-        self.__cic_num = len(self.conf_cic["CIC"])
+        self.__cic_num = len(self.conf_cic["MOPSHUB"])
         
-    def Ui_ApplicationWindow(self):
+    def Ui_ApplicationWindow(self,mainWindow):
+        self.mainWindow = mainWindow
         self.mopshubWindow = QMainWindow()
+        
         self.mopshub_window(childWindow=self.mopshubWindow)
         #self.adjustSize()
         self.mopshubWindow.show()
@@ -78,8 +81,112 @@ class mopshubWindow(QWidget):
         msg = "CIC " + str(cic)+ ", MOPS: " + str(mops)+ ", Port " + str(port)
         self.logger.notice("Reading ADC data [%s]"%msg)
         self.ADCDummytimer[int(cic)][int(port)][int(mops)].setInterval(period)
-        self.ADCDummytimer[int(cic)][int(port)][int(mops)].timeout.connect(lambda: self.update_adc_channels_random(int(cic),int(port),int(mops)))
+        self.ADCDummytimer[int(cic)][int(port)][int(mops)].timeout.connect(lambda: self.update_mopshub_adc_channels(int(cic),int(port),int(mops)))
         self.ADCDummytimer[int(cic)][int(port)][int(mops)].start()
+
+    def update_mopshub_adc_channels(self,c,b,m):
+        #gc.collect() 
+        _dictionary = self.__dictionary_items
+        _adc_indices = list(self.__adc_index)
+        _adc_channels_reg = self.mainWindow.get_adc_channels_reg()
+        self.csv_writer = csv.writer(self.out_file_csv[c][b][m])
+        #data_point = [0] * 33
+        for i in np.arange(len(_adc_indices)):
+            _subIndexItems = list(AnalysisUtils().get_subindex_yaml(dictionary=_dictionary, index=_adc_indices[i], subindex="subindex_items"))
+            self.mainWindow.set_index(_adc_indices[i]) 
+            #adc_converted = []
+            _start_a = 3  # to ignore the first subindex it is not ADC
+            for subindex in np.arange(_start_a, len(_subIndexItems) + _start_a - 1):
+                s = subindex - _start_a
+                s_correction = subindex - 2
+                self.mainWindow.set_subIndex(_subIndexItems[s_correction])
+                # read SDO UHAL messages
+                #data_point, reqmsg, requestreg, respmsg,responsereg , status = self.read_sdo_uhal(c,b,m) #np.random.randint(0,100)     
+                data_point =  self.mainWindow.read_sdo_can()  # _thread(print_sdo=False) #
+                reqmsg, requestreg, respmsg,responsereg , status = None, None,None,None
+                #data_point = "(c%s|b%s|m%s|s%s)"%(c,b,m,s)   
+                ts = time.time()
+                adc_converted = None
+                if data_point is not None: 
+                    adc_converted = Analysis().adc_conversion(_adc_channels_reg[str(subindex)], 
+                                                                               data_point, 
+                                                                               int(self.__resistor_ratio),
+                                                                               int(self.__ref_voltage))                   
+                    self.channelValueBox[c][b][m][s].setText(str(round(adc_converted, 3)))   
+                    #self.status_x, self.status_y = self.DataMonitoring.update_communication_status(req =int(reqmsg),res =int(respmsg), graphWidget = self.statusGraphWidget)
+                    #if len(self.status_x)>= 20: self.DataMonitoring.reset_status_data_holder(req =int(reqmsg),res =int(respmsg),graphWidget = self.statusGraphWidget) 
+                    if self.trendingBox[c][b][m][s] == True:
+                        if len(self.x[s]) >= 20:# Monitor a window of 100 points is enough to avoid Memory issues 
+                            self.DataMonitoring.reset_data_holder(adc_converted,s) 
+                        self.DataMonitoring.update_figure(data=adc_converted, subindex=subindex, graphWidget = self.graphWidget[s])
+                    #This will be used later for limits 
+                    if adc_converted >=1.5:
+                        self.update_alarm_limits(high=True, low=None, normal=None, object=self.channelValueBox[c][b][m][s]) 
+                        self.update_alarm_status(on=False, off=True, warning=False, button=self.mops_alarm_led[c][b][m],button_type = "Movie")
+                    elif (adc_converted >=0.025 and adc_converted <=0.1):
+                        self.update_alarm_limits(high=None, low=True, normal=None, object=self.channelValueBox[c][b][m][s])
+                        self.update_alarm_status(on=False, off=False, warning=True, button=self.mops_alarm_led[c][b][m],button_type = "Movie")
+                    else:
+                        self.channelValueBox[c][b][m][s].setStyleSheet("color: black;")
+                        self.update_alarm_status(on=True, off=False, warning=False, button=self.mops_alarm_led[c][b][m],button_type = "Movie")               
+                else: self.channelValueBox[c][b][m][s].setText(str(adc_converted))
+                elapsedtime = ts - self.__mon_time
+                self.csv_writer.writerow((str(elapsedtime),
+                                     str(1),
+                                     str(b),
+                                     str(self.get_nodeId(c, b, m)),
+                                     str(str(subindex)),
+                                     str(_adc_indices[i]),
+                                     str(_subIndexItems[s_correction]),
+                                     str(data_point),
+                                     str(adc_converted),
+                                     str(reqmsg),
+                                     str(requestreg), 
+                                     str(respmsg),
+                                     str(responsereg), 
+                                     status))                                    
+            self.update_mopshub_configuration_values(c,b,m)
+            self.update_mopshub_monitoring_values(c,b,m)
+            
+    def update_mopshub_configuration_values(self,c,b,m):
+        '''
+        The function will will send a CAN message to read configuration values using the function read_sdo_can and 
+         update the confValueBox in configuration_values_window.
+        The calling function is initiate_adc_timer.
+        ''' 
+        _dictionary = self.__dictionary_items
+        _conf_indices = list(self.__conf_index)                     
+        a = 0 
+        for i in np.arange(len(_conf_indices)):
+            _subIndexItems = list(AnalysisUtils().get_subindex_yaml(dictionary=_dictionary, index=_conf_indices[i], subindex="subindex_items"))
+            self.set_index(_conf_indices[i])  # set index for later usage
+            for s in np.arange(0, len(_subIndexItems)):
+                self.set_subIndex(_subIndexItems[s])
+                conf_adc_value , _, _, _,_ , _ = self.read_sdo_uhal(c,b,m) #np.random.randint(0,100)
+                #conf_adc_value= np.random.randint(0,100) #
+                self.confValueBox[c][b][m][a].setText(str(conf_adc_value))      
+                a = a + 1    
+                #time.sleep(self.__timeout)
+
+    def update_mopshub_monitoring_values(self,c,b,m):
+        '''
+        The function will will send a CAN message to read monitoring values using the function read_sdo_can and
+         update the monValueBox in monitoring_values_window.
+        The calling function is initiate_adc_timer.
+        ''' 
+        _dictionary = self.__dictionary_items                
+        _mon_indices = list(self.__mon_index)    
+        a = 0
+        for i in np.arange(len(_mon_indices)):
+            self.set_index(_mon_indices[i])  # set index for later usage
+            _subIndexItems = list(AnalysisUtils().get_subindex_yaml(dictionary=_dictionary, index=_mon_indices[i], subindex="subindex_items"))
+            for s in np.arange(0, len(_subIndexItems)):
+                self.set_subIndex(_subIndexItems[s])
+                mon_adc_value , _, _, _,_ , _ = self.read_sdo_uhal(c,b,m) #
+                #mon_adc_value = np.random.randint(0,100)
+                self.monValueBox[c][b][m][a].setText(str(mon_adc_value))
+                a = a + 1  
+                #time.sleep(self.__timeout) 
 
     def stop_adc_timer(self,cic=None, mops=None, port=None):
         '''
@@ -259,7 +366,8 @@ class mopshubWindow(QWidget):
 
     
     def def_alert_leds(self, bus_alarm=None, mops_alarm=None, cic=None, mops=None, bus = None, icon_state=False):
-        cic_num = self.__cic_num
+        cic_num = self.__cic_num+1
+        bus_num = self.__bus_num
         if mops_alarm is True:
             icon_red = icon_location+'icon_disconnected_device.png' #icon_red.gif"
             icon_green = icon_location+'icon_green.gif'
@@ -274,7 +382,7 @@ class mopshubWindow(QWidget):
         if bus_alarm is True:
             icon_red = icon_location+'icon_red.png'
             icon_green = icon_location+'icon_green.png'
-            alarm_led = [0] * cic_num
+            alarm_led = [0] * bus_num
             alarm_led[cic] = QLabel() 
             if icon_state:
                 pixmap = QPixmap(icon_green)
@@ -466,8 +574,8 @@ class mopshubWindow(QWidget):
         
     def check_mops(self, c, b, m):
         try:
-            port_num = self.conf_cic["CIC"]["CIC " + str(c)]["Port "+str(b)]["MOPS " + str(m)]["Port"]
-            if (port_num == b and self.conf_cic["CIC"]["CIC " + str(c)]["Port "+str(b)]["MOPS " + str(m)]["Status"]== True):
+            port_num = self.conf_cic["MOPSHUB"]["CIC " + str(c)]["Port "+str(b)]["MOPS " + str(m)]["Port"]
+            if (port_num == b and self.conf_cic["MOPSHUB"]["CIC " + str(c)]["Port "+str(b)]["MOPS " + str(m)]["Status"]== True):
                 status = True
             else:
                 status = False
@@ -575,12 +683,13 @@ class mopshubWindow(QWidget):
         status = self.check_mops(c=_cic_id, b=int(_port_id), m=_mops_num)
         if status:
             self.show_deviceWindow(cic=_cic_id, mops=_mops_num, port=str(_port_id)) 
+            
         else:
             msg = "CIC " + _cic_id, "MOPS " + _mops_num, "Port " + _port_id, ": Not Found"
             self.set_textBox_message(comunication_object="ErrorFrame" , msg=str(msg)) 
 
         
-    def update_adc_channels_random(self,c,b,m):
+    def update_mopshub_adc_channels_random(self,c,b,m):
         _dictionary = self.__dictionary_items
         _adc_indices = list(self.__adc_index)
         self.csv_writer = csv.writer(self.out_file_csv[c][b][m])
