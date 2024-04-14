@@ -20,6 +20,10 @@ try:
     from canmops.mops_readout_thread import READMops
 except:
     pass
+
+log_format = '%(log_color)s[%(levelname)s]  - %(name)s -%(message)s'
+log_call = Logger(log_format = log_format,name = " NET.  GUI ",console_loglevel=logging.INFO, logger_file = False)
+
 rootdir = os.path.dirname(os.path.abspath(__file__)) 
 lib_dir = rootdir[:-13]
 config_dir = "config/"
@@ -28,7 +32,7 @@ config_yaml =config_dir + "mops_config.yml"
 class MultiDeviceWindow(QWidget): 
     def __init__(self, console_loglevel=logging.INFO):
        super(MultiDeviceWindow, self).__init__(None)
-       self.logger = Logger().setup_main_logger(name=" NET.  GUI ", console_loglevel=console_loglevel)
+       self.logger = log_call.setup_main_logger()
        self.MenuBar = menu_window.MenuWindow(self)
        self.MOPSChildWindow = mops_child_window.MopsChildWindow(self, opcua_config="MOPS_Net_cfg.yaml")
        self.DataMonitoring = data_monitoring.DataMonitoring(self)

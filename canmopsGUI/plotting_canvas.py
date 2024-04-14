@@ -44,12 +44,15 @@ from PyQt5.QtWidgets import *
 from PyQt5.QtCore import *
 from matplotlib.figure import Figure
 import pandas as pd
+log_format = '%(log_color)s[%(levelname)s]  - %(name)s -%(message)s'
+log_call = Logger(log_format = log_format,name = "Plotting  GUI",console_loglevel=logging.INFO, logger_file = False)
+
 colors = ['black', 'red', '#006381', "blue", '#33D1FF', '#F5A9BC', 'grey', '#7e0044', 'orange', "maroon", 'green', "magenta", '#33D1FF', '#7e0044', "yellow"]
 an = Analysis()
 class PlottingCanvas(FigureCanvas):     
 
     def __init__(self,tests = None , console_loglevel = logging.INFO, test_file=None,name_prefix = None, plot_prefix =None):
-        self.logger = Logger().setup_main_logger(name="Plotting GUI", console_loglevel=console_loglevel)
+        self.logger = log_call.setup_main_logger()
         self.fig = Figure(dpi = 100)
         self.ax = self.fig.add_subplot(111)
         super(FigureCanvas,self).__init__(self.fig)
@@ -87,15 +90,18 @@ class PlottingCanvas(FigureCanvas):
         self.draw()
 
     def update_plot_data(self,test_file):
-        data = pd.read_csv(test_file,encoding = 'utf-8').fillna(0)
-        data.plot(ax = self.ax)
-        
-        legend = self.ax.legend(loc="upper left", prop={'size': 8})
-        legend.set_draggable(True)
-        
-        self.ax.set_xlabel('X axis', fontsize=12)
-        self.ax.set_ylabel('Y axis', fontsize=12)
-        
+        try:
+            data = pd.read_csv(test_file,encoding = 'utf-8').fillna(0)
+            data.plot(ax = self.ax)
+            
+            legend = self.ax.legend(loc="upper left", prop={'size': 8})
+            legend.set_draggable(True)
+            
+            self.ax.set_xlabel('X axis', fontsize=12)
+            self.ax.set_ylabel('Y axis', fontsize=12)
+        except:
+            self.logger.error(f"Corrupted data File: {test_file}")
+            
     def plot_adc_data(self, test_file=None, adc_value=[0]):    
         '''
         The function plots the ADC data collected over time as it is saved

@@ -11,6 +11,8 @@ from PyQt5.QtWidgets import QMainWindow
 import os
 import numpy as np
 rootdir = os.path.dirname(os.path.abspath(__file__)) 
+log_call = Logger(name = " Main  GUI ",console_loglevel=logging.INFO, logger_file = False)
+
 config_dir = "config_files/"
 lib_dir = rootdir[:-11]
 icon_location='canmopsGUI/icons/'
@@ -19,7 +21,7 @@ class MenuWindow(QWidget):
     def __init__(self, parent=main_gui_window):
         super(MenuWindow, self).__init__(parent)
         self.MainWindow = main_gui_window.MainWindow()
-        self.logger = Logger().setup_main_logger(name = " Menu  GUI ",console_loglevel=logging.INFO)
+        self.logger = log_call.setup_main_logger()
     
     def stop(self):
         return self.MainWindow.stop_server()
@@ -291,7 +293,7 @@ class MenuWindow(QWidget):
         ADCGroup= QGroupBox("ADC details")
         childWindow.setObjectName("Edit ADC settings")
         childWindow.setWindowTitle("ADC Settings")
-        def_refreshRate = conf["Application"]["refresh_rate"]
+        #def_refreshRate = conf["Application"]["refresh_rate"]
         def_adc_channels = list(conf["adc_channels_reg"]["adc_channels"])
         childWindow.setWindowIcon(QtGui.QIcon(self.__appIconDir))
         childWindow.setGeometry(200, 200, 100, 100)
@@ -376,8 +378,8 @@ class MenuWindow(QWidget):
             fullListBox.takeItem(_full)
             
         def _save_items():
-            _refreshRate = refreshLineEdit.text()
-            conf["Application"]["refresh_rate"] = _refreshRate 
+            #_refreshRate = refreshLineEdit.text()
+            #conf["Application"]["refresh_rate"] = _refreshRate 
             if (channelListBox.count() != 0 or parameterListBox.count() != 0):
                 _adc_channels = [channelListBox.item(x).text() for x in range(channelListBox.count())]
                 _parameters = [parameterListBox.item(x).text() for x in range(parameterListBox.count())]
@@ -394,14 +396,14 @@ class MenuWindow(QWidget):
         clear_button.clicked.connect(_clear_item)
        
                
-        refreshLayout = QHBoxLayout()
-        refreshLabel = QLabel()
-        refreshLabel.setText("Refresh Rate:")
-        refreshLineEdit = QLineEdit()
-        refreshLineEdit.setFixedSize(70, 25)
-        refreshLineEdit.setText(str(def_refreshRate))
-        refreshLayout.addWidget(refreshLabel)
-        refreshLayout.addWidget(refreshLineEdit)
+        # refreshLayout = QHBoxLayout()
+        # refreshLabel = QLabel()
+        # refreshLabel.setText("Refresh Rate:")
+        # refreshLineEdit = QLineEdit()
+        # refreshLineEdit.setFixedSize(70, 25)
+        # refreshLineEdit.setText(str(def_refreshRate))
+        # refreshLayout.addWidget(refreshLabel)
+        # refreshLayout.addWidget(refreshLineEdit)
          
         buttonLayout = QHBoxLayout()
         close_button = QPushButton("Close")
@@ -415,8 +417,8 @@ class MenuWindow(QWidget):
         buttonLayout.addWidget(close_button)
 
         mainLayout.addWidget(ADCGroup , 0,0)
-        mainLayout.addLayout(refreshLayout,1,0)
-        mainLayout.addLayout(buttonLayout ,2, 0)
+        #mainLayout.addLayout(refreshLayout,1,0)
+        mainLayout.addLayout(buttonLayout ,1, 0)
         ADCGroup.setLayout(adc_mainLayout)
         plotframe.setLayout(mainLayout) 
 

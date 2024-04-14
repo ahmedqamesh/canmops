@@ -44,7 +44,7 @@ async def read_adc_iterations(n_readings = 1, bus_range = [1],NodeIds = None):
     await wrapper.read_mopshub_buses(bus_range =bus_range, 
                                      file ="mops_config.yml", #Yaml configurations
                                      directory=rootdir+"/config_files", # direstory of the yaml file
-                                     nodeId = NodeIds, # Node Id
+                                     nodeIds = NodeIds, # Node Id
                                      outputname = "mopshub_data_32", # Data file name
                                      outputdir = rootdir +"/output_data", # # Data directory
                                      n_readings = n_readings) # Number of Iterations
@@ -53,7 +53,7 @@ async def read_adc_iterations(n_readings = 1, bus_range = [1],NodeIds = None):
 if __name__=='__main__':
     channel = 0
     bus = 1
-    NodeIds = [1]
+    NodeIds = [0]
     #wrapper = canWrapper.CanWrapper(interface = "AnaGate",channel = channel, load_config = True)
     wrapper = CanWrapper(interface = "socketcan",channel = channel, load_config = True)
     #wrapper =  CanWrapper(interface = "Kvaser",channel = channel, load_config = True)

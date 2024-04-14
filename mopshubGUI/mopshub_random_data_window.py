@@ -20,6 +20,9 @@ try:
     from canmops.mops_readout_thread import READMops
 except:
     pass
+
+log_call = Logger(name = "MOPS-HUB  GUI ",console_loglevel=logging.INFO, logger_file = False)
+
 rootdir = os.path.dirname(os.path.abspath(__file__)) 
 lib_dir = rootdir[:-11]
 config_dir = "config_files/"
@@ -29,7 +32,7 @@ class mopshubWindow(QWidget):
 
     def __init__(self, console_loglevel=logging.INFO):
        super(mopshubWindow, self).__init__(None)
-       self.logger = Logger().setup_main_logger(name="MOPS-HUB GUI", console_loglevel=console_loglevel)
+       self.logger = log_call.setup_main_logger()
        self.MenuBar = menu_window.MenuWindow(self)
        self.MOPSChildWindow = mops_child_window.MopsChildWindow(self, opcua_config="opcua_config.yaml")
        self.DataMonitoring = data_monitoring.DataMonitoring(self)

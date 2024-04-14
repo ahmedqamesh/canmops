@@ -7,13 +7,12 @@ try:
     from logger_main import Logger
 except:
     from .logger_main import Logger
-
-
+log_call = Logger(name = " CAN Watch ",console_loglevel=logging.INFO, logger_file = False)
 class WATCHCan(Thread):
     def __init__(self):
         Thread.__init__(self)
         self.bus_num = 2
-        self.logger_thread = Logger().setup_main_logger(name = " CAN Watch ",console_loglevel=logging.INFO, logger_file = False)
+        self.logger_thread = log_call.setup_main_logger()
         self.watchdog_notifier = Notifier(["restart bus_channel"])
         self.running = True
         self.logger_thread.notice(f"Start a CAN bus thread")

@@ -1,13 +1,11 @@
 Hardware:
   resistor_ratio: '1'
   ref_voltage: 1.226
-  
 Application:
-  chipId: '5'
+  chipId: '1'
   device_name: MOPS
   device_version: v1.2
   icon_dir: canmopsGUI/icons/icon_mops.png
-  refresh_rate: 100
   index_items:
     '0x1000':
       description_items: <html><b> Device type</b> [Default 191(hex)]</b></html>
@@ -118,10 +116,7 @@ Application:
         1F: <html><u>subindex 1F</u>:Ch33</html>
         '20': <html><u>subindex 20</u>:Ch34</html>
   nodeIds:
-  - '0'
-  - '1'
-  - '2'
-
+  - '3'
 adc_channels_reg:
   adc_channels:
     '3': T

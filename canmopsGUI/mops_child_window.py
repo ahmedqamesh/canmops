@@ -13,6 +13,8 @@ import os
 import binascii
 import yaml
 import logging
+log_call = Logger(name = " MOPS  GUI ",console_loglevel=logging.INFO, logger_file = False)
+
 rootdir = os.path.dirname(os.path.abspath(__file__)) 
 lib_dir = rootdir[:-11]
 config_dir = "config_files/"
@@ -22,7 +24,8 @@ class MopsChildWindow(QWidget):
 
     def __init__(self, parent=None,console_loglevel=logging.INFO,opcua_config = "opcua_config.yaml"):
        super(MopsChildWindow, self).__init__(parent)
-       self.logger = Logger().setup_main_logger(name=" MOPS GUI ", console_loglevel=console_loglevel)
+       self.logger = log_call.setup_main_logger()
+       
        dev = AnalysisUtils().open_yaml_file(file=config_yaml, directory=lib_dir)
        self.configure_devices(dev)
        max_mops_num = 4
@@ -82,11 +85,12 @@ class MopsChildWindow(QWidget):
         self.__mon_index = dev["adc_channels_reg"]["mon_index"] 
         self.__conf_index = dev["adc_channels_reg"]["conf_index"] 
         self.__resistor_ratio = dev["Hardware"]["resistor_ratio"]
-        self.__refresh_rate = dev["Application"]["refresh_rate"] #millisecondsrefresh_rate
         self.__ref_voltage = dev["Hardware"]["ref_voltage"] 
         return  self.__deviceName, self.__version, self.__appIconDir,self.__nodeIds, self.__dictionary_items, self.__adc_channels_reg,\
-            self.__adc_index, self.__chipId, self.__index_items, self.__conf_index, self.__mon_index, self.__resistor_ratio, self.__refresh_rate, self.__ref_voltage
-               
+            self.__adc_index, self.__chipId, self.__index_items, self.__conf_index, self.__mon_index, self.__resistor_ratio, self.__ref_voltage
+
+
+                   
     def update_device_box(self,device = "None",mainWindow = None):
         '''
         The function Will update the configured device section with the registered devices according to the file main_cfg.yml
@@ -118,7 +122,7 @@ class MopsChildWindow(QWidget):
             pass         
         
         return  self.__deviceName, self.__version, self.__appIconDir,self.__nodeIds, self.__dictionary_items, self.__adc_channels_reg,\
-            self.__adc_index, self.__chipId, self.__index_items, self.__conf_index, self.__mon_index, self.__resistor_ratio, self.__refresh_rate, self.__ref_voltage  
+            self.__adc_index, self.__chipId, self.__index_items, self.__conf_index, self.__mon_index, self.__resistor_ratio, self.__ref_voltage  
 
     
                              
@@ -154,6 +158,8 @@ class MopsChildWindow(QWidget):
             mainWindow.set_bytes([0, 0, 0, 0, 0, 0, 0, int(_busid)]) 
             self.logger.info("Resetting the %s device with a cobid of %s" % (mainWindow.get_deviceName(), str(_cobid)))
             mainWindow.write_can_message()
+
+            
                     
         def __get_subIndex_description(): 
             dictionary = self.__dictionary_items
@@ -206,15 +212,38 @@ class MopsChildWindow(QWidget):
         restartButton.setIcon(QIcon(icon_location+'icon_restart.png'))
         restartButton.setStatusTip('Restart the chip [The %s chip should reply back with a cobid 0x00]' % mainWindow.get_deviceName())
         restartButton.clicked.connect(__restart_device)
+
+
+        trim_button = QPushButton("")
+        trim_button.setIcon(QIcon(icon_location+'icon_trim.png'))
+        trim_button.setStatusTip('Trim the chip [The %s chip will receive the trimming Pattern cobeid 0x555]' % mainWindow.get_deviceName())
+        trim_button.clicked.connect(mainWindow.trim_nodes)        
+       
+
+            
+                    
+        labelVLayout = QVBoxLayout()
+        self._wait_label = QLabel()
+        alarm_led = QMovie(icon_location+"icon_yellow.gif")    
+        alarm_led.setScaledSize(QSize().scaled(50, 50, Qt.KeepAspectRatio))
+        
+        self._wait_label.setMovie(alarm_led)
+        alarm_led.start()
+        
+        labelVLayout.addWidget(self._wait_label)
+        self._wait_label.setVisible(False)
         
         BottonHLayout.addWidget(startButton)
         BottonHLayout.addWidget(resetButton)
         BottonHLayout.addWidget(restartButton)
+        BottonHLayout.addWidget(trim_button)
         
         firstVLayout = QVBoxLayout()
         firstVLayout.addWidget(self.deviceInfoGroupBox)        
         firstVLayout.addLayout(BottonHLayout)
-        firstVLayout.addSpacing(400)
+        #firstVLayout.addLayout(labelVLayout)
+        firstVLayout.addSpacing(500)
+        
         VLayout = QVBoxLayout()
         self.indexTextBox = QTextEdit()
         self.indexTextBox.setStyleSheet("background-color: white; border: 2px inset black; min-height: 150px; min-width: 400px;")
@@ -246,9 +275,10 @@ class MopsChildWindow(QWidget):
         GridLayout.addWidget(self.IndexListBox, 1, 1)
         GridLayout.addWidget(self.subIndexListBox, 1, 2)
         GridLayout.addLayout(VLayout, 0, 3, 0, 4)
-        return GridLayout
+
+        return GridLayout, self._wait_label
                                 
-    def device_child_window(self, childWindow,device_config =None,  device = "mops", cic = None, port = None , mops = None, mainWindow = None, readout_thread = None,mopshub_mode = None): 
+    def device_child_window(self, childWindow,device_config =None,  device = "mops", cic = None, port = None , mops = None, mainWindow = None, readout_thread = None,mopshub_mode = None,mopshub_communication_mode = None): 
         '''
         The function will Open a special window for the device [MOPS] .
         The calling function for this is show_deviceWindow
@@ -261,6 +291,7 @@ class MopsChildWindow(QWidget):
             self.MenuBar.create_device_menuBar(childWindow,device_config)
             
         self.DataMonitoring = data_monitoring.DataMonitoring(self)    
+        _spacing = 400
         if device:
             _device_name = device
         else:
@@ -273,6 +304,9 @@ class MopsChildWindow(QWidget):
         childWindow.setWindowTitle("Device Window [ " + _device_name + "]")
         childWindow.setWindowIcon(QtGui.QIcon(self.__appIconDir))
         childWindow.setGeometry(1175, 10, 200, 770)
+        childWindow.setFixedSize(750, 850)#x,y
+        #childWindow.setFixedSize(childWindow.size())
+        #childWindow.adjustSize()
         logframe = QFrame()
         logframe.setLineWidth(0.6)
         mainLayout = QGridLayout()    
@@ -301,13 +335,7 @@ class MopsChildWindow(QWidget):
             for item in list(map(str, nodeItems)): self.deviceNodeComboBox.addItem(item)
             
             _connectedNode = self.deviceNodeComboBox.currentText()
-            
-            trimLabel = QLabel()
-            trimLabel.setText("Trim bus :")
-            trim_button = QPushButton("")
-            trim_button.setIcon(QIcon(icon_location+'icon_trim.png'))
-            trim_button.clicked.connect(mainWindow.trim_nodes)        
-            
+
             busLabel = QLabel()
             busLabel.setText("Connected bus :")
             self.deviceBusComboBox = QComboBox()
@@ -351,26 +379,22 @@ class MopsChildWindow(QWidget):
             self.deviceNodeComboBox.currentIndexChanged.connect(_set_default_file)
             self.deviceBusComboBox.currentIndexChanged.connect(_set_default_file)
                         
-            objectDictLayout = self.define_object_dict_window(connected_node = _connectedNode, mainWindow = mainWindow)
+            objectDictLayout, self._wait_label = self.define_object_dict_window(connected_node = _connectedNode, mainWindow = mainWindow)
             self.tab1.setLayout(objectDictLayout) 
             nodeHLayout = QHBoxLayout()
             nodeHLayout.addWidget(nodeLabel)
             nodeHLayout.addWidget(self.deviceNodeComboBox)
-            nodeHLayout.addSpacing(500)
-            
-            trimHLayout = QHBoxLayout()
-            trimHLayout.addWidget(trimLabel)
-            trimHLayout.addWidget(trim_button)
-            trimHLayout.addSpacing(500)
+            nodeHLayout.addSpacing(_spacing)
+                        
+
             
             busHLayout = QHBoxLayout()
             busHLayout.addWidget(busLabel)
             busHLayout.addWidget(self.deviceBusComboBox)
-            busHLayout.addSpacing(500)
+            busHLayout.addSpacing(_spacing)
 
             tabLayout.addLayout(nodeHLayout, 1, 0)
-            tabLayout.addLayout(trimHLayout, 2, 0)
-            tabLayout.addLayout(busHLayout, 3, 0)            
+            tabLayout.addLayout(busHLayout, 2, 0)            
             
             HBox = QHBoxLayout()
             send_button = QPushButton("run ")
@@ -409,9 +433,7 @@ class MopsChildWindow(QWidget):
             close_button.clicked.connect(lambda: mainWindow.stop_adc_timer(cic = cic, port = port , mops = mops))
             close_button.clicked.connect(childWindow.close)
 
-
-
-        HLayout.addSpacing(350)
+        HLayout.addSpacing(_spacing)
         HLayout.addWidget(close_button)
         # Add Adc channels tab [These values will be updated with the timer self.initiate_adc_timer]
         _adc_channels_reg = self.__adc_channels_reg
@@ -430,7 +452,7 @@ class MopsChildWindow(QWidget):
         self.tab2.setLayout(mainLayout)
         self.MenuBar.create_statusBar(childWindow)
         logframe.setLayout(tabLayout)
-        return self.channelValueBox, self.trendingBox , self.monValueBox , self.confValueBox, self.progressBar
+        return self.channelValueBox, self.trendingBox , self.monValueBox , self.confValueBox, self.progressBar, self._wait_label
 
     def device_info_box(self, device = None, cic = None, port = None , mops = None, data_file = None):
         '''
@@ -438,15 +460,8 @@ class MopsChildWindow(QWidget):
         '''
         # Define subGroup
         self.deviceInfoGroupBox = QGroupBox()
-        deviceInfoGridLayout = QGridLayout()
-        # Icon
-        iconLayout = QHBoxLayout()
-        icon = QLabel(self)
-        pixmap = QPixmap(icon_location+'icon_mops.png')
-        icon.setPixmap(pixmap.scaled(100, 100))
-        iconLayout.addSpacing(50)
-        iconLayout.addWidget(icon)    
-        
+        deviceInfoGridLayout = QGridLayout()  
+        _spacing = 1       
         # CIC Name
         if cic is not None:
             cicLayout = QHBoxLayout()
@@ -505,11 +520,11 @@ class MopsChildWindow(QWidget):
             dataLayout = QHBoxLayout()
             SaveDirLabel = QLabel()
             SaveDirLabel.setText("Data Output File")
-            
+            _spacing = 50
             self.SaveDirTextBox = QLineEdit()           
             self.SaveDirTextBox.setStyleSheet("background-color: lightgray; border: 1px inset black;")
             self.SaveDirTextBox.setReadOnly(True)
-            self.SaveDirTextBox.setFixedWidth(80)   
+            self.SaveDirTextBox.setFixedWidth(_spacing+30)   
             self.SaveDirTextBox.setText(str(data_file))   
             self.saveDirCheckBox = QCheckBox("")
             self.saveDirCheckBox.setChecked(True)
@@ -520,7 +535,16 @@ class MopsChildWindow(QWidget):
             dataLayout.addWidget(self.saveDirCheckBox)  
             deviceInfoGridLayout.addLayout(deviceLayout, 1, 0)
             deviceInfoGridLayout.addLayout(dataLayout, 6, 0)
-                    
+        
+
+        # Icon
+        iconLayout = QHBoxLayout()
+        icon = QLabel(self)
+        pixmap = QPixmap(icon_location+'icon_mops.png')
+        icon.setPixmap(pixmap.scaled(100, 100))
+        iconLayout.addSpacing(_spacing)
+        iconLayout.addWidget(icon)  
+                            
         # Chip ID
         chipLayout = QHBoxLayout()
         chipIdLabel = QLabel()
@@ -669,7 +693,7 @@ class EventTimer(QWidget):
     def __init__(self,parent=None,console_loglevel=logging.INFO):
         super(EventTimer, self).__init__(parent)
         """:obj:`~logging.Logger`: Main logger for this class"""
-        self.logger = Logger().setup_main_logger(name=" Timer Init ", console_loglevel=console_loglevel)
+        self.logger_timer = Logger(name=" Timer Init ", console_loglevel=console_loglevel).setup_main_logger()
 
     def initiate_timer(self, period=None):
         '''
@@ -685,7 +709,7 @@ class EventTimer(QWidget):
         '''        
         try:
             self.timer.stop()
-            self.logger.notice("Stopping %s timer..."%dut)
+            self.logger_timer.notice("Stopping %s timer..."%dut)
         except Exception:
             pass
         

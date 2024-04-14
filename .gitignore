@@ -31,10 +31,7 @@ pip-delete-this-directory.txt
 nosetests.xml
 coverage.xml
 
-# Translations
 *.mo
-
-# Mr Developer
 .mr.developer.cfg
 .project
 .pydevproject
@@ -46,6 +43,10 @@ __pycashe__
 *.pot
 *.kafe
 *.vscode
-
+/canmops/output_data/*
+!/canmops/output_data/
+/canmops/log/*
+!/canmops/log/
+*__pycashe__
 # Sphinx documentation
 docs/_build/

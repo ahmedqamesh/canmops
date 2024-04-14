@@ -4,52 +4,68 @@ import time
 import datetime
 import logging
 from colorama import init
+from clint.textui import colored
 init()
 from logging.handlers import RotatingFileHandler
 import colorlog
-FORMAT = '%(log_color)s%(asctime)s - %(name)s -  [%(levelname)-7s] - %(message)s'
-FILE_FORMAT = '%(asctime)s - %(name)s -  [%(levelname)-7s] - %(message)s'
 
 class Logger(object):
 
-    def __init__(self):
-        pass
-    
-    def setup_main_logger(self, name='canmops', console_loglevel=logging.INFO, logger_file=None):
+    def __init__(self,
+                 log_format = '%(log_color)s%(asctime)s - %(name)s -  [%(levelname)-7s] - %(message)s',
+                 log_file_format = '%(asctime)s - %(name)s -  [%(levelname)-7s] - %(message)s',
+                 name=None, console_loglevel=logging.INFO, logger_file=None):
+        
+        self.log_format = log_format
+        self.log_file_format = log_file_format
+        self.console_loglevel = console_loglevel
+        self.logger_file = logger_file
+        self.name = name
+        #self.logger = self.setup_main_logger()
+        return None
+        
+
+    def setup_main_logger(self):
         # Set color  
         streamhandler = colorlog.StreamHandler(sys.stderr)
-        streamhandler.setLevel(console_loglevel)
-        logger = logging.getLogger(name)
+        streamhandler.setLevel(self.console_loglevel)
+        logger = logging.getLogger(self.name)
         formatter = self._setup_coloredlogs(logger)
         streamhandler.setFormatter(formatter)
         if not len(logger.handlers):
             # Add Logger level
-            logger.setLevel(console_loglevel)
+            logger.setLevel(self.console_loglevel)
             self._add_success_level(logger)
             self._add_notice_level(logger)
             self._add_warning_level(logger)
+            self._add_report_level(logger)
+            self._add_status_level(logger)
             # Add logger file
-            if logger_file:
-                fh = self.setup_logfile(logger_file, console_loglevel=console_loglevel, format=formatter)
+            if self.logger_file:
+                fh = self.setup_filehandler(self.logger_file, console_loglevel=logging.DEBUG, format=formatter)
                 self._add_logfiles_to(logger, fh)
             logger.propagate = False    
             logger.addHandler(streamhandler)    
         return logger
 
-    def setup_file_logger(self, name='canmops', console_loglevel=logging.INFO, logger_file=None): 
-        formatter = logging.Formatter(FILE_FORMAT)
-        logger = logging.getLogger(name)
-        logger.setLevel(console_loglevel)
+    def setup_file_logger(self,logger_file = None,console_loglevel=logging.DEBUG): 
+        formatter = logging.Formatter(self.log_file_format)
+        logger = logging.getLogger(self.name)
+        logger.setLevel(self.console_loglevel)
         self._add_success_level(logger)
         self._add_warning_level(logger) 
         self._add_notice_level(logger)
-        fh = self.setup_logfile(logger_file, console_loglevel=console_loglevel, format=formatter)
+        self._add_report_level(logger)
+        self._add_info_level(logger)
+        self._add_status_level(logger)
+        fh = self.setup_filehandler(logger_file, console_loglevel=console_loglevel, format=formatter)
         self._add_logfiles_to(logger, fh)
         logger.propagate = False
         return logger
     
-    def setup_logfile(self, filename, console_loglevel=logging.INFO, format=FORMAT):
-        fh = RotatingFileHandler(filename + 'log', backupCount=10,
+    def setup_filehandler(self, filename, console_loglevel=None, format=None):
+        #fh = logging.FileHandler(filename + 'log')
+        fh = RotatingFileHandler(filename, backupCount=10,
                                         maxBytes=10 * 1024 * 1024)
         fh.setLevel(console_loglevel)
         fh.setFormatter(format)
@@ -78,26 +94,44 @@ class Logger(object):
                 lg.removeHandler(fh)
     
     def _setup_coloredlogs(self, logger):
-        colors = {'DEBUG': 'green',
+        colors = {'DEBUG': 'bold_green',
                   'INFO': 'green',
                   'SUCCESS': 'bold_green',
                   'NOTICE':'cyan',
+                  'REPORT': 'blue',
+                  'STATUS': 'yellow',
                   'WARNING': 'white,bg_yellow',
                   'ERROR': 'white,bg_red',
                   'CRITICAL': 'bold_purple'}
-        formatter = colorlog.ColoredFormatter(FORMAT, log_colors=colors) 
+        formatter = colorlog.ColoredFormatter(self.log_format, log_colors=colors) 
         return  formatter      
     
     def _add_success_level(self, logger):
         logging.SUCCESS = 45
         logging.addLevelName(logging.SUCCESS, 'SUCCESS')
-        logger.success = lambda msg, *args, **kwargs: logger.log(logging.SUCCESS, msg, *args, **kwargs)
+        logger.success = lambda msg, *args, **kwargs: logger.log(logging.SUCCESS, colored.yellow(msg), *args, **kwargs)
     
     def _add_notice_level(self, logger):
-        logging.NOTICE = 25
-        logging.addLevelName(logging.NOTICE, 'NOTICE')
+        logging.NOTICE = 26
+        logging.addLevelName(logging.NOTICE, 'NOTICE ')
         logger.notice = lambda msg, *args, **kwargs: logger.log(logging.NOTICE, msg, *args, **kwargs)
     
+    def _add_report_level(self, logger):
+        logging.REPORT = 25
+        logging.addLevelName(logging.REPORT, 'REPORT ')
+        logger.report = lambda msg, *args, **kwargs: logger.log(logging.REPORT, colored.magenta(msg), *args, **kwargs)
+
+    def _add_info_level(self, logger):
+        logging.INFO = 20
+        logging.addLevelName(logging.INFO, 'INFO  ')
+        logger.info = lambda msg, *args, **kwargs: logger.log(logging.INFO, colored.green(msg), *args, **kwargs)
+                
+    def _add_status_level(self, logger):
+        logging.STATUS = 30
+        logging.addLevelName(logging.STATUS, 'STATUS')
+        logger.status = lambda msg, *args, **kwargs: logger.log(logging.STATUS, colored.yellow(msg), *args, **kwargs)
+                
+                    
     def _add_warning_level(self, logger):
         logging.WARNING = 35
         logging.addLevelName(logging.WARNING, 'WARNING')
@@ -105,6 +139,6 @@ class Logger(object):
         
     def _reset_all_loggers(self):
         logging.root.handlers = []
-    
+        
 if __name__ == "__main__":
     pass

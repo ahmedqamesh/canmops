@@ -13,7 +13,7 @@ lib_dir = rootdir[:-11]
 config_dir = "config_files/"
 class DesignDiagram(object):  
 
-    def __init__(self, console_loglevel=logging.INFO, file_path = None, file_name = None):
+    def __init__(self, file_path = None, file_name = None):
        super().__init__()
        if sys.platform == 'win32':
         full_path =file_path+"\\"+file_name

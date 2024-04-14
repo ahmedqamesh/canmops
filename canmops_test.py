@@ -6,11 +6,21 @@ import numpy as np
 import asyncio
 from canmops.analysis_utils import AnalysisUtils
 from canmops.can_wrapper_main   import CanWrapper
+from canmops.logger_main   import Logger
+import logging
 rootdir = os.path.dirname(os.path.abspath(__file__)) 
+sys.path.insert(0, rootdir+'/canmops')
+
+
+log_format = '%(log_color)s[%(levelname)s]  - %(name)s -%(message)s'
+log_call = Logger(log_format=log_format, name="CANMOPS Test", console_loglevel=logging.INFO, logger_file=False)
+logger = log_call.setup_main_logger()
+
+
 # All the can configurations of the CAN controller should be set first from $HOME/config/main_cfg.yml
 async def test_can_wrapper():
     # Define parameters
-    NodeIds = [0,8]
+    NodeIds = [3]
     SDO_TX = 0x600
     SDO_RX = 0x580
     index = 0x1000
@@ -34,7 +44,6 @@ async def test_can_wrapper():
     VendorId = await wrapper.read_sdo_can_thread(nodeId=NodeIds[0], 
                                                    index=0x1000,
                                                    subindex=0,
-                                                   timeout=3000,
                                                    SDO_TX=SDO_TX,
                                                    SDO_RX=SDO_RX,
                                                    cobid = SDO_TX+NodeIds[0])
@@ -46,19 +55,18 @@ async def test_can_wrapper():
 
      #Example (3): Read all the ADC channels and Save it to a file in the directory output_data
      # PS. To visualise the data, Users can use the file $HOME/test_files/plot_adc.py
-    # await wrapper.read_adc_channels(file ="mops_config.yml", #Yaml configurations
-    #                           directory=rootdir+"/config_files", # direstory of the yaml file
-    #                           nodeId = NodeIds[0], # Node Id
-    #                           outputname = "adc_data_trial", # Data file name
-    #                           outputdir = rootdir + "/output_data", # # Data directory
-    #                           n_readings = 1) # Number of Iterations  
-    # #
-    #
+    await wrapper.read_adc_channels(file ="mops_config.yml", #Yaml configurations
+                              directory=rootdir+"/config_files", # direstory of the yaml file
+                              nodeId = NodeIds[0], # Node Id
+                              outputname = "adc_data_trial", # Data file name
+                              outputdir = rootdir + "/output_data", # # Data directory
+                              n_readings = 5) # Number of Iterations  
+    
     #
     # await wrapper.read_mopshub_buses(file ="mops_config.yml", #Yaml configurations
     #                           bus_range =range(0,2),  
     #                           directory=rootdir+"/config_files", # direstory of the yaml file
-    #                           nodeId = NodeIds[0], # Node Id
+    #                           nodeIds = NodeIds[0], # Node Id
     #                           outputname = "canmops_mopshub_32bus", # Data file name
     #                           outputdir = "/home/dcs/git/mopshub-sw-kcu102/output_data", # # Data directory
     #                           n_readings = 1) # Number of Iterations  
@@ -68,7 +76,6 @@ async def test_can_wrapper():
     # VendorId_sync = await wrapper.read_sdo_can_sync(nodeId=NodeIds[0], 
     #                                                index=0x1000,
     #                                                subindex=0,
-    #                                                timeout=3000,
     #                                                SDO_TX=SDO_TX,
     #                                                SDO_RX=SDO_RX,
     #                                                cobid = SDO_TX+NodeIds[0])
@@ -81,7 +88,6 @@ async def test_can_wrapper():
     # adc_value = await wrapper.read_sdo_can(nodeId=NodeIds[0], 
     #                                             index=0x1001,
     #                                             subindex=0,
-    #                                             timeout=3000,
     #                                             bus = 1)
     # if all(m is not None for m in adc_value):
     #     print(f'Device type: {adc_value[1]:03X}')
@@ -92,19 +98,22 @@ async def test_can_wrapper():
     wrapper.stop()  
     
 if __name__=='__main__':
-    channel = 1
+    channel = 0
     #wrapper = canWrapper.CanWrapper(interface = "AnaGate",channel = channel, load_config = True, trim_mode = True)
-    wrapper = CanWrapper(interface = "socketcan",channel = channel, load_config = True, trim_mode = None)
+    wrapper = CanWrapper(interface = "socketcan",channel = channel, load_config = True, trim_mode = False)
     #wrapper =  CanWrapper(interface = "Kvaser",channel = channel, load_config = True, trim_mode = True)
     loop = asyncio.new_event_loop()
     asyncio.set_event_loop(loop)
+    #wrapper.write_can_message(0x555, [0xAA, 0xAA, 0xAA, 0xAA, 0xAA, 0xAA, 0xAA, 0xAA], flag=0, timeout=30)
     try:
         asyncio.ensure_future(test_can_wrapper())
         loop.run_forever()
     finally: 
-        #can_config.stop_channel(channel)
-        can_config.stop()
+        loop.stop()
         loop.close()
+        wrapper.stop()
 
+    logger.warning('Stopping the Loop.')
+        
     
     

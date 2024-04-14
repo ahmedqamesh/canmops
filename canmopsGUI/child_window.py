@@ -15,6 +15,8 @@ import sys
 import binascii
 import yaml
 import logging
+log_call = Logger(name = " Child  GUI ",console_loglevel=logging.INFO, logger_file = False)
+
 rootdir = os.path.dirname(os.path.abspath(__file__)) 
 lib_dir = rootdir[:-13]
 config_dir = "config/"
@@ -23,7 +25,7 @@ class ChildWindow(QtWidgets.QMainWindow):
 
     def __init__(self,parent = None, console_loglevel=logging.INFO):
        super().__init__(parent)
-       self.logger = Logger().setup_main_logger(name=" Child GUI ", console_loglevel=console_loglevel)
+       self.logger = log_call.setup_main_logger()
        self.MenuBar = menu_window.MenuWindow(self)
 
     def ip_address_window(self, childWindow):
@@ -330,18 +332,19 @@ class ChildWindow(QtWidgets.QMainWindow):
         return self.progress
         
            
-    def can_message_child_window(self, ChildWindow, od_index = None, nodeId = None, bytes = None, mainWindow = None):
-        ChildWindow.setObjectName("CAN Message")
-        ChildWindow.setWindowTitle("CAN Message")
-        ChildWindow.setGeometry(915, 490, 250, 315)
+    def can_message_child_window(self, childWindow, od_index = None, nodeId = None, bytes = None, mainWindow = None):
+        childWindow.setObjectName("CAN Message")
+        childWindow.setWindowTitle("CAN Message")
+        childWindow.setGeometry(965, 490, 250, 315)
+        childWindow.setFixedSize(250, 300)#x,y
         mainLayout = QGridLayout()
         _cobeid = int(od_index, 16) + int(nodeId, 16)
         if type(_cobeid) == int:
             _cobeid = hex(_cobeid)
         # Define a frame for that group
         plotframe = QFrame()
-        plotframe.setLineWidth(0.6)
-        ChildWindow.setCentralWidget(plotframe)
+        plotframe.setLineWidth(0.5)
+        childWindow.setCentralWidget(plotframe)
         # Define First Group
         FirstGroupBox = QGroupBox("")
         # comboBox and label for channel
@@ -395,7 +398,7 @@ class ChildWindow(QtWidgets.QMainWindow):
         
         close_button = QPushButton("close")
         close_button.setIcon(QIcon('canmopsGUI/icons/icon_close.jpg'))
-        close_button.clicked.connect(ChildWindow.close)
+        close_button.clicked.connect(childWindow.close)
 
         buttonBox.addWidget(send_button)
         buttonBox.addWidget(close_button)
@@ -405,8 +408,8 @@ class ChildWindow(QtWidgets.QMainWindow):
         mainLayout.addLayout(buttonBox , 2, 0)
 
         plotframe.setLayout(mainLayout) 
-        self.MenuBar.create_statusBar(ChildWindow)
-        QtCore.QMetaObject.connectSlotsByName(ChildWindow)
+        self.MenuBar.create_statusBar(childWindow)
+        QtCore.QMetaObject.connectSlotsByName(childWindow)
         
                
     def can_settings_child_window(self, childWindow, interfaceItems = None, channelPorts = None, mainWindow = None):
@@ -420,8 +423,8 @@ class ChildWindow(QtWidgets.QMainWindow):
         
         childWindow.setObjectName("CAN Settings")
         childWindow.setWindowTitle("CAN Settings")
-        childWindow.setGeometry(915, 10, 250, 100)
-        # childWindow.resize(250, 400)  # w*h
+        childWindow.setGeometry(965, 10, 250, 100)
+        childWindow.setFixedSize(250, 400)#x,y
         mainLayout = QGridLayout()
         _channelList = channelPorts
         # Define a frame for that group
@@ -665,10 +668,13 @@ class ChildWindow(QtWidgets.QMainWindow):
         self.activeAdcCheckBox = QCheckBox("")
         self.activeAdcCheckBox.setChecked(True)
         self.activeAdcCheckBox.toggled.connect(lambda:_activate_adc(self.activeAdcCheckBox))
-            
-        test_date =time.ctime(os.path.getmtime(test_file))
-        test_modify = time.ctime(os.path.getctime(test_file))
-
+        
+        try:    
+            test_date =time.ctime(os.path.getmtime(test_file))
+            test_modify = time.ctime(os.path.getctime(test_file))
+        except:
+           test_date = ""
+           test_modify = ""
         self.filetextbox = QLineEdit(test_file)
         self.filetextbox.setStyleSheet("background-color: lightgray; border: 1px inset black;")
         self.filetextbox.setReadOnly(True) 
@@ -737,6 +743,11 @@ class ChildWindow(QtWidgets.QMainWindow):
         
     def plot_adc_file(self,plot_prefix = "adc_data"):    
         self.filetextboxValue = self.filetextbox.text()
+        test_date =time.ctime(os.path.getmtime(self.filetextboxValue))
+        test_modify = time.ctime(os.path.getctime(self.filetextboxValue))
+        self.datetextbox.setText(test_date)
+        self.modifiedtextbox.setText(test_modify)
+            
         self.adcPlotGridLayout.removeItem(self.itemSpacer)
         #to avoid the NonType value in case the user preferred to drag and drop directly
         try:
@@ -818,7 +829,7 @@ class ChildWindow(QtWidgets.QMainWindow):
             for url in e.mimeData().urls():
                 fname = str(url.toLocalFile())
             test_file = fname
-            
+
             #Update file details into the GUI
             test_date =time.ctime(os.path.getmtime(test_file))
             test_modify = time.ctime(os.path.getctime(test_file))

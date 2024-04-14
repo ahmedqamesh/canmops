@@ -16,7 +16,6 @@ cffi
 chardet
 colorama
 coloredlogs
-conda
 cryptography
 cycler
 Cython
@@ -137,4 +136,6 @@ pyqtgraph
 PySide6
 graphviz
 QGraphViz
-
+clint
+parse
+line

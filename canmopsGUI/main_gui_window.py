@@ -24,9 +24,12 @@ from canmops.analysis       import Analysis
 from canmops.logger_main         import Logger 
 from canmops.analysis_utils  import AnalysisUtils
 from canmops.can_wrapper_main     import CanWrapper
+log_call = Logger(name = " Main  GUI ",console_loglevel=logging.INFO, logger_file = False)
+
 
 rootdir = os.path.dirname(os.path.abspath(__file__)) 
 lib_dir = rootdir[:-11]
+
 config_dir = "config_files/"
 config_yaml = config_dir + "gui_mainSettings.yml"
 icon_location = "canmopsGUI/icons/"
@@ -35,31 +38,35 @@ class MainWindow(QMainWindow):
     def __init__(self, console_loglevel=logging.INFO):
         super(MainWindow, self).__init__(None)
         """:obj:`~logging.Logger`: Main logger for this class"""
-        self.logger = Logger().setup_main_logger(name=" Main  GUI ", console_loglevel=console_loglevel)
+        self.logger = log_call.setup_main_logger()
+        
         # Start with default settings
         # Read configurations from a file    
-        self.__conf = AnalysisUtils().open_yaml_file(file=config_yaml, directory=lib_dir)
-        self.__appName = self.__conf["Application"]["app_name"] 
-        self.__appVersion = self.__conf['Application']['app_version']
-        self.__appIconDir = self.__conf["Application"]["app_icon_dir"]
-        self.__devices = self.__conf["Application"]["Devices"]
-        self.__multi_mode = self.__conf["Application"]["multi_mode"]
-        self.__mopshub_mode = self.__conf["Application"]["mopshub_mode"]
-        self.__mopshub_communication_mode = self.__conf["Application"]["mopshub_communication_mode"]
-        self.trim_mode = self.__conf["Application"]["trim_mode"] 
+        conf = AnalysisUtils().open_yaml_file(file=config_yaml, directory=lib_dir)
+        self.__appName      = conf["Application"]["app_name"] 
+        self.__devices      = conf["Application"]["Devices"]
+        self.trim_mode      = conf["Application"]["trim_mode"] 
+        self.__wait_time      = conf["Application"]["wait_time"]
+        self.__appVersion   = conf['Application']['app_version']
+        self.__appIconDir   = conf["Application"]["app_icon_dir"]
+        self.__multi_mode   = conf["Application"]["multi_mode"]
+        self.__refresh_rate = conf["Application"]["refresh_rate"] #millisecondsrefresh_rate
+        self.__mopshub_mode = conf["Application"]["mopshub_mode"]
+        self.__mopshub_communication_mode = conf["Application"]["mopshub_communication_mode"]
+
+        self.__canId_rx = 0x580
+        self.__canId_tx = 0x600        
         self.__CANID_list = ['0x600'] 
         self.__bytes = ["40", "0", "10", "0", "0", "0", "0", "0"]
         self.__interfaceItems = list(["AnaGate", "Kvaser", "socketcan"]) 
-        self.__channelPorts = list(self.__conf["channel_ports"])
-        self.__timeout = 200
-        self.__canId_rx = 0x580
-        self.__canId_tx = 0x600
+        self.__channelPorts = list(conf["channel_ports"])
         self.__interface = None
         self.__channel = None
         self.__ipAddress = None
         self.__bitrate = None
         self.__sample_point = None
         self.__deviceName = None
+        self.__adc_converted = None
         self.index_description_items = None
         self.__subIndex = None
         self.__busid = 0
@@ -550,50 +557,13 @@ class MainWindow(QMainWindow):
             deviceLabel.setText("[" + self.__devices[0] + "]")
             deviceName, version, icon_dir, nodeIds, dictionary_items, adc_channels_reg,\
             self.__adc_index, self.__chipId, self.__index_items, self.__conf_index, \
-            self.__mon_index,self.__resistor_ratio, self.__refresh_rate, self.__ref_voltage =  mops_child.update_device_box(device = self.__devices[0], mainWindow = self)
+            self.__mon_index,self.__resistor_ratio, self.__ref_voltage =  mops_child.update_device_box(device = self.__devices[0], mainWindow = self)
         
         self.set_deviceName(deviceName)
         self.configureDeviceBoxLayout.addWidget(deviceLabel)
         self.configureDeviceBoxLayout.addWidget(self.deviceButton)
         self.configureDeviceBoxGroupBox.setLayout(self.configureDeviceBoxLayout)
 
-
-    # def update_device_box(self):
-    #     '''
-    #     The function Will update the configured device section with the registered devices according to the file main_cfg.yml
-    #     '''
-    #     if self.__devices[0] == "None":
-    #         conf = self.child.open()
-    #     else:
-    #         conf = AnalysisUtils().open_yaml_file(file=config_dir + self.__devices[0] + "_cfg.yml", directory=lib_dir)
-    #     mops_child = mops_child_window.MopsChildWindow()
-    #     deviceName, version, icon_dir, nodeIds, dictionary_items, adc_channels_reg,\
-    #      self.__adc_index, self.__chipId, self.__index_items, self.__conf_index, \
-    #      self.__mon_index,self.__resistor_ratio, self.__refresh_rate, self.__ref_voltage  = mops_child.configure_devices(conf)
-    #
-
-        # Load ADC calibration constants
-        # adc_calibration = pd.read_csv(config_dir + "adc_calibration.csv", delimiter=",", header=0)
-        # condition = (adc_calibration["chip"] == chipId)
-        # chip_parameters = adc_calibration[condition]
-        # print(chip_parameters["calib_a"],chip_parameters["calib_b"] )
-        # self.__devices.append(deviceName)
-        #self.set_deviceName(deviceName)
-        # self.set_version(version)
-        # self.set_icon_dir(icon_dir)
-        # self.set_nodeList(nodeIds)
-        # self.set_dictionary_items(dictionary_items) 
-        # self.set_adc_channels_reg(adc_channels_reg)            
-        # try:
-        #     self.deviceButton.deleteLater()
-        #     self.configureDeviceBoxLayout.removeWidget(self.deviceButton)
-        #     self.deviceButton = QPushButton("")
-        #     self.deviceButton.setIcon(QIcon(self.get_icon_dir()))
-        #     self.deviceButton.clicked.connect(self.show_deviceWindow)
-        #     self.configureDeviceBoxLayout.addWidget(self.deviceButton)
-        # except:
-        #     pass
-         
     def load_settings_file(self, interface = None, channel = None):
         filename = os.path.join(lib_dir, config_dir + interface + "_CANSettings.yml")
         test_date = time.ctime(os.path.getmtime(filename))
@@ -694,7 +664,6 @@ class MainWindow(QMainWindow):
         _sjw = self.get_sjw()
         _tseg1 = self.get_tseg1()
         _tseg2 = self.get_tseg2()
-        _timeout = 500
         if _interface == "AnaGate":
              self.set_ipAddress(self.firsttextbox.text()) 
              _ipAddress = self.get_ipAddress()
@@ -717,7 +686,7 @@ class MainWindow(QMainWindow):
         _canSettings["channel" + str(_channels[0])]["tseg1"] = _tseg1
         _canSettings["channel" + str(_channels[0])]["tseg2"]=_tseg2
         _canSettings["channel" + str(_channels[0])]["ipAddress"] = str(_ipAddress)
-        _canSettings["channel" + str(_channels[0])]["timeout"] = _timeout
+        _canSettings["channel" + str(_channels[0])]["timeout"] = self.__wait_time
         
         AnalysisUtils().dump_yaml_file(directory=lib_dir, file=config_dir+_interface + "_CANSettings.yml", loaded=_canSettings)
         # Set the channel
@@ -733,7 +702,7 @@ class MainWindow(QMainWindow):
         if self.connectButton.isChecked():
             pass
         else:
-            time.sleep(2)
+            time.sleep(1)
             # Apply the settings to the main server
             self.wrapper = CanWrapper(interface=_interface,
                           bitrate=_bitrate,
@@ -833,20 +802,21 @@ class MainWindow(QMainWindow):
            b) read_monitoring_values    
            c) read_configuration_values
         """
-        try:
-            _index = int(self.get_index(), 16)
-            _subIndex = int(self.get_subIndex(), 16)
-            _nodeId = int(self.get_nodeId())
-            _interface = self.get_interface()
-            _busId = self.get_busId()
-            data_RX,_,_,_,_,_ = asyncio.run(self.wrapper.read_sdo_can(nodeId = _nodeId,index = _index, 
-                                                                      subindex = _subIndex, 
-                                                                      timeout = self.__timeout,
-                                                                      bus =  int(_busId)))
-            return data_RX
+        data_RX = None
+        #try:
+        _index = int(self.get_index(), 16)
+        _subIndex = int(self.get_subIndex(), 16)
+        _nodeId = int(self.get_nodeId())
+        _interface = self.get_interface()
+        _busId = self.get_busId()
+        data_RX,_,_,_,_,_ = asyncio.run(self.wrapper.read_sdo_can(nodeId = _nodeId,
+                                                                  index = _index, 
+                                                                  subindex = _subIndex, 
+                                                                  bus =  int(_busId)))
+        return data_RX
             
-        except Exception:
-            return None
+        #except Exception:
+          #  return None
     
     def trim_nodes(self): 
          _channel = self.get_channel()
@@ -873,13 +843,12 @@ class MainWindow(QMainWindow):
         _cobid_TX = SDO_TX + _nodeId
         _busId = self.get_busId()
         _cobid_RX, data_RX = asyncio.run(self.wrapper.read_sdo_can_thread(nodeId=_nodeId,
-                                                                                  index=_index,
-                                                                                  subindex=_subIndex,
-                                                                                  timeout=self.__timeout,
-                                                                                  SDO_TX=SDO_TX,
-                                                                                  SDO_RX=SDO_RX,
-                                                                                  cobid=_cobid_TX,
-                                                                                  bus = int(_busId)))
+                                                                  index=_index,
+                                                                  subindex=_subIndex,
+                                                                  SDO_TX=SDO_TX,
+                                                                  SDO_RX=SDO_RX,
+                                                                  cobid=_cobid_TX,
+                                                                  bus = int(_busId)))
         if print_sdo == True:
             # self.control_logger.disabled = False
             self.print_sdo_can(index=_index, subIndex=_subIndex, response_from_node=data_RX, cobid_TX=_cobid_TX, cobid_RX=_cobid_RX, bus = int(_busId))
@@ -981,38 +950,27 @@ class MainWindow(QMainWindow):
         # fill the textBox     
         self.set_textBox_message(comunication_object="SDO_TX", msg=str([hex(b)[2:] for b in _bytes]), cobid=str(_cobid_TX) + " ")    
         try: 
-                # Send the can Message
-            asyncio.run(self.wrapper.write_can_message(int(_cobid_TX, 16), _bytes, flag=0, timeout=self.__timeout))
+            # Send the can Message
+            asyncio.run(self.wrapper.write_can_message(int(_cobid_TX, 16), _bytes, flag=0))
             # receive the message
             nodeList = self.get_nodeList()
+            def hideIcon():
+                # Hide the label
+                self._wait_label.setVisible(False)
+    
             if _cobid_TX == "0x00":
                 for i in np.arange(len(nodeList)):
                     self.read_can_message_thread(thread=True)
-                    #self.wrapper.restart_channel_connection()
             elif int(_cobid_TX, 16) >= 0x700:
-                self.read_can_message_thread(thread=True)
-                #self.wrapper.restart_channel_connection()
-                wait_led = self.wait_alert_leds()
-                wait_led.show()
-                time.sleep(2)
+                self._wait_label.setVisible(True)
+                self.read_can_message_thread(thread=True)       
+                timer = QTimer(self)
+                timer.singleShot(500, hideIcon)  # 3000 milliseconds (3 seconds)
+            
             else:
                 self.read_can_message_thread(thread=True)
         except Exception:
-            self.error_message(text="Make sure that the CAN interface is connected")
-            
-    def wait_alert_leds(self):
-        v = QVBoxLayout()
-        window = QWidget()
-        window.setGeometry(200, 200, 250, 250)
-        icon_red = icon_location+"icon_red_alarm.gif" #icon_red.gif"
-        wait_label = QLabel()
-        alarm_led = QMovie(icon_red)    
-        alarm_led.setScaledSize(QSize().scaled(20, 20, Qt.KeepAspectRatio))
-        alarm_led.start()
-        wait_label.setMovie(alarm_led)
-        v.addWidget(wait_label)
-        window.setLayout(v)
-        return window  
+            self.error_message(text="Make sure that the CAN interface is connected") 
         
     def read_can_message_thread(self, print_sdo=True, thread=True):
         """Read an object in a thread
@@ -1086,7 +1044,6 @@ class MainWindow(QMainWindow):
             self.adc_timer.timeout.connect(self.update_adc_channels)
             self.adc_timer.timeout.connect(self.update_monitoring_values)
             self.adc_timer.timeout.connect(self.update_configuration_values)
-            self.adc_timer.timeout.connect(self.update_progressBar)
         else:
             self.error_message("Please add an output file name")
         
@@ -1175,7 +1132,13 @@ class MainWindow(QMainWindow):
         self.x[s] = np.append(self.x[s], self.x[s][-1] + 1)  # Add a new value 1 higher than the last
         self.y[s].append(data)  # Add a new value.
         data_line.setData(self.x[s][1:], self.y[s][1:])  # Update the data line.
-         
+
+    def exit_handler(self):
+        # This function will be called on script termination
+            self.logger.warning("Script interrupted. Closing the program.")
+            self.stop()
+            sys.exit(0)
+                     
     def update_adc_channels(self):
         '''
         The function will will send a CAN message to read the ADC channels using the function read_sdo_can and
@@ -1187,47 +1150,54 @@ class MainWindow(QMainWindow):
         _adc_indices = list(self.__adc_index)
         csv_writer = writer(self.out_file_csv)  # Add contents of list as last row in the csv file
         #data_point = [0] * 33
-        for i in np.arange(len(_adc_indices)):
-            _subIndexItems = list(AnalysisUtils().get_subindex_yaml(dictionary=_dictionary, index=_adc_indices[i], subindex="subindex_items"))
-            self.set_index(_adc_indices[i])  # set index for later usage
-            #adc_converted = []
-            _start_a = 3  # to ignore the first subindex it is not ADC
-            for subindex in np.arange(_start_a, len(_subIndexItems) + _start_a - 1):
-                s = subindex - _start_a
-                s_correction = subindex - 2
-                self.set_subIndex(_subIndexItems[s_correction])
-                # read SDO CAN messages
-                data_point = self.read_sdo_can()  # _thread(print_sdo=False)
-                ts = time.time()
-                if data_point is None: 
-                    self.logger.warning("No responses in the Bus")
-                    self.stop_adc_timer()
-                    adc_converted = 0
-                    break
-                else:
-                    adc_converted = Analysis().adc_conversion(_adc_channels_reg[str(subindex)], 
-                                                                                   data_point, 
-                                                                                   int(self.__resistor_ratio),
-                                                                                   int(self.__ref_voltage))
-                elapsedtime = ts - self.__mon_time
-                # update the progression bar to show bus statistics
-                self.progressBar.setValue(subindex)    
-                csv_writer.writerow((str(round(elapsedtime, 1)),
-                                     str(self.get_channel()),
-                                     str(self.get_nodeId()),
-                                     str(subindex),
-                                     str(data_point),
-                                     str(adc_converted)))
-                if adc_converted is not None:
-                    self.channelValueBox[s].setText(str(round(adc_converted, 3)))
-                    if self.trendingBox[s] == True:
-                        # Monitor a window of 100 points is enough to avoid Memory issues
-                        if len(self.x[s]) >= 100:
-                            self.DataMonitoring.reset_data_holder(adc_converted,s)
-                        self.DataMonitoring.update_figure(data=adc_converted, subindex=subindex, graphWidget = self.graphWidget[s])
-                else:
-                    self.channelValueBox[s].setText(str(adc_converted))
-        return adc_converted
+        try:
+            for i in np.arange(len(_adc_indices)):
+                _subIndexItems = list(AnalysisUtils().get_subindex_yaml(dictionary=_dictionary, index=_adc_indices[i], subindex="subindex_items"))
+                self.set_index(_adc_indices[i])  # set index for later usage
+                _start_a = 3  # to ignore the first subindex it is not ADC
+                for subindex in np.arange(_start_a, len(_subIndexItems) + _start_a - 1):
+                    s = subindex - _start_a
+                    s_correction = subindex - 2
+                    self.set_subIndex(_subIndexItems[s_correction])
+                    # read SDO CAN messages
+                    data_point = self.read_sdo_can()  # _thread(print_sdo=False)
+                    time.sleep(self.__wait_time )
+                    ts = time.time()
+                    if data_point is None: 
+                        self.logger.warning(f"No responses in the Bus for subindex {_subIndexItems[s_correction]}")
+                        #self.stop_adc_timer()
+                        self.__adc_converted = None
+                        #break
+                    else:
+                        self.__adc_converted = Analysis().adc_conversion(_adc_channels_reg[str(subindex)], 
+                                                                                       data_point, 
+                                                                                       int(self.__resistor_ratio),
+                                                                                       int(self.__ref_voltage))
+                        self.set_adc_converted(self.__adc_converted)
+                    elapsedtime = ts - self.__mon_time
+                    # update the progression bar to show bus statistics
+                    self.progressBar.setValue(subindex)    
+                    csv_writer.writerow((str(round(elapsedtime, 1)),
+                                         str(self.get_channel()),
+                                         str(self.get_nodeId()),
+                                         str(subindex),
+                                         str(data_point),
+                                         str(self.__adc_converted)))
+                    self.out_file_csv.flush() # Flush the buffer to update the file
+                    if self.__adc_converted is not None:
+                        self.channelValueBox[s].setText(str(round(self.__adc_converted, 3)))
+                        if self.trendingBox[s] == True:
+                            # Monitor a window of 100 points is enough to avoid Memory issues
+                            if len(self.x[s]) >= 100:
+                                self.DataMonitoring.reset_data_holder(self.__adc_converted,s)
+                            self.DataMonitoring.update_figure(data=self.__adc_converted, subindex=subindex, graphWidget = self.graphWidget[s])
+                    else:
+                        self.channelValueBox[s].setText(str(self.__adc_converted))
+        except (KeyboardInterrupt):
+            #Handle Ctrl+C to gracefully exit the loop
+            self.logger.warning("User interrupted. Closing the program.")
+            sys.exit(1) 
+        return self.__adc_converted
 
     def update_monitoring_values(self):
         '''
@@ -1244,7 +1214,19 @@ class MainWindow(QMainWindow):
             for s in np.arange(0, len(_subIndexItems)):
                 self.set_subIndex(_subIndexItems[s])
                 data_point = self.read_sdo_can()  # _thread(print_sdo=False)
-                self.monValueBox[a].setText(str(Analysis().adc_conversion(adc_channels_reg = None, value = data_point)))
+                time.sleep(self.__wait_time )
+                if data_point is None: 
+                    #self.stop_adc_timer()
+                    self.__adc_converted = self.get_adc_converted()
+                    #break
+                else:
+                    self.__adc_converted = Analysis().adc_conversion(adc_channels_reg = None, 
+                                                                     value = data_point,
+                                                                     resistor_ratio = int(self.__resistor_ratio),
+                                                                     ref_voltage = int(self.__ref_voltage))
+                    self.set_adc_converted(self.__adc_converted)
+                    
+                self.monValueBox[a].setText(str(self.__adc_converted))
                 a = a + 1
       
     def update_configuration_values(self):
@@ -1262,7 +1244,19 @@ class MainWindow(QMainWindow):
             for s in np.arange(0, len(_subIndexItems)):
                 self.set_subIndex(_subIndexItems[s])
                 data_point = self.read_sdo_can()  # _thread(print_sdo=False)
-                self.confValueBox[a].setText(str(Analysis().adc_conversion(adc_channels_reg = None, value = data_point)))
+                time.sleep(self.__wait_time )
+                if data_point is None: 
+                    self.logger.warning(f"No responses in the Bus for subindex {_subIndexItems[s]}")
+                    #self.stop_adc_timer()
+                    self.__adc_converted = self.get_adc_converted()
+                    #break
+                else:
+                    self.__adc_converted = Analysis().adc_conversion(adc_channels_reg = None, 
+                                                                     value = data_point,
+                                                                     resistor_ratio = int(self.__resistor_ratio),
+                                                                     ref_voltage = int(self.__ref_voltage))
+                    self.set_adc_converted(self.__adc_converted)
+                self.confValueBox[a].setText(str(self.__adc_converted))
                 a = a + 1
     
     def error_message(self, text=False):
@@ -1354,7 +1348,7 @@ class MainWindow(QMainWindow):
         self.plotWindow = QMainWindow()
         ChildWindow = child_window.ChildWindow(parent = self.plotWindow)
         ChildWindow.plot_adc_window(adcItems=[str(k) for k in np.arange(0,35)],
-                                    name_prefix="adc_data",
+                                    name_prefix="adc__1",
                                     plot_prefix="adc_data")
         ChildWindow.show()
         
@@ -1429,7 +1423,7 @@ class MainWindow(QMainWindow):
             asyncio.run(self.wrapper.confirm_nodes(channel=int(_channel),nodeIds = _nodeItems, trim =self.trim_mode, busId = int(_busId)))
         except Exception:
             pass
-        self.channelValueBox, self.trendingBox , self.monValueBox , self.confValueBox, self.progressBar = mops_child_window.MopsChildWindow().device_child_window(childWindow=self.deviceWindow, 
+        self.channelValueBox, self.trendingBox , self.monValueBox , self.confValueBox, self.progressBar,  self._wait_label = mops_child_window.MopsChildWindow().device_child_window(childWindow=self.deviceWindow, 
                                                                                                                                                                   device =self.__deviceName,
                                                                                                                                                                   device_config =device_config,
                                                                                                                                                                   mainWindow= self,
@@ -1557,7 +1551,11 @@ class MainWindow(QMainWindow):
            
     def set_interface(self, x): 
         self.__interface = x 
-                          
+
+                           
+    def set_adc_converted(self, x):
+        self.__adc_converted = x
+        
     def set_nodeId(self, x):
         self.__nodeId = x
 
@@ -1639,7 +1637,11 @@ class MainWindow(QMainWindow):
     
     def get_deviceName(self):
         return self.__deviceName
+
+    def get_adc_converted(self):
+        return self.__adc_converted
     
+        
     def get_adc_channels_reg(self):
         return self.__adc_channels_reg
 

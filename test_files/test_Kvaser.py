@@ -4,7 +4,7 @@ from canlib import canlib, Frame
 
 # https://github.com/Kvaser/canlib-samples/blob/master/Samples/Python/canlib.py
 def set_channelConnection(channel=0,
-                 openFlags=canlib.Open.ACCEPT_VIRTUAL,
+                 openFlags=canlib.Open.EXCLUSIVE, #canlib.Open.ACCEPT_VIRTUAL,
                  bitrate=111111,#canlib.canBITRATE_125K,
                  outputControl=canlib.Driver.NORMAL,
                  sjw = 4,
@@ -32,7 +32,7 @@ index = 0x1000
 Byte0 = cmd = 0x40  # Defines a read (reads data only from the node) dictionary object in CANOPN standard
 Byte1, Byte2 = index.to_bytes(2, 'little')
 Byte3 = subindex = 0 
-frame = Frame(id_=SDO_TX + NodeIds[0], data=[Byte0, Byte1, Byte2, Byte3, 0, 0, 0, 0], flags=canlib.MessageFlag.EXT)
+frame = Frame(id_=SDO_TX + NodeIds[0], data=[Byte0, Byte1, Byte2, Byte3, 0, 0, 0, 0], flags=canlib.MessageFlag.EXT, dlc=8)
 ch0.write(frame)
 while True:
     try:

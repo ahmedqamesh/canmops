@@ -18,12 +18,15 @@ except:
     from .analysis_utils import AnalysisUtils
     from .watchdog_can_interface import WATCHCan
 
+log_call = Logger(name = "CAN Config ",console_loglevel=logging.INFO, logger_file = False)
 
-config_file = "socketcan_CANSettings.yml"
+
+
 rootdir = os.path.dirname(os.path.abspath(__file__))
-#config_dir = "config_files"
 config_dir = "config_files/"
 lib_dir = rootdir[:-8]
+config_file = "socketcan_CANSettings.yml"
+
 class CanConfig(WATCHCan):
     """description of class"""
     def __init__(self, file='socketcan_CANSettings.yml', directory=config_dir):
@@ -31,8 +34,7 @@ class CanConfig(WATCHCan):
         WATCHCan.__init__(self)
         self._file = file
         self._directory = lib_dir+"/"+directory
-        #self.logger = logging.getLogger('CAN config')
-        self.logger = Logger().setup_main_logger(name = "CAN Config ",console_loglevel=logging.INFO, logger_file = False)
+        self.logger = log_call.setup_main_logger()
         
         _canSettings = AnalysisUtils().open_yaml_file(file=self._file, directory=self._directory)
         self._can_channels = list(_canSettings)[1:]#['channel0', 'channel1']
