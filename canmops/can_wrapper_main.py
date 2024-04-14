@@ -77,6 +77,8 @@ rootdir = os.path.dirname(os.path.abspath(__file__))
 config_dir = "config_files/"
 lib_dir = rootdir[:-8]
 log_dir = os.path.join(lib_dir, 'log')
+if not os.path.exists(log_dir):
+    os.makedirs(log_dir)
 logger_file = os.path.join(log_dir, time.strftime('%Y-%m-%d_%H-%M-%S_CAN_Wrapper.log'))
 log_call = Logger(name = "CAN Wrapper",console_loglevel=logging.INFO, logger_file = False)
 
