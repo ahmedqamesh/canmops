@@ -1,3 +1,8 @@
+output_data/*
+!output_data/
+log/*
+!log/
+
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]
@@ -42,11 +47,7 @@ __pycashe__
 *.pot
 *.kafe
 *.vscode
-/canmops/output_data/*
-!/canmops/output_data/
 
-/canmops/log/*
-!/canmops/log/
 
 *__pycashe__
 # Sphinx documentation
