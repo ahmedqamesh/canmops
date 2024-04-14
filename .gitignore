@@ -1,7 +1,7 @@
-output_data/*
-!output_data/
-log/*
-!log/
+/output_data/*
+!/output_data/
+/log/*
+!/log/
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
