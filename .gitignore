@@ -39,7 +39,6 @@ coverage.xml
 *DS_Store
 __pycashe__
 .ropeproject
-*.log
 *.pot
 *.kafe
 *.vscode
