@@ -45,6 +45,7 @@ __pycashe__
 *.vscode
 /canmops/output_data/*
 !/canmops/output_data/
+
 /canmops/log/*
 !/canmops/log/
 *__pycashe__
