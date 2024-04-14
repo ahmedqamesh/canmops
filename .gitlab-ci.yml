@@ -25,7 +25,7 @@ test:software:
       - export PATH=$HOME/miniconda/bin:$PATH
       - conda init bash  # https://github.com/ContinuumIO/docker-images/issues/89
       - source ~/.bashrc  # since ==> For changes to take effect, close and re-open your current shell. <==
-      - conda activate  # to link properly to pytest
+      - conda activate  # to link properly to pytestgb
       - conda update --yes conda
       - conda install --yes python=3.9 bitarray contextlib2 cython ipython matplotlib mock nose pyqt pyserial pytables pyyaml pyzmq qtpy scipy pyqtgraph pandas numpy colorlog coloredlogs verboselogs termcolor numba lxml seaborn aenum
       - conda install -c anaconda graphviz python-graphviz
