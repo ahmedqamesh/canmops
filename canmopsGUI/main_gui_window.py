@@ -56,7 +56,7 @@ class MainWindow(QMainWindow):
 
         self.__canId_rx = 0x580
         self.__canId_tx = 0x600        
-        self.__CANID_list = ['0x600'] 
+        self.__CANID_list = ['0x600','0x700','0x000'] 
         self.__bytes = ["40", "0", "10", "0", "0", "0", "0", "0"]
         self.__interfaceItems = list(["AnaGate", "Kvaser", "socketcan"]) 
         self.__channelPorts = list(conf["channel_ports"])

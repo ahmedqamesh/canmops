@@ -231,18 +231,10 @@ class CanWrapper(object):#READSocketcan):#Instead of object
             self.logger.notice('Checking MOPS status ...')
             for nodeId in _nodeIds: 
                 # Send the status message
-                cobid_TX = 0x700 + int(nodeId,16)
-                #cobid_RX = 0x700 + int(nodeId,16)
-                await self.write_can_message(cobid_TX, [0, 0, 0, 0, 0, 0, 0, busId], flag=0)
-                # receive the message
-                
-                readCanMessage = self.read_can_message()
-                response = all(x is None for x in readCanMessage[0:2]) 
-                if response:
-                   self.logger.error(f'Connection to MOPS with nodeId {nodeId} in channel {channel} failed')
-                else:
-                    if readCanMessage[0] == cobid_TX and (readCanMessage[1][0] == 0x85 or readCanMessage[1][0] == 0x05):
-                        self.logger.info(f'Connection to MOPS with nodeId {nodeId} in channel {channel} has been '
+                cobid_TX = 0x600 + int(nodeId,16)
+                data_point, reqmsg, requestreg, respmsg,responsereg , status = await self.read_sdo_can(nodeId=int(nodeId,16), index=0x1000, subindex=0x0, bus =0)
+                if data_point is None: self.logger.error(f'Connection to MOPS with nodeId {nodeId} in channel {channel} failed')
+                else: self.logger.info(f'Connection to MOPS with nodeId {nodeId} in channel {channel} has been '
                                          f'verified.')
                    
 
@@ -505,7 +497,6 @@ class CanWrapper(object):#READSocketcan):#Instead of object
         """
         with self.lock:
             self.cnt['Residual CAN messages'] = len(self.__canMsgQueue)
-        self.logger.notice(f'Error counters: {self.cnt}')
         self.logger.warning('Stopping helper threads. This might take a '
                             'minute')
         self.logger.warning('Closing the CAN channel.')
