@@ -372,7 +372,7 @@ class MopsChildWindow(QWidget):
             
             _nodeid = self.deviceNodeComboBox.currentText()
             _busid = self.deviceBusComboBox.currentText()
-            _default_file = "adc_data_"+_nodeid+"_"+_busid+".csv"
+            _default_file = "adc_data_"+_nodeid+"_"+_busid+"_gui.csv"
             
             mainWindow.set_default_file(_default_file)
 

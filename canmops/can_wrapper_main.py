@@ -412,8 +412,13 @@ class CanWrapper(object):#READSocketcan):#Instead of object
         self.logger.info(f'No. request timeout = {self.cnt["SDO read request timeout"]}|| No. read abort {self.cnt["SDO read abort"]}')
         self.logger.notice("MOPSHUB data are saved to %s/%s" % (outputdir,outputname))
             
-
-    async def read_adc_channels(self, file, directory , nodeId, outputname, outputdir, n_readings):
+    def create_mopshub_adc_data_file(self,outputname, outputdir):
+        # Write header to the data
+        fieldnames = ['Time', 'Channel', "nodeId", "ADCChannel", "ADCData" , "ADCDataConverted"]
+        csv_writer = AnalysisUtils().build_data_base(fieldnames=fieldnames,outputname = outputname, directory = outputdir)        
+        return csv_writer
+    
+    async def read_adc_channels(self, file= None, directory= None , nodeId= None, outputdir= None, n_readings= None, csv_writer= None, csv_file = None):
         """Start actual CANopen communication
         This function contains an endless loop in which it is looped over all
         ADC channels. Each value is read using
@@ -425,36 +430,47 @@ class CanWrapper(object):#READSocketcan):#Instead of object
         _adc_channels_reg = dev["adc_channels_reg"]["adc_channels"]
         _adc_index = list(dev["adc_channels_reg"]["adc_index"])[0]
         _channelItems = [int(channel) for channel in list(_adc_channels_reg)]
-        # Write header to the data
-        fieldnames = ['Time', 'Channel', "nodeId", "ADCChannel", "ADCData" , "ADCDataConverted"]
-        csv_writer = AnalysisUtils().build_data_base(fieldnames=fieldnames,outputname = outputname, directory = outputdir)
         monitoringTime = time.time()
-        for point in np.arange(0, n_readings): 
-            # Read ADC channels
-            #pbar = tqdm(total=len(_channelItems)*100, desc="ADC channels", iterable=True)
-            for c in tqdm(np.arange(len(_channelItems))):
-                channel =  _channelItems[c]
-                subindex = channel - 2                                                                                                 
-                data_point,_,_,_,_,_ =  await self.read_sdo_can(nodeId = nodeId, 
-                                                                index = int(_adc_index, 16),
-                                                                subindex = subindex)
-                await asyncio.sleep(0.01)
-                ts = time.time()
-                elapsedtime = ts - monitoringTime
-                if data_point is not None:
-                    adc_converted = Analysis().adc_conversion(_adc_channels_reg[str(channel)], data_point)
-                    adc_converted = round(adc_converted, 3)
-                    csv_writer.writerow((str(round(elapsedtime, 1)),
-                                         str(self.get_channel()),
-                                         str(nodeId),
-                                         str(subindex),
-                                         str(data_point),
-                                         str(adc_converted)))
-                    self.logger.report(f'Got data for channel {channel}: = {adc_converted}')
-                #pbar.update(point)
-            #pbar.close()
-        self.logger.notice("ADC data are saved to %s/%s" % (outputdir,outputname))
-
+        try:
+            for point in np.arange(0, n_readings): 
+                # Read ADC channels
+                #pbar = tqdm(total=len(_channelItems)*100, desc="ADC channels", iterable=True)
+                for c in tqdm(np.arange(len(_channelItems))):
+                    channel =  _channelItems[c]
+                    subindex = channel - 2                                                                                                 
+                    data_point,_,_,_,_,_ =  await self.read_sdo_can(nodeId = nodeId, 
+                                                                    index = int(_adc_index, 16),
+                                                                    subindex = subindex)
+                    await asyncio.sleep(0.01)
+                    ts = time.time()
+                    elapsedtime = ts - monitoringTime
+                    if data_point is not None:
+                        adc_converted = Analysis().adc_conversion(_adc_channels_reg[str(channel)], data_point)
+                        adc_converted = round(adc_converted, 3)
+                        csv_writer.writerow((str(round(elapsedtime, 1)),
+                                             str(self.get_channel()),
+                                             str(nodeId),
+                                             str(subindex),
+                                             str(data_point),
+                                             str(adc_converted)))
+                        self.logger.report(f'Got data for channel {channel}: = {adc_converted}')
+                        csv_file.flush() # Flush the buffer to update the file
+        except (KeyboardInterrupt):
+            #Handle Ctrl+C to gracefully exit the loop
+            self.logger.warning("User interrupted. Closing the program.")
+            #break
+            sys.exit(1) 
+            #self.stop()
+        finally:
+            csv_writer.writerow((str(elapsedtime),
+                         str(None),
+                         str(None),
+                         str(None), 
+                         str(None), 
+                         "End of Test"))  
+        self.logger.notice("ADC data are saved to %s" % (outputdir))
+        return None
+    
     def restart_channel_connection(self, interface = None):
         """Restart |CAN| channel.
         for threaded application, busOff() must be called once for each handle. 

@@ -16,7 +16,7 @@ log_format = '%(log_color)s[%(levelname)s]  - %(name)s -%(message)s'
 log_call = Logger(log_format=log_format, name="CANMOPS Test", console_loglevel=logging.INFO, logger_file=False)
 logger = log_call.setup_main_logger()
 
-
+output_dir = rootdir+"/output_data/"
 # All the can configurations of the CAN controller should be set first from $HOME/config/main_cfg.yml
 async def test_can_wrapper():
     # Define parameters
@@ -55,11 +55,14 @@ async def test_can_wrapper():
 
      #Example (3): Read all the ADC channels and Save it to a file in the directory output_data
      # PS. To visualise the data, Users can use the file $HOME/test_files/plot_adc.py
+    csv_writer,csv_file = wrapper.create_mopshub_adc_data_file(outputname = "adc_data_trial", # Data file name
+                                                               outputdir =output_dir) # # Data directory)
     await wrapper.read_adc_channels(file ="mops_config.yml", #Yaml configurations
                               directory=rootdir+"/config_files", # direstory of the yaml file
                               nodeId = NodeIds[0], # Node Id
-                              outputname = "adc_data_trial", # Data file name
-                              outputdir = rootdir + "/output_data", # # Data directory
+                              csv_writer =csv_writer,
+                              csv_file = csv_file,
+                              outputdir = output_dir, # # Data directory
                               n_readings = 5) # Number of Iterations  
     
     #

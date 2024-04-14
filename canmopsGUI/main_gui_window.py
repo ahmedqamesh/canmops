@@ -29,10 +29,11 @@ log_call = Logger(name = " Main  GUI ",console_loglevel=logging.INFO, logger_fil
 
 rootdir = os.path.dirname(os.path.abspath(__file__)) 
 lib_dir = rootdir[:-11]
-
+output_dir = lib_dir+"/output_data/"
 config_dir = "config_files/"
 config_yaml = config_dir + "gui_mainSettings.yml"
 icon_location = "canmopsGUI/icons/"
+
 class MainWindow(QMainWindow):
 
     def __init__(self, console_loglevel=logging.INFO):
@@ -1031,13 +1032,9 @@ class MainWindow(QMainWindow):
         # A possibility to save the data into a file
         self.__default_file = self.get_default_file()
         if len(self.__default_file) != 0:
-            self.logger.notice("Preparing an output file [%s]..." % (lib_dir + "/output_data/"+self.__default_file))
-            self.out_file_csv = AnalysisUtils().open_csv_file(outname=self.__default_file[:-4], directory=lib_dir + "/output_data") 
-            
-            # Write header to the data
+            self.logger.notice("Preparing an output file [%s]..." % (output_dir+self.__default_file))
             fieldnames = ['Time', 'Channel', "nodeId", "ADCChannel", "ADCData" , "ADCDataConverted"]
-            writer = csv.DictWriter(self.out_file_csv, fieldnames=fieldnames)
-            writer.writeheader()            
+            self.csv_writer, self.out_file_csv = AnalysisUtils().build_data_base(fieldnames=fieldnames,outputname=self.__default_file[:-4], directory=output_dir)
             eventTimer = mops_child_window.EventTimer()
             self.adc_timer = eventTimer.initiate_timer()
             self.adc_timer.setInterval(int(self.__refresh_rate))
@@ -1148,7 +1145,6 @@ class MainWindow(QMainWindow):
         _adc_channels_reg = self.get_adc_channels_reg()
         _dictionary = self.__dictionary_items
         _adc_indices = list(self.__adc_index)
-        csv_writer = writer(self.out_file_csv)  # Add contents of list as last row in the csv file
         #data_point = [0] * 33
         try:
             for i in np.arange(len(_adc_indices)):
@@ -1177,7 +1173,7 @@ class MainWindow(QMainWindow):
                     elapsedtime = ts - self.__mon_time
                     # update the progression bar to show bus statistics
                     self.progressBar.setValue(subindex)    
-                    csv_writer.writerow((str(round(elapsedtime, 1)),
+                    self.csv_writer.writerow((str(round(elapsedtime, 1)),
                                          str(self.get_channel()),
                                          str(self.get_nodeId()),
                                          str(subindex),
