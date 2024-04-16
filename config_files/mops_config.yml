@@ -1,6 +1,6 @@
 Hardware:
-  resistor_ratio: '1'
-  ref_voltage: 1.226
+  resistor_ratio: 40.0
+  ref_voltage: 0.85
 Application:
   chipId: '1'
   device_name: MOPS
@@ -75,7 +75,6 @@ Application:
     '0x2310':
       description_items: <html><b> Read other monitoring values</b></html>
       subindex_items:
-        '0': <html><b>Number of entries</b></html>
         '1': <html><b>VBANDGAP</b></html>
         '2': <html><b>VCANSEN</b></html>
         '3': <html><b>VGNDSEN</b></html>

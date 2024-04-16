@@ -64,7 +64,7 @@ class mopshubWindow(QWidget):
         conf = AnalysisUtils().open_yaml_file(file=config_yaml, directory=lib_dir)
         mops_child = mops_child_window.MopsChildWindow()
         deviceName, version, icon_dir,nodeIds, self.__dictionary_items, self.__adc_channels_reg,\
-        self.__adc_index, self.__chipId, self.__index_items, self.__conf_index, self.__mon_index, self.__resistor_ratio, self.__refresh_rate, self.__ref_voltage   = mops_child.configure_devices(conf)       
+        self.__adc_index, self.__chipId, self.__index_items, self.__conf_index, self.__mon_index, self.__resistor_ratio, self.__ref_voltage   = mops_child.configure_devices(conf)       
     
     def initiate_adc_timer(self, period=None,cic=None, mops=None, port=None):
         '''

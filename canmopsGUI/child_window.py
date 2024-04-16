@@ -352,12 +352,21 @@ class ChildWindow(QtWidgets.QMainWindow):
         cobidLabel = QLabel("CAN Identifier")
         cobidLabel.setText("CAN Identifier:")
         cobidtextbox = QLineEdit(str(_cobeid))
-        FirstGridLayout.addWidget(cobidLabel, 0, 0)
-        FirstGridLayout.addWidget(cobidtextbox, 0, 1) 
+        dlcLabel = QLabel("DLC size")
+        dlcLabel.setText("DLC size:")
+        #_dlc = mainWindow.get_dlc()                   
+        dlcComboBox = QComboBox()
+        for item in np.arange(1,9): dlcComboBox.addItem(str(item))
+        dlcComboBox.setCurrentIndex(7)  # Index 7 corresponds to DLC size 8 (since indexing starts from 0)
+                
+        FirstGridLayout.addWidget(cobidLabel    , 0, 0)
+        FirstGridLayout.addWidget(cobidtextbox  , 0, 1) 
+        FirstGridLayout.addWidget(dlcLabel      , 1, 0)
+        FirstGridLayout.addWidget(dlcComboBox   , 1, 1) 
         FirstGroupBox.setLayout(FirstGridLayout) 
         
         SecondGroupBox = QGroupBox("Message Data [hex]")
-        # comboBox and label for channel
+        #comboBox and label for channel
         SecondGridLayout = QGridLayout()
         ByteList = ["Byte0 :", "Byte1 :", "Byte2 :", "Byte3 :", "Byte4 :", "Byte5 :", "Byte6 :", "Byte7 :"] 
         LabelByte = [ByteList[i] for i in np.arange(len(ByteList))]
@@ -377,6 +386,7 @@ class ChildWindow(QtWidgets.QMainWindow):
         def _set_bus():
             _cobid = cobidtextbox.text() 
             textboxValue = [ByteTextbox[i] for i in np.arange(len(ByteTextbox))]
+            current_dlc = dlcComboBox.currentText()
             
             for i in np.arange(len(ByteTextbox)):
                 textboxValue[i] = ByteTextbox[i].text()
@@ -388,8 +398,24 @@ class ChildWindow(QtWidgets.QMainWindow):
             mainWindow.set_bytes(bytes_int)
             mainWindow.set_subIndex(_subIndex)
             mainWindow.set_index(_index)
+            mainWindow.set_dlc(int(current_dlc,16))
             # self.read_sdo_can_thread()
         
+        def update_byte_textboxes(dlc_size):
+            # Convert DLC size from string to integer
+            dlc_size = int(dlc_size)
+
+            # Enable all ByteTextbox cells
+            for i in range(len(ByteTextbox)):
+                ByteTextbox[i].setEnabled(True)
+            
+            # Disable ByteTextbox cells beyond the selected DLC size
+            for i in range(dlc_size, 8):
+                ByteTextbox[i].setEnabled(False)  
+                
+        
+        dlcComboBox.activated[str].connect(update_byte_textboxes)
+                        
         buttonBox = QHBoxLayout()
         send_button = QPushButton("Send")
         send_button.setIcon(QIcon('canmopsGUI/icons/icon_true.png'))

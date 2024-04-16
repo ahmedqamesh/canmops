@@ -3,6 +3,12 @@
 echo "Initializing SocketCAN...."
 # SocketCAN script
 echo "CAN hardware OS drivers and config"
+sudo -S modprobe can
+#sudo -S modprobe systec_can
+sudo -S modprobe can-dev
+sudo -S modprobe can-raw
+sudo -S modprobe can-bcm
+sudo -S modprobe kvaser-usb
 sudo -S lsmod | grep can
 for bus in 0 1
 do
@@ -25,5 +31,6 @@ do
 	ip -details link show $CHANNEL$bus
 	echo "=========================================================="
 done
-candump -ta any -c
+"echo ============================ Dumping CAN bus traffic ============================\n"
+candump any -t A -x -c -e
 

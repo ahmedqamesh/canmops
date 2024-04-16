@@ -91,7 +91,7 @@ class PlottingCanvas(FigureCanvas):
 
     def update_plot_data(self,test_file):
         try:
-            data = pd.read_csv(test_file,encoding = 'utf-8').fillna(0)
+            data = pd.read_csv(test_file, header=1, encoding = 'utf-8').fillna(0)
             data.plot(ax = self.ax)
             
             legend = self.ax.legend(loc="upper left", prop={'size': 8})
@@ -107,7 +107,7 @@ class PlottingCanvas(FigureCanvas):
         The function plots the ADC data collected over time as it is saved
         into the file (test_file)
         '''
-        data = pd.read_csv( test_file, delimiter=",", header=0)
+        data = pd.read_csv( test_file, header = 1, delimiter=",")
         condition = (data["ADCChannel"] == adc_value)
         respondant = data[condition]
         self.logger.info("Plotting data from channel %i"%adc_value)

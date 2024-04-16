@@ -78,15 +78,14 @@ class AnalysisUtils(object):
         out_file_csv = open(filename + '.csv', 'w+')
         return out_file_csv
 
-    def build_data_base(self,fieldnames=["A","B"],outputname = False, directory = False):
+    def build_data_base(self,fieldnames=["A","B"],outputname = False, directory = False, secondary_fieldnames=False):
         out_file_csv =self.open_csv_file(outputname=outputname, directory=directory)
         
         writer = csv.DictWriter(out_file_csv, fieldnames=fieldnames)
-
-        writer.writeheader()    
-        
+         
         csv_writer = csv.writer(out_file_csv)  # , delimiter=',', quotechar='"', quoting=csv.QUOTE_MINIMAL)     
-           
+        if secondary_fieldnames: csv_writer.writerow(secondary_fieldnames)
+        writer.writeheader()     
         return csv_writer, out_file_csv 
   
     

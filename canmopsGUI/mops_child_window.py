@@ -1,5 +1,6 @@
 from matplotlib.backends.qt_compat import QtCore, QtWidgets
 from matplotlib.backends.backend_qt5agg import FigureCanvas
+from PyQt5.QtCore import QThread, pyqtSignal
 from PyQt5.QtCore    import *
 from PyQt5.QtGui     import *
 from PyQt5.QtWidgets import *
@@ -22,7 +23,7 @@ config_yaml =config_dir + "mops_config.yml"
 icon_location = "canmopsGUI/icons/"
 class MopsChildWindow(QWidget):  
 
-    def __init__(self, parent=None,console_loglevel=logging.INFO,opcua_config = "opcua_config.yaml"):
+    def __init__(self, mainWindow = None, parent=None, console_loglevel=logging.INFO,opcua_config = "opcua_config.yaml"):
        super(MopsChildWindow, self).__init__(parent)
        self.logger = log_call.setup_main_logger()
        
@@ -30,6 +31,7 @@ class MopsChildWindow(QWidget):
        self.configure_devices(dev)
        max_mops_num = 4
        max_bus_num = 4
+       self.loop_thread = LoopThread(mainWindow)
 
     def bus_child_window(self,childWindow):      
         mopsBotton = [k for k in np.arange(max_mops_num)]
@@ -47,7 +49,7 @@ class MopsChildWindow(QWidget):
                     s = m
                     mopsBotton[m] = QPushButton("  ["+str(m)+"]")
                     mopsBotton[m].setObjectName("C"+str(c)+"M"+str(m)+"P"+str(b))
-                    mopsBotton[m].setIcon(QIcon(icon_location+'icon_mops.png'))
+                    mopsBotton[m].setIcon(QIcon(self.__appIconDir))
                     mopsBotton[m].setStatusTip("CIC NO."+str(c)+" MOPS No."+str(m)+" Port No."+str(b))
                     mopsBotton[m].clicked.connect(self.cic_group_action)
                     if s < col_len:
@@ -255,7 +257,7 @@ class MopsChildWindow(QWidget):
         indexLabel.setText("   Index   ")
         self.IndexListBox = QListWidget()
         indexItems = self.__index_items
-        self.IndexListBox.setFixedWidth(70)
+        self.IndexListBox.setFixedWidth(60)
         
         for item in indexItems: self.IndexListBox.addItem(item)
         self.IndexListBox.currentItemChanged.connect(__set_index_value) 
@@ -304,7 +306,7 @@ class MopsChildWindow(QWidget):
         childWindow.setWindowTitle("Device Window [ " + _device_name + "]")
         childWindow.setWindowIcon(QtGui.QIcon(self.__appIconDir))
         childWindow.setGeometry(1175, 10, 200, 770)
-        childWindow.setFixedSize(750, 850)#x,y
+        childWindow.setFixedSize(700, 800)#x,y
         #childWindow.setFixedSize(childWindow.size())
         #childWindow.adjustSize()
         logframe = QFrame()
@@ -329,7 +331,7 @@ class MopsChildWindow(QWidget):
         
             self.tab1 = QWidget()
             nodeLabel = QLabel()
-            nodeLabel.setText("Connected nodes :")
+            nodeLabel.setText("Selected ID :")
             self.deviceNodeComboBox = QComboBox()
             mainWindow.set_nodeList(nodeItems)
             for item in list(map(str, nodeItems)): self.deviceNodeComboBox.addItem(item)
@@ -395,17 +397,21 @@ class MopsChildWindow(QWidget):
 
             tabLayout.addLayout(nodeHLayout, 1, 0)
             tabLayout.addLayout(busHLayout, 2, 0)            
+            def  start_loop():
+                self.loop_thread.start_loop()
+                self.loop_thread.start()
+                    
             
             HBox = QHBoxLayout()
             send_button = QPushButton("run ")
             send_button.setIcon(QIcon(icon_location+'icon_start.png'))
             send_button.clicked.connect(__set_bus_timer)
             send_button.clicked.connect(__check_file_box)
-            send_button.clicked.connect(mainWindow.initiate_adc_timer)
+            send_button.clicked.connect(mainWindow.initiate_adc_timer)#start_loop)#
     
             stop_button = QPushButton("stop ")
             stop_button.setIcon(QIcon(icon_location+'icon_stop.png')) 
-            stop_button.clicked.connect(mainWindow.stop_adc_timer)
+            stop_button.clicked.connect(mainWindow.stop_adc_timer)#self.loop_thread.stop_loop) #
     
             # update a progress bar for the bus statistics
             progressLabel = QLabel()
@@ -413,6 +419,7 @@ class MopsChildWindow(QWidget):
             self.progressBar = QProgressBar()
             self.progressBar.setRange(0, n_channels)
             self.progressBar.setValue(0)
+            self.progressBar.setFixedHeight(10)
             self.progressBar.setTextVisible(False)
             progressHLayout = QHBoxLayout()
             progressHLayout.addWidget(progressLabel)
@@ -421,7 +428,7 @@ class MopsChildWindow(QWidget):
             HBox.addWidget(send_button)
             HBox.addWidget(stop_button)
             mainLayout.addLayout(HBox , 5, 0)
-            mainLayout.addLayout(progressHLayout, 5, 1)
+            #mainLayout.addLayout(progressHLayout, 5, 1)
             self.devicetTabs.addTab(self.tab1, "Object Dictionary")
             self.device_info_box(device=device, cic = cic, port = port , mops = mops,data_file = _default_file)  
             close_button.clicked.connect(mainWindow.stop_adc_timer)
@@ -439,20 +446,16 @@ class MopsChildWindow(QWidget):
         _adc_channels_reg = self.__adc_channels_reg
         self.channelValueBox, self.trendingBox = self.adc_values_window(adc_channels_reg = _adc_channels_reg, mainWindow = mainWindow,cic = cic, port = port , mops = mops)
         self.monValueBox = self.monitoring_values_window()
-        self.confValueBox  =  self.configuration_values_window()
-        
+
         tabLayout.addWidget(self.devicetTabs, 4, 0)
         tabLayout.addLayout(HLayout, 5, 0)
         mainLayout.addWidget(self.ADCGroupBox      , 0, 0, 4, 2)
         mainLayout.addWidget(self.deviceInfoGroupBox , 0, 3, 1, 2)
-        mainLayout.addWidget(self.ThirdGroupBox      , 1, 3, 2, 2) 
-        mainLayout.addWidget(self.SecondGroupBox     , 3, 3, 1, 2) 
-        
-        
+        mainLayout.addWidget(self.SecondGroupBox     , 1, 3, 1, 2) 
         self.tab2.setLayout(mainLayout)
         self.MenuBar.create_statusBar(childWindow)
         logframe.setLayout(tabLayout)
-        return self.channelValueBox, self.trendingBox , self.monValueBox , self.confValueBox, self.progressBar, self._wait_label
+        return self.channelValueBox, self.trendingBox , self.monValueBox, self.progressBar, self._wait_label
 
     def device_info_box(self, device = None, cic = None, port = None , mops = None, data_file = None):
         '''
@@ -471,7 +474,7 @@ class MopsChildWindow(QWidget):
             cicTitleLabel.setText(cic)
             cicLayout.addWidget(cicLabel)
             cicLayout.addWidget(cicTitleLabel)  
-            deviceInfoGridLayout.addLayout(cicLayout, 3, 0)
+            deviceInfoGridLayout.addLayout(cicLayout, 4, 0)
         # Port Name
         if port is not None:
             portLayout = QHBoxLayout()
@@ -481,7 +484,7 @@ class MopsChildWindow(QWidget):
             portTitleLabel.setText(port)
             portLayout.addWidget(portLabel)
             portLayout.addWidget(portTitleLabel)  
-            deviceInfoGridLayout.addLayout(portLayout, 4, 0)
+            deviceInfoGridLayout.addLayout(portLayout,5, 0)
             
         # Port Name
         if mops is not None:
@@ -492,7 +495,7 @@ class MopsChildWindow(QWidget):
             mopsTitleLabel.setText(mops)
             mopsLayout.addWidget(mopsLabel)
             mopsLayout.addWidget(mopsTitleLabel)  
-            deviceInfoGridLayout.addLayout(mopsLayout, 5, 0)
+            deviceInfoGridLayout.addLayout(mopsLayout, 6, 0)
 
         # Port Name
         if data_file is not None:
@@ -501,7 +504,7 @@ class MopsChildWindow(QWidget):
             deviceTypeLabel = QLabel()
             deviceTypeLabel.setText("Device:")
             deviceTitleLabel = QLabel()
-            newfont = QFont("OldEnglish", 12, QtGui.QFont.Bold)
+            newfont = QFont("OldEnglish", 10, QtGui.QFont.Bold)
             deviceTitleLabel.setFont(newfont)
             deviceTitleLabel.setText(device)
             deviceLayout.addWidget(deviceTypeLabel)
@@ -519,12 +522,12 @@ class MopsChildWindow(QWidget):
             self.set_default_file(data_file)
             dataLayout = QHBoxLayout()
             SaveDirLabel = QLabel()
-            SaveDirLabel.setText("Data Output File")
-            _spacing = 50
+            SaveDirLabel.setText("Output File:")
+            _spacing =80
             self.SaveDirTextBox = QLineEdit()           
             self.SaveDirTextBox.setStyleSheet("background-color: lightgray; border: 1px inset black;")
             self.SaveDirTextBox.setReadOnly(True)
-            self.SaveDirTextBox.setFixedWidth(_spacing+30)   
+            self.SaveDirTextBox.setFixedWidth(120)   
             self.SaveDirTextBox.setText(str(data_file))   
             self.saveDirCheckBox = QCheckBox("")
             self.saveDirCheckBox.setChecked(True)
@@ -534,7 +537,7 @@ class MopsChildWindow(QWidget):
             dataLayout.addWidget(self.SaveDirTextBox)
             dataLayout.addWidget(self.saveDirCheckBox)  
             deviceInfoGridLayout.addLayout(deviceLayout, 1, 0)
-            deviceInfoGridLayout.addLayout(dataLayout, 6, 0)
+            deviceInfoGridLayout.addLayout(dataLayout, 7, 0)
         
 
         # Icon
@@ -542,7 +545,7 @@ class MopsChildWindow(QWidget):
         icon = QLabel(self)
         pixmap = QPixmap(icon_location+'icon_mops.png')
         icon.setPixmap(pixmap.scaled(100, 100))
-        iconLayout.addSpacing(_spacing)
+        iconLayout.addSpacing(_spacing-10)
         iconLayout.addWidget(icon)  
                             
         # Chip ID
@@ -550,13 +553,36 @@ class MopsChildWindow(QWidget):
         chipIdLabel = QLabel()
         chipIdLabel.setText("Chip Id:")
         chipIdTextBox = QLabel()
-        newfont = QFont("OldEnglish", 12, QtGui.QFont.Bold)
+        newfont = QFont("OldEnglish", 10, QtGui.QFont.Bold)
         chipIdTextBox.setFont(newfont)
-        chipIdTextBox.setText(self.__chipId)        
+        chipIdTextBox.setText(self.__chipId)   
+        
+        hardwareLayout = QGridLayout()
+        
+        
+        ResistorRatioLabel = QLabel()
+        ResistorRatioLabel.setText("R ratio:")
+        ResistorRatioLineEdit = QLabel()#QLineEdit()
+        ResistorRatioLineEdit.setText(str(self.__resistor_ratio))
+        ReferenceVoltageLabel = QLabel()
+        ReferenceVoltageLabel.setText("Vref [V]:")
+        ReferenceVoltageLineEdit = QLabel()#QLineEdit()
+        ReferenceVoltageLineEdit.setText(str(self.__ref_voltage))
+        
+        ReferenceVoltageLineEdit.setFont(newfont)
+        ResistorRatioLineEdit.setFont(newfont)
+        
+        hardwareLayout.addWidget(ResistorRatioLabel,0,0)
+        hardwareLayout.addWidget(ResistorRatioLineEdit,0,1)
+        hardwareLayout.addWidget(ReferenceVoltageLabel,1,0)
+        hardwareLayout.addWidget(ReferenceVoltageLineEdit,1,1)
+             
         chipLayout.addWidget(chipIdLabel)
         chipLayout.addWidget(chipIdTextBox)
         deviceInfoGridLayout.addLayout(iconLayout, 0, 0)
         deviceInfoGridLayout.addLayout(chipLayout, 2, 0) 
+        deviceInfoGridLayout.addLayout(hardwareLayout, 3, 0) 
+        
         self.deviceInfoGroupBox.setLayout(deviceInfoGridLayout)
         return self.deviceInfoGroupBox
         
@@ -584,7 +610,7 @@ class MopsChildWindow(QWidget):
                 self.channelValueBox[s] = QLineEdit()
                 self.channelValueBox[s].setStyleSheet("background-color: white; border: 1px inset black;")
                 self.channelValueBox[s].setReadOnly(True)
-                self.channelValueBox[s].setFixedWidth(80)
+                self.channelValueBox[s].setFixedWidth(60)
                 subindex_description_item = AnalysisUtils().get_subindex_description_yaml(dictionary=_dictionary, index=_adc_indices[i], subindex=_subIndexItems[s_correction])
                 labelChannel[s].setStatusTip('ADC channel %s [index = %s & subIndex = %s]' % (subindex_description_item[25:29],
                                                                                             _adc_indices[i],
@@ -644,40 +670,12 @@ class MopsChildWindow(QWidget):
                 self.monValueBox[s] = QLineEdit("")
                 self.monValueBox[s].setStyleSheet("background-color: white; border: 1px inset black;")
                 self.monValueBox[s].setReadOnly(True)
-                self.monValueBox[s].setFixedWidth(80)
+                self.monValueBox[s].setFixedWidth(60)
                 SecondGridLayout.addWidget(labelvalue[s], s, 0)
                 SecondGridLayout.addWidget(self.monValueBox[s], s, 1)
         self.SecondGroupBox.setLayout(SecondGridLayout)
         return self.monValueBox
     
-    def configuration_values_window(self):
-        '''
-        The function will create a QGroupBox for Configuration Values [it is called by the function device_child_window]
-        '''
-        self.ThirdGroupBox = QGroupBox("Configuration Values")
-        labelvalue = [0 for i in np.arange(8)]  # 20 is just a hypothetical number
-        self.confValueBox = [0 for i in np.arange(8)]
-        ThirdGridLayout = QGridLayout()
-        _dictionary = self.__dictionary_items
-        _conf_indices = list(self.__conf_index)
-        a = 0 
-        for i in np.arange(len(_conf_indices)):
-            _subIndexItems = list(AnalysisUtils().get_subindex_yaml(dictionary=_dictionary, index=_conf_indices[i], subindex="subindex_items"))
-            for s in np.arange(len(_subIndexItems)):
-                subindex_description_item = AnalysisUtils().get_subindex_description_yaml(dictionary=_dictionary, index=_conf_indices[i], subindex=_subIndexItems[s])
-                labelvalue[a] = QLabel()
-                labelvalue[a].setText(subindex_description_item + ":")
-                self.confValueBox[a] = QLineEdit("")
-                self.confValueBox[a].setStyleSheet("background-color: white; border: 1px inset black;")
-                self.confValueBox[a].setReadOnly(True)
-                self.confValueBox[a].setFixedWidth(80)
-                labelvalue[a].setStatusTip('%s [index = %s & subIndex = %s]' % (subindex_description_item[9:-11], _conf_indices[i], _subIndexItems[s])) 
-                ThirdGridLayout.addWidget(labelvalue[a], a, 0)
-                ThirdGridLayout.addWidget(self.confValueBox[a], a, 1)
-                a = a + 1
-        self.ThirdGroupBox.setLayout(ThirdGridLayout)
-        return self.confValueBox       
-
     def set_default_file(self,x):
         self.__default_file = x
     
@@ -727,7 +725,32 @@ class EventTimer(QWidget):
         self.timer.stop()
         self.startBtn.setEnabled(True)
         self.endBtn.setEnabled(False)
-                
+ 
+ # A thread method still under development
+class LoopThread(QThread):
+    finished = pyqtSignal()
+
+    def __init__(self, mainWindow, parent=None):
+        super().__init__(parent)
+        self.main_gui_instance = mainWindow
+        self.looping = False
+
+    def start_loop(self):
+        self.looping = True
+
+    def stop_loop(self):
+        self.looping = False
+
+    def run(self):
+        self.main_gui_instance.initiate_adc_loop()
+        while self.looping:
+            # Execute the functions
+            self.main_gui_instance.update_adc_channels()
+            self.main_gui_instance.update_monitoring_values()
+            self.main_gui_instance.update_configuration_values()
+        self.finished.emit()
+
+               
 if __name__ == "__main__":
     pass
     

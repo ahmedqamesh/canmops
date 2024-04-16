@@ -61,7 +61,7 @@ class MenuWindow(QWidget):
             
     # 1. setting menu
     def set_plotting_menu(self, menuBar, mainwindow):
-        plottingMenu = menuBar.addMenu('&plotting')
+        plottingMenu = menuBar.addMenu('&Plotting')
 
         def show_adc_plotting_window():
             self.plotWindow = QMainWindow()
@@ -77,7 +77,7 @@ class MenuWindow(QWidget):
         plottingMenu.addAction(plotADC) 
 
     def set_opcua_settings_menu(self, menuBar, mainwindow,config_yaml):      
-        settingsMenu = menuBar.addMenu('&settings')
+        settingsMenu = menuBar.addMenu('&Settings')
         #self.MainWindow.update_device_box()    
         #self.__device = device#self.MainWindow.get_deviceName()
         conf = AnalysisUtils().open_yaml_file(file= config_yaml , directory=lib_dir)
@@ -107,7 +107,7 @@ class MenuWindow(QWidget):
         settingsMenu.addAction(BrowseClient)
                 
     def set_device_settings_menu(self, menuBar, mainwindow,device_config):      
-        settingsMenu = menuBar.addMenu('&settings')
+        settingsMenu = menuBar.addMenu('&Settings')
         conf = AnalysisUtils().open_yaml_file(file=config_dir + device_config + "_config.yml" , directory=lib_dir)
         self.__appIconDir = conf["Application"]["icon_dir"]
         self.__device = conf["Application"]["device_name"].lower()
@@ -434,6 +434,7 @@ class MenuWindow(QWidget):
         childWindow.setGeometry(200, 200, 100, 100)
         def_chipId = conf["Application"]["chipId"]
         def_resistorRatio = conf["Hardware"]["resistor_ratio"]
+        def_refernceVoltage = conf["Hardware"]["ref_voltage"]
         mainLayout = QGridLayout()
         # Define a frame for that group
         plotframe = QFrame()
@@ -484,15 +485,24 @@ class MenuWindow(QWidget):
         chipLayout.addWidget(chipIdLineEdit)
         chipLayout.addSpacing(60)
 
-        hardwareLayout = QHBoxLayout()
-        hardwareLabel = QLabel()
-        hardwareLabel.setText("Resistor ratio")
-        hardwareLineEdit = QLineEdit()
+        hardwareLayout = QGridLayout()
         
-        hardwareLineEdit.setText(def_resistorRatio)
-        hardwareLayout.addWidget(hardwareLabel)
-        hardwareLayout.addWidget(hardwareLineEdit)
-                    
+        ResistorRatioLabel = QLabel()
+        ResistorRatioLabel.setText("Resistor ratio")
+        ResistorRatioLineEdit = QLineEdit()
+        ResistorRatioLineEdit.setText(str(def_resistorRatio))
+        
+        ReferenceVoltageLabel = QLabel()
+        ReferenceVoltageLabel.setText("Reference Voltage:")
+        ReferenceVoltageLineEdit = QLineEdit()
+        ReferenceVoltageLineEdit.setText(str(def_refernceVoltage))
+        
+        
+        hardwareLayout.addWidget(ResistorRatioLabel,0,0)
+        hardwareLayout.addWidget(ResistorRatioLineEdit,0,1)
+        hardwareLayout.addWidget(ReferenceVoltageLabel,1,0)
+        hardwareLayout.addWidget(ReferenceVoltageLineEdit,1,1)
+                            
         infoLayout.addLayout(iconLayout)
         infoLayout.addLayout(chipLayout)
 
@@ -506,9 +516,11 @@ class MenuWindow(QWidget):
         
         def _save_items():
             _chipId = str(chipIdLineEdit.text())
-            _resistorRatio = str(hardwareLineEdit.text())
+            _resistorRatio = str(ResistorRatioLineEdit.text())
+            ref_voltage = str(ReferenceVoltageLineEdit.text())
             conf["Application"]["chipId"] = _chipId
-            conf["Hardware"]["resistor_ratio"] = _resistorRatio
+            conf["Hardware"]["resistor_ratio"] = float(_resistorRatio)
+            conf["Hardware"]["ref_voltage"] = float(ref_voltage)
             if (nodeListBox.count() != 0):
                 _nodes = [nodeListBox.item(x).text() for x in range(nodeListBox.count())]
                 conf["Application"]["nodeIds"] = _nodes

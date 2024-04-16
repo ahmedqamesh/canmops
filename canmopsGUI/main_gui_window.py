@@ -1,5 +1,6 @@
 #from __future__ import annotations
 from matplotlib.backends.qt_compat import QtCore, QtWidgets
+
 import signal
 import time
 import sys
@@ -11,6 +12,8 @@ import numpy as np
 import pyqtgraph as pg
 import pandas as pd
 import asyncio
+import keyboard
+import atexit
 from csv                    import writer
 from PyQt5 import *
 from PyQt5.QtCore           import *
@@ -70,7 +73,13 @@ class MainWindow(QMainWindow):
         self.__adc_converted = None
         self.index_description_items = None
         self.__subIndex = None
+        self.__dlc = 8
         self.__busid = 0
+        self.rx_msgs_counter  = 0
+        self.tx_msgs_counter =0
+        self.error_frames_counter = 0
+        self.timeout_counter = 0
+        self.inactive_bus_counter = 0
         self.wrapper = None      
           
     def Ui_ApplicationWindow(self):
@@ -104,14 +113,14 @@ class MainWindow(QMainWindow):
         self.setWindowTitle(self.__appName + "_" + self.__appVersion)
         self.setWindowIcon(QtGui.QIcon(self.__appIconDir))
         #self.adjustSize()
-        self.setFixedSize(950, 850)
+        self.setFixedSize(850, 900)#x,y
         self.setGeometry(10, 10, 900, 700)
         
         logo_layout = QHBoxLayout()
         uni_logo_label = QLabel()
         pixmap = QPixmap(icon_location+"icon_wuppertal_banner.png")
-        uni_logo_label.setPixmap(pixmap.scaled(150, 50)) 
-        icon_spacer = QSpacerItem(250, 50, QtWidgets.QSizePolicy.Minimum, QtWidgets.QSizePolicy.Expanding)
+        uni_logo_label.setPixmap(pixmap.scaled(180, 70)) 
+        icon_spacer = QSpacerItem(150, 50, QtWidgets.QSizePolicy.Minimum, QtWidgets.QSizePolicy.Expanding)
         logo_layout.addItem(icon_spacer) 
         logo_layout.addWidget(uni_logo_label)    
         
@@ -120,7 +129,9 @@ class MainWindow(QMainWindow):
         self.textOutputWindow()
         self.tableOutputWindow()
         self.configure_device_box()
-        
+        self.create_bus_progress_box()
+
+            
         # Create a frame in the main menu for the gridlayout
         mainFrame = QFrame()
         mainFrame.setLineWidth(0.6)
@@ -128,9 +139,13 @@ class MainWindow(QMainWindow):
             
         # SetLayout
         mainLayout = QGridLayout()
+        mainLayout.addWidget(self.defaultSettingsGroupBox, 0, 0)
         mainLayout.addLayout(logo_layout,0,1)
-        mainLayout.addWidget(self.defaultSettingsGroupBox, 1, 0)
-        mainLayout.addWidget(self.defaultMessageGroupBox, 2, 0)  
+        mainLayout.addWidget(self.defaultMessageGroupBox, 1, 0) 
+        mainLayout.addWidget(self.defaultprogressGroupBox,2,0)
+        
+        
+         
         mainLayout.addWidget(self.textGroupBox, 1, 1, 2, 1)
         mainLayout.addWidget(self.monitorGroupBox, 3, 0, 2, 2)
         mainLayout.addWidget(self.configureDeviceBoxGroupBox, 5, 0, 1, 1)
@@ -151,6 +166,93 @@ class MainWindow(QMainWindow):
         # 3. Show
         self.show()
     
+    def create_bus_progress_box(self):
+        self.defaultprogressGroupBox = QGroupBox("Bus Statistics")      
+        # Create bus_progress_layout
+        bus_progress_layout = QGridLayout()
+
+        # Create progress bars
+        self.bus_statistics_progress = QProgressBar()
+        #self.bus_statistics_progress.setTextVisible(False)
+        self.bus_statistics_progress.setFixedHeight(10)
+        self.bus_statistics_progress.setFixedWidth(200)
+        # Create labels
+        # Initialize counters
+
+        
+        self.bus_statistics_progress_label = QLabel("Bus Status:")
+        self.tx_msgs_label = QLabel("TX Messages:")
+        self.rx_msgs_label = QLabel("RX Messages:")
+        self.error_frames_label = QLabel("Error Frames:")
+        self.timeout_label = QLabel("Timeout response:")
+        self.inactive_bus_label = QLabel("Bus passive:")
+        
+        self.rx_msgs_counter_label = QLabel(str(self.rx_msgs_counter))
+        self.tx_msgs_counter_label = QLabel(str(self.tx_msgs_counter))
+        self.error_frames_counter_label = QLabel(str(self.error_frames_counter))
+        self.timeout_counter_label = QLabel(str(self.timeout_counter))
+        self.inactive_bus_counter_label = QLabel(str(self.inactive_bus_counter))
+        
+
+        # Add progress bars and labels to layout
+        bus_progress_layout.addWidget(self.bus_statistics_progress_label,0,0)
+        bus_progress_layout.addWidget(self.bus_statistics_progress,0,1)
+        
+        bus_progress_layout.addWidget(self.tx_msgs_label,1,0)
+        bus_progress_layout.addWidget(self.tx_msgs_counter_label,1,1)
+        
+        bus_progress_layout.addWidget(self.rx_msgs_label,2,0)
+        bus_progress_layout.addWidget(self.rx_msgs_counter_label,2,1)
+        
+        bus_progress_layout.addWidget(self.error_frames_label,3,0)
+        bus_progress_layout.addWidget(self.error_frames_counter_label,3,1)
+        
+        bus_progress_layout.addWidget(self.timeout_label,4,0)
+        bus_progress_layout.addWidget(self.timeout_counter_label,4,1)
+        
+        bus_progress_layout.addWidget(self.inactive_bus_label,5,0)
+        bus_progress_layout.addWidget(self.inactive_bus_counter_label,5,1)        
+        
+        # Set bus_progress_layout
+        self.defaultprogressGroupBox.setLayout(bus_progress_layout)
+
+    def update_bus_progress(self, reset_progress =False, clear_all = False ):
+        # Update progress values based on counters
+        message_percentage = 0
+        counter = self.wrapper.cnt
+        if clear_all: 
+            self.wrapper.reset_counters()
+            self.rx_msgs_counter  = 0
+            self.tx_msgs_counter =0
+            self.error_frames_counter = 0
+            self.timeout_counter = 0   
+            self.inactive_bus_counter = 0        
+        else:
+            counter = self.wrapper.cnt
+            self.rx_msgs_counter  = counter['rx_msg']
+            self.tx_msgs_counter =counter['tx_msg']
+            self.error_frames_counter = counter["error_frame"]
+            self.timeout_counter = counter['SDO_read_response_timeout']
+            self.inactive_bus_counter = counter['Not_active_bus']
+        
+        if reset_progress: message_percentage = 0
+        else: message_percentage =  100 - (self.tx_msgs_counter/(self.rx_msgs_counter+self.inactive_bus_counter+self.timeout_counter) *100)
+        if message_percentage > 0 and message_percentage < 50:
+            self.bus_statistics_progress.setStyleSheet("QProgressBar::chunk { background-color: green; }")        
+        if message_percentage >= 50 and message_percentage < 90:
+            self.bus_statistics_progress.setStyleSheet("QProgressBar::chunk { background-color: yellow; }")
+        if message_percentage >= 90: self.bus_statistics_progress.setStyleSheet("QProgressBar::chunk { background-color: red; }")
+        
+        self.bus_statistics_progress.setValue(message_percentage)
+        # Update counter labels
+        self.tx_msgs_counter_label.setText(str(self.tx_msgs_counter))
+        self.rx_msgs_counter_label.setText(str(self.rx_msgs_counter))
+        self.error_frames_counter_label.setText(str(self.error_frames_counter))        
+        self.timeout_counter_label.setText(str(self.timeout_counter))  
+        self.inactive_bus_counter_label.setText(str(self.inactive_bus_counter)) 
+    def clear_bus_progress(self): 
+        self.update_bus_progress(reset_progress = True, clear_all = True)        
+        
     def defaultSettingsWindow(self):
         '''
         The function defines the GroupBox for the default bus settings
@@ -249,7 +351,7 @@ class MainWindow(QMainWindow):
         self.defaultMessageGroupBox = QGroupBox("SDO Message Settings [0x600]")
         defaultMessageWindowLayout = QGridLayout()                        
         nodeLabel = QLabel()
-        nodeLabel.setText("NodeId [dec]")
+        nodeLabel.setText("NodeId [H]")
         self.nodetextBox = QLineEdit("0")
         self.nodetextBox.setStatusTip('Connected CAN Nodes as defined in the main_cfg.yml file')
         self.nodetextBox.setFixedSize(70, 25)
@@ -262,17 +364,17 @@ class MainWindow(QMainWindow):
         self.CANIdComboBox.addItems(self.__CANID_list)
         
         indexLabel = QLabel()
-        indexLabel.setText("Index [hex]")
+        indexLabel.setText("Index [H]")
         self.mainIndexTextBox = QLineEdit("0x1000")
-        self.mainIndexTextBox.setFixedSize(80, 25)
+        self.mainIndexTextBox.setFixedSize(65, 25)
         
         subIndexLabel = QLabel()
-        subIndexLabel.setText("SubIndex [hex]")
+        subIndexLabel.setText("SubIndex [H]")
         self.mainSubIndextextbox = QLineEdit("0")
-        self.mainSubIndextextbox.setFixedSize(80, 25)
+        self.mainSubIndextextbox.setFixedSize(70, 25)
 
         busIdLabel = QLabel()
-        busIdLabel.setText("   Bus Id   ")
+        busIdLabel.setText("   Bus Id")
         self.busIdbox = QLineEdit("0")
         self.busIdbox.setFixedSize(60, 25)
                 
@@ -454,27 +556,15 @@ class MainWindow(QMainWindow):
         self.TXTable.resizeColumnsToContents()
         self.TXTable.setVisible(True)
         
-        self.TXProgressBar = QProgressBar()
-        self.TXProgressBar.setRange(0, 1)
-        self.TXProgressBar.setValue(0)
-        self.TXProgressBar.setTextVisible(False)
-        
         TXLayout = QHBoxLayout()
         TXLabel = QLabel()
-        TXLabel.setText("TX:")
+        TXLabel.setText("TX Messages:")
         TXLayout.addWidget(TXLabel)
-        TXLayout.addWidget(self.TXProgressBar)
-              
-        self.RXProgressBar = QProgressBar()
-        self.RXProgressBar.setRange(0, 1)
-        self.RXProgressBar.setValue(0)
-        self.RXProgressBar.setTextVisible(False)
-        
+
         RXLayout = QHBoxLayout()
         RXLabel = QLabel()
-        RXLabel.setText("RX:")
+        RXLabel.setText("RX Messages:")
         RXLayout.addWidget(RXLabel)
-        RXLayout.addWidget(self.RXProgressBar)
         
         def setTableWidth():
             width = self.RXTable.verticalHeader().width()
@@ -645,6 +735,7 @@ class MainWindow(QMainWindow):
         ''' 
         try:
             self.stop_adc_timer()
+            self.clear_bus_progress()
             self.wrapper.stop()
         except:
             pass
@@ -804,20 +895,18 @@ class MainWindow(QMainWindow):
            c) read_configuration_values
         """
         data_RX = None
-        #try:
         _index = int(self.get_index(), 16)
         _subIndex = int(self.get_subIndex(), 16)
         _nodeId = int(self.get_nodeId())
-        _interface = self.get_interface()
+        #_interface = self.get_interface()
         _busId = self.get_busId()
-        data_RX,_,_,_,_,_ = asyncio.run(self.wrapper.read_sdo_can(nodeId = _nodeId,
+
+        data_RX,_,_,_,_,_,_ = asyncio.run(self.wrapper.read_sdo_can(nodeId = _nodeId,
                                                                   index = _index, 
                                                                   subindex = _subIndex, 
                                                                   bus =  int(_busId)))
+        self.update_bus_progress(reset_progress =False)
         return data_RX
-            
-        #except Exception:
-          #  return None
     
     def trim_nodes(self): 
          _channel = self.get_channel()
@@ -835,27 +924,28 @@ class MainWindow(QMainWindow):
            c) default_message_window 
            d) can_message_child_window
         """
-       # try:
-        _index = int(self.get_index(), 16)
-        _subIndex = int(self.get_subIndex(), 16)
-        _nodeId = int(self.get_nodeId())
-        SDO_TX = int(self.get_canId_tx(), 16)
-        SDO_RX = self.get_canId_rx()
-        _cobid_TX = SDO_TX + _nodeId
-        _busId = self.get_busId()
-        _cobid_RX, data_RX = asyncio.run(self.wrapper.read_sdo_can_thread(nodeId=_nodeId,
-                                                                  index=_index,
-                                                                  subindex=_subIndex,
-                                                                  SDO_TX=SDO_TX,
-                                                                  SDO_RX=SDO_RX,
-                                                                  cobid=_cobid_TX,
-                                                                  bus = int(_busId)))
-        if print_sdo == True:
-            # self.control_logger.disabled = False
-            self.print_sdo_can(index=_index, subIndex=_subIndex, response_from_node=data_RX, cobid_TX=_cobid_TX, cobid_RX=_cobid_RX, bus = int(_busId))
-        return data_RX
-       # except Exception:
-       #     self.error_message(text="Make sure that the CAN interface is connected")
+        try:
+            _index = int(self.get_index(), 16)
+            _subIndex = int(self.get_subIndex(), 16)
+            _nodeId = int(self.get_nodeId())
+            SDO_TX = int(self.get_canId_tx(), 16)
+            SDO_RX = self.get_canId_rx()
+            _cobid_TX = SDO_TX + _nodeId
+            _busId = self.get_busId()
+            _cobid_RX, data_RX = asyncio.run(self.wrapper.read_sdo_can_thread(nodeId=_nodeId,
+                                                                      index=_index,
+                                                                      subindex=_subIndex,
+                                                                      SDO_TX=SDO_TX,
+                                                                      SDO_RX=SDO_RX,
+                                                                      cobid=_cobid_TX,
+                                                                      bus = int(_busId)))
+            if print_sdo == True:
+                # self.control_logger.disabled = False
+                self.print_sdo_can(index=_index, subIndex=_subIndex, response_from_node=data_RX, cobid_TX=_cobid_TX, cobid_RX=_cobid_RX, bus = int(_busId))
+                self.update_bus_progress(reset_progress =False )
+            return data_RX
+        except Exception:
+           self.error_message(text="Make sure that the Node/ Interface is connected")
         
     def print_sdo_can(self , index=None, subIndex=None, response_from_node=None, cobid_TX=None, cobid_RX=None, bus = 0):
         # printing the read message with cobid = SDO_RX + nodeId
@@ -879,7 +969,7 @@ class MainWindow(QMainWindow):
             # printing TX   
             self.set_textBox_message(comunication_object="SDO_RX", msg=str([hex(m)[2:] for m in RX_response]), cobid=str(hex(cobid_RX) + " "))
             # print decoded response
-            converted_response = Analysis().adc_conversion("V", response_from_node, int(self.__resistor_ratio), int(self.__ref_voltage))
+            converted_response = Analysis().adc_conversion("V", response_from_node, self.__resistor_ratio, self.__ref_voltage)
             decoded_response = f'{response_from_node:03X}'
             self.set_textBox_message(comunication_object="Decoded", msg=decoded_response, cobid=str(hex(cobid_RX) + ": Hex value = "))
             self.set_textBox_message(comunication_object="ADC", msg=f'{round(converted_response,3)}', cobid=str(hex(cobid_RX) + ": ADC value = "))
@@ -913,8 +1003,6 @@ class MainWindow(QMainWindow):
         self.set_canId_tx(_canIdentifier)
         
         # clear cells
-        self.TXProgressBar.setValue(0)
-        self.RXProgressBar.setValue(0)
         self.TXTable.clearContents()  
         self.hexTXTable.clearContents()
         self.decTXTable.clearContents()
@@ -944,15 +1032,19 @@ class MainWindow(QMainWindow):
         
         _cobid_TX = self.get_cobid()
         _bytes = self.get_bytes()
+        _dlc = self.get_dlc() 
         _index = hex(int.from_bytes([_bytes[1], _bytes[2]], byteorder=sys.byteorder))
         _subIndex = hex(int.from_bytes([_bytes[3]], byteorder=sys.byteorder))
         # fill the Bytes table     
         self.set_table_content(bytes=_bytes, comunication_object="SDO_TX")
         # fill the textBox     
-        self.set_textBox_message(comunication_object="SDO_TX", msg=str([hex(b)[2:] for b in _bytes]), cobid=str(_cobid_TX) + " ")    
+        self.set_textBox_message(comunication_object="SDO_TX", msg=str([hex(b)[2:] for b in _bytes]), cobid=str(_cobid_TX) + " ")  
+        
         try: 
             # Send the can Message
-            asyncio.run(self.wrapper.write_can_message(int(_cobid_TX, 16), _bytes, flag=0))
+            asyncio.run(self.wrapper.write_can_message(int(_cobid_TX, 16), _bytes, flag=0, dlc =_dlc))
+            #go back to the default dlc
+            self.set_dlc(8)
             # receive the message
             nodeList = self.get_nodeList()
             def hideIcon():
@@ -961,19 +1053,21 @@ class MainWindow(QMainWindow):
     
             if _cobid_TX == "0x00":
                 for i in np.arange(len(nodeList)):
-                    self.read_can_message_thread(thread=True)
+                    self.read_can_message_thread(thread=True,comunication_object="SDO_RX")
             elif int(_cobid_TX, 16) >= 0x700:
                 self._wait_label.setVisible(True)
-                self.read_can_message_thread(thread=True)       
+                self.read_can_message_thread(thread=True,comunication_object="SDO_RX")       
                 timer = QTimer(self)
                 timer.singleShot(500, hideIcon)  # 3000 milliseconds (3 seconds)
             
             else:
-                self.read_can_message_thread(thread=True)
+                self.read_can_message_thread(thread=True,comunication_object="SDO_RX")
         except Exception:
             self.error_message(text="Make sure that the CAN interface is connected") 
-        
-    def read_can_message_thread(self, print_sdo=True, thread=True):
+        self.update_bus_progress(reset_progress =False)
+        return None
+    
+    def read_can_message_thread(self, print_sdo=True, thread=True,comunication_object="SDO_RX"):
         """Read an object in a thread
         1. Request messages in the bus
         2. Communicate with the read_can_message_thread function in the CANWrapper to read the message
@@ -994,16 +1088,16 @@ class MainWindow(QMainWindow):
            data_ret_int = int.from_bytes(data_ret, byteorder=sys.byteorder)
            # get the data in Bytes
            b1, b2, b3, b4, b5, b6, b7, b8 = data_ret_int.to_bytes(8, 'little') 
-           self.logger.info(f'Got data: [{b5:02x},  {b6:02x},  {b7:02x}, {b8:02x}]') 
+           self.logger.info(f'{comunication_object}:  [{b5:02x},  {b6:02x},  {b7:02x}, {b8:02x}]') 
            # make an array of the bytes data
            data_ret_bytes = [b1, b2, b3, b4, b5, b6, b7, b8]
            # get the hex form of each byte
            data_ret_hex = [hex(b)[2:] for b in data_ret_bytes]
            if print_sdo == True:
                # fill the Bytes table     
-               self.set_table_content(bytes=data_ret, comunication_object="SDO_RX")
+               self.set_table_content(bytes=data_ret, comunication_object=comunication_object)
                # fill the textBox
-               self.set_textBox_message(comunication_object="SDO_RX", msg=str(data_ret_hex), cobid=str(hex(cobid_ret) + " "))
+               self.set_textBox_message(comunication_object=comunication_object, msg=str(data_ret_hex), cobid=str(hex(cobid_ret) + " "))
         else:
             cobid_ret, data_ret, dlc, flag, t = None, None, None, None, None
             RX_response = "No Response Message"
@@ -1011,6 +1105,8 @@ class MainWindow(QMainWindow):
         # fill the textBox
         decoded_response = f'------------------------------------------------------------------------'
         self.set_textBox_message(comunication_object="newline", msg=decoded_response, cobid=None) 
+        self.update_bus_progress(reset_progress =False )
+        
         return cobid_ret, data_ret, dlc, flag, t
 
     '''
@@ -1020,9 +1116,16 @@ class MainWindow(QMainWindow):
     def initiate_adc_timer(self):
         '''
         The function will  update the GUI with the ADC data ach period in ms.
-        '''  
+        ''' 
+        self.stop_adc_reading = True
+        def exit_handler():
+        # This function will be called on script termination
+            self.logger.warning("Script interrupted. Closing the program.")
+            sys.exit(0)
+            
         try:
             # Disable the logger when reading ADC values [The exception statement is made to avoid user mistakes]
+            self.logger.notice("Disabling Main Logger")
             self.control_logger.disabled = True
         except Exception:
             pass
@@ -1031,26 +1134,42 @@ class MainWindow(QMainWindow):
         self.__mon_time = time.time()
         # A possibility to save the data into a file
         self.__default_file = self.get_default_file()
+        atexit.register(exit_handler)
         if len(self.__default_file) != 0:
             self.logger.notice("Preparing an output file [%s]..." % (output_dir+self.__default_file))
             fieldnames = ['Time', 'Channel', "nodeId", "ADCChannel", "ADCData" , "ADCDataConverted"]
-            self.csv_writer, self.out_file_csv = AnalysisUtils().build_data_base(fieldnames=fieldnames,outputname=self.__default_file[:-4], directory=output_dir)
-            eventTimer = mops_child_window.EventTimer()
-            self.adc_timer = eventTimer.initiate_timer()
-            self.adc_timer.setInterval(int(self.__refresh_rate))
-            self.adc_timer.timeout.connect(self.update_adc_channels)
-            self.adc_timer.timeout.connect(self.update_monitoring_values)
-            self.adc_timer.timeout.connect(self.update_configuration_values)
+            secondary_fieldnames = [f"resistor_ratio:{self.__resistor_ratio}",f"ref_voltage:{self.__ref_voltage}V"]
+            self.csv_writer, self.out_file_csv = AnalysisUtils().build_data_base(fieldnames=fieldnames,
+                                                                                 outputname=self.__default_file[:-4],
+                                                                                  directory=output_dir,
+                                                                                  secondary_fieldnames = secondary_fieldnames)
+            try:    
+                eventTimer = mops_child_window.EventTimer()
+                self.adc_timer = eventTimer.initiate_timer()
+                self.adc_timer.setInterval(int(self.__refresh_rate))
+                self.adc_timer.timeout.connect(self.update_adc_channels)
+                self.adc_timer.timeout.connect(self.update_monitoring_values)
+            except (KeyboardInterrupt):
+                self.logger.warning("User interrupted. Closing the program.")             
+                self.csv_writer.writerow((str(time.time()-self.__mon_time),
+                             str(None),
+                             str(None),
+                             str(None), 
+                             str(None), 
+                             "End of Test"))  
+                self.out_file_csv.close()
+                self.logger.notice("ADC data are saved to %s" % (output_dir))
         else:
             self.error_message("Please add an output file name")
-        
-        
+             
     def stop_adc_timer(self):
         '''
         The function will  stop the adc_timer.
         '''        
         try:
+            self.stop_adc_reading = False
             self.adc_timer.stop()
+            self.clear_bus_progress()
             self.control_logger.disabled = False   
             self.logger.notice("Stop reading ADC data...")
         except Exception:
@@ -1130,11 +1249,7 @@ class MainWindow(QMainWindow):
         self.y[s].append(data)  # Add a new value.
         data_line.setData(self.x[s][1:], self.y[s][1:])  # Update the data line.
 
-    def exit_handler(self):
-        # This function will be called on script termination
-            self.logger.warning("Script interrupted. Closing the program.")
-            self.stop()
-            sys.exit(0)
+
                      
     def update_adc_channels(self):
         '''
@@ -1156,20 +1271,23 @@ class MainWindow(QMainWindow):
                     s_correction = subindex - 2
                     self.set_subIndex(_subIndexItems[s_correction])
                     # read SDO CAN messages
+                    #self.update_bus_progress(reset_progress =False)
                     data_point = self.read_sdo_can()  # _thread(print_sdo=False)
                     time.sleep(self.__wait_time )
                     ts = time.time()
                     if data_point is None: 
-                        self.logger.warning(f"No responses in the Bus for subindex {_subIndexItems[s_correction]}")
+                        #self.logger.warning(f"No responses in the Bus for subindex {_subIndexItems[s_correction]}")
                         #self.stop_adc_timer()
                         self.__adc_converted = None
-                        #break
+                        self.channelValueBox[s].setText(str(self.__adc_converted))
                     else:
                         self.__adc_converted = Analysis().adc_conversion(_adc_channels_reg[str(subindex)], 
                                                                                        data_point, 
-                                                                                       int(self.__resistor_ratio),
-                                                                                       int(self.__ref_voltage))
+                                                                                       self.__resistor_ratio,
+                                                                                       self.__ref_voltage)
                         self.set_adc_converted(self.__adc_converted)
+                        self.channelValueBox[s].setText(str(round(self.__adc_converted, 3)))
+                    
                     elapsedtime = ts - self.__mon_time
                     # update the progression bar to show bus statistics
                     self.progressBar.setValue(subindex)    
@@ -1180,15 +1298,14 @@ class MainWindow(QMainWindow):
                                          str(data_point),
                                          str(self.__adc_converted)))
                     self.out_file_csv.flush() # Flush the buffer to update the file
-                    if self.__adc_converted is not None:
-                        self.channelValueBox[s].setText(str(round(self.__adc_converted, 3)))
-                        if self.trendingBox[s] == True:
-                            # Monitor a window of 100 points is enough to avoid Memory issues
-                            if len(self.x[s]) >= 100:
-                                self.DataMonitoring.reset_data_holder(self.__adc_converted,s)
-                            self.DataMonitoring.update_figure(data=self.__adc_converted, subindex=subindex, graphWidget = self.graphWidget[s])
-                    else:
-                        self.channelValueBox[s].setText(str(self.__adc_converted))
+                        
+                   
+                    if self.trendingBox[s] == True and self.__adc_converted is not None:
+                        # Monitor a window of 100 points is enough to avoid Memory issues
+                        if len(self.x[s]) >= 100:
+                            self.DataMonitoring.reset_data_holder(self.__adc_converted,s)
+                        self.DataMonitoring.update_figure(data=self.__adc_converted, subindex=subindex, graphWidget = self.graphWidget[s])
+
         except (KeyboardInterrupt):
             #Handle Ctrl+C to gracefully exit the loop
             self.logger.warning("User interrupted. Closing the program.")
@@ -1203,79 +1320,35 @@ class MainWindow(QMainWindow):
         ''' 
         _dictionary = self.__dictionary_items
         _mon_indices = list(self.__mon_index)
-        a = 0
         for i in np.arange(len(_mon_indices)):
             _subIndexItems = list(AnalysisUtils().get_subindex_yaml(dictionary=_dictionary, index=_mon_indices[i], subindex="subindex_items"))
             self.set_index(_mon_indices[i])  # set index for later usage
             for s in np.arange(0, len(_subIndexItems)):
                 self.set_subIndex(_subIndexItems[s])
+                #self.update_bus_progress(reset_progress =True)
                 data_point = self.read_sdo_can()  # _thread(print_sdo=False)
                 time.sleep(self.__wait_time )
                 if data_point is None: 
                     #self.stop_adc_timer()
-                    self.__adc_converted = self.get_adc_converted()
+                    self.__adc_converted = None
+                    self.monValueBox[s].setText(str(self.__adc_converted))
                     #break
                 else:
-                    self.__adc_converted = Analysis().adc_conversion(adc_channels_reg = None, 
+                    if s == 0: resistor_ratio = 1
+                    elif s == 1: resistor_ratio = 2.5
+                    elif s == 2: resistor_ratio = 1  
+                    self.__adc_converted = Analysis().adc_conversion(adc_channels_reg = "V", 
                                                                      value = data_point,
-                                                                     resistor_ratio = int(self.__resistor_ratio),
-                                                                     ref_voltage = int(self.__ref_voltage))
+                                                                     resistor_ratio = resistor_ratio,
+                                                                     ref_voltage = self.__ref_voltage)
                     self.set_adc_converted(self.__adc_converted)
-                    
-                self.monValueBox[a].setText(str(self.__adc_converted))
-                a = a + 1
-      
-    def update_configuration_values(self):
-        '''
-        The function will will send a CAN message to read configuration values using the function read_sdo_can and 
-         update the confValueBox in configuration_values_window.
-        The calling function is initiate_adc_timer.
-        ''' 
-        _dictionary = self.__dictionary_items
-        _conf_indices = list(self.__conf_index)
-        a = 0 
-        for i in np.arange(len(_conf_indices)):
-            _subIndexItems = list(AnalysisUtils().get_subindex_yaml(dictionary=_dictionary, index=_conf_indices[i], subindex="subindex_items"))
-            self.set_index(_conf_indices[i])  # set index for later usage
-            for s in np.arange(0, len(_subIndexItems)):
-                self.set_subIndex(_subIndexItems[s])
-                data_point = self.read_sdo_can()  # _thread(print_sdo=False)
-                time.sleep(self.__wait_time )
-                if data_point is None: 
-                    self.logger.warning(f"No responses in the Bus for subindex {_subIndexItems[s]}")
-                    #self.stop_adc_timer()
-                    self.__adc_converted = self.get_adc_converted()
-                    #break
-                else:
-                    self.__adc_converted = Analysis().adc_conversion(adc_channels_reg = None, 
-                                                                     value = data_point,
-                                                                     resistor_ratio = int(self.__resistor_ratio),
-                                                                     ref_voltage = int(self.__ref_voltage))
-                    self.set_adc_converted(self.__adc_converted)
-                self.confValueBox[a].setText(str(self.__adc_converted))
-                a = a + 1
+                    self.monValueBox[s].setText(str(round(self.__adc_converted, 3)))
     
     def error_message(self, text=False):
         '''
         The function will return a MessageBox for Error message
         '''
         QMessageBox.about(self, "Error Message", text)
-                    
-    '''
-    Update ProgressBar
-    '''  
-
-    def update_progressBar(self, comunication_object="bus"):
-        if comunication_object == "SDO_TX":
-            self.TXProgressBar.setValue(0)
-            self.TXProgressBar.setValue(1)
-        if comunication_object == "SDO_RX":
-            self.RXProgressBar.setValue(0)
-            self.RXProgressBar.setValue(1)
-        if comunication_object == "bus": 
-            currentVal = self.progressBar.value() 
-            maxVal = self.progressBar.maximum()
-            self.progressBar.setValue(currentVal + (maxVal - currentVal) / 33)
 
     '''
     Show toolBar
@@ -1320,6 +1393,7 @@ class MainWindow(QMainWindow):
         clear_action.setStatusTip('Clear All the menus')
         clear_action.triggered.connect(self.clear_textBox_message)
         clear_action.triggered.connect(self.clear_table_content)
+        clear_action.triggered.connect(self.clear_bus_progress)
         
         plot_adc__action = QAction(QIcon(icon_location+'icon_curve.png'), '&Plotting', mainwindow)
         plot_adc__action.setShortcut('Ctrl+p')
@@ -1349,22 +1423,22 @@ class MainWindow(QMainWindow):
         ChildWindow.show()
         
     def show_CANMessageWindow(self):
-        try:
-            self.MessageWindow = QMainWindow()
-            child = child_window.ChildWindow(parent = self.MessageWindow)
-            _od_index = self.CANIdComboBox.currentText()
-            _nodeId = self.nodetextBox.text()
-            _bytes = self.get_bytes()
-            child.can_message_child_window(self.MessageWindow, 
-                            od_index = _od_index,
-                            nodeId = _nodeId,
-                            bytes = _bytes,
-                            mainWindow = self)
-            self.MessageWindow.show()
+        #try:
+        self.MessageWindow = QMainWindow()
+        child = child_window.ChildWindow(parent = self.MessageWindow)
+        _od_index = self.CANIdComboBox.currentText()
+        _nodeId = self.nodetextBox.text()
+        _bytes = self.get_bytes()
+        child.can_message_child_window(self.MessageWindow, 
+                        od_index = _od_index,
+                        nodeId = _nodeId,
+                        bytes = _bytes,
+                        mainWindow = self)
+        self.MessageWindow.show()
 
 
-        except:
-            pass
+        #except:
+        #    pass
 
     def show_dump_child_window(self):
         #if self.wrapper is not None: 
@@ -1372,7 +1446,7 @@ class MainWindow(QMainWindow):
         if interface == "socketcan" or interface == "virtual":
             self.logger.info("DumpingCAN bus traffic.")
             print_command = "echo ============================ Dumping CAN bus traffic ============================\n"
-            candump_command = "candump any -x -c -t A"
+            candump_command = "candump any -x -c -t A -e"
             os.system("gnome-terminal -e 'bash -c \"" + print_command + candump_command + ";bash\"'")
         else:
             self.read_can_message_thread(print_sdo=False)
@@ -1419,7 +1493,7 @@ class MainWindow(QMainWindow):
             asyncio.run(self.wrapper.confirm_nodes(channel=int(_channel),nodeIds = _nodeItems, trim =self.trim_mode, busId = int(_busId)))
         except Exception:
             pass
-        self.channelValueBox, self.trendingBox , self.monValueBox , self.confValueBox, self.progressBar,  self._wait_label = mops_child_window.MopsChildWindow().device_child_window(childWindow=self.deviceWindow, 
+        self.channelValueBox, self.trendingBox , self.monValueBox , self.progressBar,  self._wait_label = mops_child_window.MopsChildWindow(mainWindow = self).device_child_window(childWindow=self.deviceWindow, 
                                                                                                                                                                   device =self.__deviceName,
                                                                                                                                                                   device_config =device_config,
                                                                                                                                                                   mainWindow= self,
@@ -1460,7 +1534,6 @@ class MainWindow(QMainWindow):
          self.textBox.clear()
          
     def set_table_content(self, bytes=None, comunication_object=None):
-        self.update_progressBar(comunication_object=comunication_object)
         n_bytes = 8 - 1            
         if comunication_object == "SDO_RX":
             # for byte in bytes:
@@ -1502,9 +1575,6 @@ class MainWindow(QMainWindow):
         self.RXTable.clearContents() 
         self.hexRXTable.clearContents() 
         self.decRXTable.clearContents()
-        # clear progress bar
-        self.TXProgressBar.setValue(0)
-        self.RXProgressBar.setValue(0)
                   
     def set_index_value(self):
         index = self.IndexListBox.currentItem().text()
@@ -1581,7 +1651,10 @@ class MainWindow(QMainWindow):
     
     def set_refresh_rate(self, x):
         self.__refresh_rate = x
-                       
+
+    def set_dlc(self, x):
+        self.__dlc = x
+                               
     def set_subIndex(self, x):
         self.__subIndex = x
                 
@@ -1685,7 +1758,11 @@ class MainWindow(QMainWindow):
     
     def get_tseg1(self):
         return self.__tseg1
-    
+
+    def get_dlc(self):
+        return self.__dlc
+       
+           
     def get_tseg2(self):
         return self.__tseg2
         
@@ -1715,6 +1792,7 @@ class MainWindow(QMainWindow):
                         "#4e7a80", "#60b37e", "#b3daa3", "#cfe8b7", "#d2d2ba", "#dd8a5b", "#904a5d", "#5d375a", "#4c428d", "#3a3487", "#31222c", "#b3daa3"]
         return col_row[i]
  
+
 
 if __name__ == "__main__":
     pass
