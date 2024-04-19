@@ -344,7 +344,7 @@ class ChildWindow(QtWidgets.QMainWindow):
             _cobeid = hex(_cobeid)
         # Define a frame for that group
         plotframe = QFrame()
-        plotframe.setLineWidth(0.5)
+        plotframe.setLineWidth(1)
         childWindow.setCentralWidget(plotframe)
         # Define First Group
         FirstGroupBox = QGroupBox("")

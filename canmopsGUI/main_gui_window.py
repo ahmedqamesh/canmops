@@ -744,9 +744,12 @@ class MainWindow(QMainWindow):
         Stop the communication with CAN wrapper
         ''' 
         try:
+            self.logger.notice("Closing the Graphical Interface...") 
             self.stop_adc_timer()
             self.clear_bus_progress()
             self.wrapper.stop()
+            self.MessageWindow.close()
+            self.SettingsWindow.close()
         except:
             pass
 

@@ -7,7 +7,7 @@ channel0:
   tseg1: 7
   tseg2: 8
   ipAddress: None
-  timeout: 0.15
+  timeout: 0.0
 channel1:
   bitrate: 125000
   channel: 1

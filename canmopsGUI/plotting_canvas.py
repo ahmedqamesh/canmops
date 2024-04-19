@@ -45,7 +45,7 @@ from matplotlib.figure import Figure
 from canmopsGUI.plot_style import *
 import pandas as pd
 
-log_call = Logger(name = " Plotting ",console_loglevel=logging.INFO, logger_file = False)
+log_call = Logger(name = " Plotting  ",console_loglevel=logging.INFO, logger_file = False)
 
 an = Analysis()
 class PlottingCanvas(FigureCanvas):     
