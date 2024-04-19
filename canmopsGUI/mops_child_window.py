@@ -32,7 +32,7 @@ class MopsChildWindow(QWidget):
        max_mops_num = 4
        max_bus_num = 4
        self.loop_thread = LoopThread(mainWindow)
-
+       self.adcItems= [str(k) for k in np.arange(3,35)] 
     def bus_child_window(self,childWindow):      
         mopsBotton = [k for k in np.arange(max_mops_num)]
         BusGroupBox = [k for k in np.arange(max_bus_num)]
@@ -298,7 +298,6 @@ class MopsChildWindow(QWidget):
             _device_name = device
         else:
             _device_name = self.__deviceName 
-        n_channels = 33
         nodeItems = self.__nodeIds
 
         #  Open the window
@@ -310,7 +309,7 @@ class MopsChildWindow(QWidget):
         #childWindow.setFixedSize(childWindow.size())
         #childWindow.adjustSize()
         logframe = QFrame()
-        logframe.setLineWidth(0.6)
+        logframe.setLineWidth(1)
         mainLayout = QGridLayout()    
         childWindow.setCentralWidget(logframe)
         
@@ -417,7 +416,7 @@ class MopsChildWindow(QWidget):
             progressLabel = QLabel()
             progressLabel.setText("   ")  # Timer load")
             self.progressBar = QProgressBar()
-            self.progressBar.setRange(0, n_channels)
+            self.progressBar.setRange(0,33) #for the number of ADC
             self.progressBar.setValue(0)
             self.progressBar.setFixedHeight(10)
             self.progressBar.setTextVisible(False)
@@ -436,7 +435,7 @@ class MopsChildWindow(QWidget):
         else:
             self.progressBar = None     
             self.device_info_box(device=device, cic = cic, port = port , mops = mops,data_file = None)
-            self.graphWidget = self.DataMonitoring.initiate_trending_figure(n_channels=n_channels)
+            self.graphWidget = self.DataMonitoring.initiate_trending_figure(n_channels=len(self.adcItems))
             close_button.clicked.connect(lambda: mainWindow.stop_adc_timer(cic = cic, port = port , mops = mops))
             close_button.clicked.connect(childWindow.close)
 

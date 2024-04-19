@@ -7,7 +7,7 @@ from PyQt5.QtWidgets import *
 from PyQt5 import QtGui
 from canmops.logger_main         import Logger 
 from canmops.analysis_utils import AnalysisUtils
-from canmopsGUI import main_gui_window, menu_window, data_monitoring, plotting_canvas, design_diagram
+from canmopsGUI import main_gui_window, menu_window, data_monitoring, plotting_canvas, design_diagram, plot_style
 import numpy as np
 import time
 import os
@@ -16,6 +16,7 @@ import binascii
 import yaml
 import logging
 log_call = Logger(name = " Child  GUI ",console_loglevel=logging.INFO, logger_file = False)
+
 
 rootdir = os.path.dirname(os.path.abspath(__file__)) 
 lib_dir = rootdir[:-13]
@@ -37,7 +38,7 @@ class ChildWindow(QtWidgets.QMainWindow):
         mainLayout = QGridLayout()
         # Define a frame for that group
         plotframe = QFrame()
-        plotframe.setLineWidth(0.6)
+        plotframe.setLineWidth(1)
         childWindow.setCentralWidget(plotframe)
         #current endpoint
         ipLabel = QLabel()
@@ -82,7 +83,7 @@ class ChildWindow(QtWidgets.QMainWindow):
         mainLayout = QGridLayout()
         # Define a frame for that group
         plotframe = QFrame()
-        plotframe.setLineWidth(0.6)
+        plotframe.setLineWidth(1)
         childWindow.setCentralWidget(plotframe)
         #current endpoint
         endpointLabel = QLabel()
@@ -261,7 +262,7 @@ class ChildWindow(QtWidgets.QMainWindow):
         mainLayout = QGridLayout()
         # Define a frame for that group
         plotframe = QFrame()
-        plotframe.setLineWidth(0.6)
+        plotframe.setLineWidth(1)
         childWindow.setCentralWidget(plotframe)
         #current endpoint
         confLayout = QHBoxLayout()
@@ -455,7 +456,7 @@ class ChildWindow(QtWidgets.QMainWindow):
         _channelList = channelPorts
         # Define a frame for that group
         plotframe = QFrame(childWindow)
-        plotframe.setLineWidth(0.6)
+        plotframe.setLineWidth(1)
         childWindow.setCentralWidget(plotframe)
         
         # Define the second group
@@ -609,7 +610,7 @@ class ChildWindow(QtWidgets.QMainWindow):
         # Define a frame for that group
         
         plotframe = QFrame()
-        plotframe.setLineWidth(0.6)
+        plotframe.setLineWidth(1)
         ChildWindow.setCentralWidget(plotframe)
         # Define dumpGroupBox
         dumpGroupBox = QGroupBox()
@@ -648,7 +649,7 @@ class ChildWindow(QtWidgets.QMainWindow):
         MainLayout = QGridLayout()
         #Define a frame for that group
         self.plotframe = QFrame()
-        self.plotframe.setLineWidth(0.6)
+        self.plotframe.setLineWidth(1)
         self.setCentralWidget(self.plotframe)
         #List and label for ADC channel
         adcLayout = QVBoxLayout()
@@ -879,7 +880,7 @@ class ChildWindow(QtWidgets.QMainWindow):
         mainLayout = QGridLayout()
         # Define a frame for that group
         plotframe = QFrame()
-        plotframe.setLineWidth(0.6)
+        plotframe.setLineWidth(1)
         childWindow.setCentralWidget(plotframe)
         #ADC part
         adcLayout= QHBoxLayout()

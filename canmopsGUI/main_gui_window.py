@@ -80,7 +80,8 @@ class MainWindow(QMainWindow):
         self.error_frames_counter = 0
         self.timeout_counter = 0
         self.inactive_bus_counter = 0
-        self.wrapper = None      
+        self.wrapper = None
+        self.adcItems= [str(k) for k in np.arange(3,35)]      
           
     def Ui_ApplicationWindow(self):
         '''
@@ -134,7 +135,7 @@ class MainWindow(QMainWindow):
             
         # Create a frame in the main menu for the gridlayout
         mainFrame = QFrame()
-        mainFrame.setLineWidth(0.6)
+        mainFrame.setLineWidth(1)
         self.setCentralWidget(mainFrame)
             
         # SetLayout
@@ -173,13 +174,11 @@ class MainWindow(QMainWindow):
 
         # Create progress bars
         self.bus_statistics_progress = QProgressBar()
-        #self.bus_statistics_progress.setTextVisible(False)
+        self.bus_statistics_progress.setTextVisible(False)
         self.bus_statistics_progress.setFixedHeight(10)
         self.bus_statistics_progress.setFixedWidth(200)
         # Create labels
         # Initialize counters
-
-        
         self.bus_statistics_progress_label = QLabel("Bus Status:")
         self.tx_msgs_label = QLabel("TX Messages:")
         self.rx_msgs_label = QLabel("RX Messages:")
@@ -235,8 +234,12 @@ class MainWindow(QMainWindow):
             self.timeout_counter = counter['SDO_read_response_timeout']
             self.inactive_bus_counter = counter['Not_active_bus']
         
-        if reset_progress: message_percentage = 0
-        else: message_percentage =  100 - (self.tx_msgs_counter/(self.rx_msgs_counter+self.inactive_bus_counter+self.timeout_counter) *100)
+        if self.rx_msgs_counter+self.inactive_bus_counter+self.timeout_counter !=0:
+            if reset_progress: message_percentage = 0
+            else: message_percentage =  100 - (self.tx_msgs_counter/(self.rx_msgs_counter+self.inactive_bus_counter+self.timeout_counter) *100)
+        else: pass
+        message_percentage = int(message_percentage)
+        
         if message_percentage > 0 and message_percentage < 50:
             self.bus_statistics_progress.setStyleSheet("QProgressBar::chunk { background-color: green; }")        
         if message_percentage >= 50 and message_percentage < 90:
@@ -945,7 +948,7 @@ class MainWindow(QMainWindow):
                 self.update_bus_progress(reset_progress =False )
             return data_RX
         except Exception:
-           self.error_message(text="Make sure that the Node/ Interface is connected")
+           self.logger.warning("Either the bus or the interface is not connected") 
         
     def print_sdo_can(self , index=None, subIndex=None, response_from_node=None, cobid_TX=None, cobid_RX=None, bus = 0):
         # printing the read message with cobid = SDO_RX + nodeId
@@ -1041,8 +1044,8 @@ class MainWindow(QMainWindow):
         self.set_textBox_message(comunication_object="SDO_TX", msg=str([hex(b)[2:] for b in _bytes]), cobid=str(_cobid_TX) + " ")  
         
         try: 
-            # Send the can Message
-            asyncio.run(self.wrapper.write_can_message(int(_cobid_TX, 16), _bytes, flag=0, dlc =_dlc))
+                # Send the can Message
+            asyncio.run(self.wrapper.write_can_message(cobid = int(_cobid_TX, 16),data =  _bytes, flag=0, dlc =_dlc))
             #go back to the default dlc
             self.set_dlc(8)
             # receive the message
@@ -1053,21 +1056,21 @@ class MainWindow(QMainWindow):
     
             if _cobid_TX == "0x00":
                 for i in np.arange(len(nodeList)):
-                    self.read_can_message_thread(thread=True,comunication_object="SDO_RX")
+                    self.read_can_message_thread(comunication_object="SDO_RX")
             elif int(_cobid_TX, 16) >= 0x700:
                 self._wait_label.setVisible(True)
-                self.read_can_message_thread(thread=True,comunication_object="SDO_RX")       
+                self.read_can_message_thread(comunication_object="SDO_RX")       
                 timer = QTimer(self)
                 timer.singleShot(500, hideIcon)  # 3000 milliseconds (3 seconds)
             
             else:
-                self.read_can_message_thread(thread=True,comunication_object="SDO_RX")
+                self.read_can_message_thread(comunication_object="SDO_RX")
         except Exception:
-            self.error_message(text="Make sure that the CAN interface is connected") 
+           self.logger.warning("Either the bus or the interface is not connected") 
         self.update_bus_progress(reset_progress =False)
         return None
     
-    def read_can_message_thread(self, print_sdo=True, thread=True,comunication_object="SDO_RX"):
+    def read_can_message_thread(self, print_sdo=True,comunication_object="SDO_RX"):
         """Read an object in a thread
         1. Request messages in the bus
         2. Communicate with the read_can_message_thread function in the CANWrapper to read the message
@@ -1077,18 +1080,13 @@ class MainWindow(QMainWindow):
            b) show_dump_child_window
            c) dump_child_window
         """
-
-        if thread:
-            readCanMessage = self.wrapper.read_can_message_thread()
-        else:
-            readCanMessage = self.wrapper.read_can_message()
-        
-        if any(readCanMessage): 
+        readCanMessage = self.wrapper.read_can_message_thread()
+        response = any(readCanMessage)
+        if response: 
            cobid_ret, data_ret , dlc, flag, t, _ = readCanMessage
            data_ret_int = int.from_bytes(data_ret, byteorder=sys.byteorder)
            # get the data in Bytes
            b1, b2, b3, b4, b5, b6, b7, b8 = data_ret_int.to_bytes(8, 'little') 
-           self.logger.info(f'{comunication_object}:  [{b5:02x},  {b6:02x},  {b7:02x}, {b8:02x}]') 
            # make an array of the bytes data
            data_ret_bytes = [b1, b2, b3, b4, b5, b6, b7, b8]
            # get the hex form of each byte
@@ -1334,7 +1332,7 @@ class MainWindow(QMainWindow):
                     self.monValueBox[s].setText(str(self.__adc_converted))
                     #break
                 else:
-                    if s == 0: resistor_ratio = 1
+                    if   s == 0: resistor_ratio = 1
                     elif s == 1: resistor_ratio = 2.5
                     elif s == 2: resistor_ratio = 1  
                     self.__adc_converted = Analysis().adc_conversion(adc_channels_reg = "V", 
@@ -1349,7 +1347,6 @@ class MainWindow(QMainWindow):
         The function will return a MessageBox for Error message
         '''
         QMessageBox.about(self, "Error Message", text)
-
     '''
     Show toolBar
     ''' 
@@ -1417,7 +1414,7 @@ class MainWindow(QMainWindow):
     def show_adc_plotting_window(self):
         self.plotWindow = QMainWindow()
         ChildWindow = child_window.ChildWindow(parent = self.plotWindow)
-        ChildWindow.plot_adc_window(adcItems=[str(k) for k in np.arange(0,35)],
+        ChildWindow.plot_adc_window(adcItems=self.adcItems,
                                     name_prefix="adc__1",
                                     plot_prefix="adc_data")
         ChildWindow.show()

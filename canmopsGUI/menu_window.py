@@ -274,7 +274,7 @@ class MenuWindow(QWidget):
         msgBox = QMessageBox()
         msgBox.setWindowTitle(info) 
         if msg == None:
-            msg ="<b><h3>CANMoPS:</h3></b> A graphical user interface GUI to read the channels of MOPS chip.<br />"\
+            msg ="<b><h3>CANMOPS:</h3></b> A graphical user interface GUI to read the channels of MOPS chip.<br />"\
             " The package can communicate with a CAN interface and talks CANopen with the connected Controllers."\
             "Currently only CAN interfaces from AnaGate (Ethernet),  Kvaser (USB) and SocketCAN drivers are supported.<br />"\
             "<b>Author</b>: Ahmed Qamesh<br />"\
@@ -300,7 +300,7 @@ class MenuWindow(QWidget):
         mainLayout = QGridLayout()
         # Define a frame for that group
         plotframe = QFrame()
-        plotframe.setLineWidth(0.6)
+        plotframe.setLineWidth(1)
         childWindow.setCentralWidget(plotframe)
         #ADC part
         adcLayout= QHBoxLayout()
@@ -438,7 +438,7 @@ class MenuWindow(QWidget):
         mainLayout = QGridLayout()
         # Define a frame for that group
         plotframe = QFrame()
-        plotframe.setLineWidth(0.6)
+        plotframe.setLineWidth(1)
         childWindow.setCentralWidget(plotframe)
         
         nodeLayout= QVBoxLayout()
@@ -564,7 +564,7 @@ class MenuWindow(QWidget):
         mainLayout = QGridLayout()
         # Define a frame for that group
         plotframe = QFrame()
-        plotframe.setLineWidth(0.6)
+        plotframe.setLineWidth(1)
         childWindow.setCentralWidget(plotframe)
         mainLayout = QGridLayout()
         buttonLayout = QHBoxLayout()  

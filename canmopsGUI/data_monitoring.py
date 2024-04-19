@@ -17,12 +17,13 @@ import pyqtgraph as pg
 from pyqtgraph import *
 import time
 import matplotlib as mpl
+from canmopsGUI.plot_style import *
 icon_location = "canmopsGUI/icons/"
 class DataMonitoring(QMainWindow):
 
     def __init__(self, parent=None):
         super(DataMonitoring, self).__init__(parent)
-        
+
     def trend_child_window(self, childWindow=None, subindex=None, n_channels=None):
         '''
         The window starts the child window for the trending data of each ADC channel [it is called by the trending button beside each channel]
@@ -32,7 +33,7 @@ class DataMonitoring(QMainWindow):
         childWindow.setWindowTitle("Online data monitoring for ADC channel %s" % str(subindex))
         childWindow.resize(600, 300)  # w*h
         logframe = QFrame()
-        logframe.setLineWidth(0.6)
+        logframe.setLineWidth(1)
         childWindow.setCentralWidget(logframe)
         self.trendLayout = QGridLayout()
         
@@ -81,7 +82,7 @@ class DataMonitoring(QMainWindow):
     
             # Add grid
             self.graphWidget[s].showGrid(x=True, y=True)
-            self.graphWidget[s].getAxis("bottom").setStyle(tickTextOffset=15)
+            self.graphWidget[s].getAxis("bottom").setStyle(tickTextOffset=10)
             
             # set style
             self.graphWidget[s].setStyleSheet("background-color: black;"
@@ -98,7 +99,7 @@ class DataMonitoring(QMainWindow):
         The function will update the graphWidget with ADC data.
         '''  
         s = int(subindex) - 3  # the first ADC channel is channel 3 
-        data_line = graphWidget.plot(self.x[s], self.y[s], pen=pg.mkPen(self.get_color(s)) ,width=10, name="Ch%i" % subindex)
+        data_line = graphWidget.plot(self.x[s], self.y[s],name="Ch%i" % subindex)#, pen=pg.mkPen(self.get_color(s)) 
         self.x[s] = np.append(self.x[s], self.x[s][-1] + 1)  # Add a new value 1 higher than the last
         self.y[s].append(data)  # Add a new value.
         data_line.setData(self.x[s][1:], self.y[s][1:])  # Update the data line.
@@ -109,24 +110,7 @@ class DataMonitoring(QMainWindow):
         self.x[s] = list([self.correct_range])
         self.y[s] = list([round(adc_value, 3)])
         self.graphWidget[s].clear()
-        
-    def get_color(self, i):
-        '''
-        The function returns named colors supported in matplotlib
-        input:
-        Parameters
-        ----------
-        i : :obj:`int`
-            The color index
-        Returns
-        -------
-        `string`
-            The corresponding color
-        '''
-        col_row = ["#f7e5b2", "#fcc48d", "#e64e4b", "#984071", "#58307b", "#432776", "#3b265e", "#4f2e6b", "#943ca6", "#df529e", "#f49cae", "#f7d2bb",
-                        "#f4ce9f", "#ecaf83", "#dd8a5b", "#904a5d", "#5d375a", "#402b55", "#332d58", "#3b337a", "#365a9b", "#2c4172", "#2f3f60", "#3f5d92",
-                        "#4e7a80", "#60b37e", "#b3daa3", "#cfe8b7", "#d2d2ba", "#dd8a5b", "#904a5d", "#5d375a", "#4c428d", "#3a3487", "#31222c", "#b3daa3"]
-        return col_row[i]
+
 
 class LiveMonitoringDistribution(FigureCanvas):
     
@@ -134,6 +118,8 @@ class LiveMonitoringDistribution(FigureCanvas):
 
     def __init__(self, parent=None, period=200, data = None):
         super(LiveMonitoringDistribution, self).__init__(parent)
+        self.setParent(parent)
+        #self.initiate_trending_figure()
         #self.initiate_timer(period=period, data =data)
         
     def initiate_trending_figure(self, n_channels = None):

@@ -5,16 +5,14 @@ import os
 import can
 rootdir = os.path.dirname(os.path.abspath(__file__))
 print('CAN hardware OS drivers and config for CAN0')
+
 #os.system(". " + rootdir[:-10] + "analysis/socketcan_install.sh")
 _filter = [
-           {"can_id": 0x000, "can_mask": 0xFFF},  # Covers 0x000 to 0x1FF
-           {"can_id": 0x200, "can_mask": 0x700},  # Covers 0x200 to 0x3FF
-           {"can_id": 0x400, "can_mask": 0x7F4},  # Covers 0x400 to 0x554
-           {"can_id": 0x560, "can_mask": 0x7F0},  # Covers 0x560 to 0x56F
-           {"can_id": 0x570, "can_mask": 0x7F0},  # Covers 0x570 to 0x57F
-           {"can_id": 0x580, "can_mask": 0x780},  # Covers 0x580 to 0x5FF
-           {"can_id": 0x600, "can_mask": 0x700},  # Covers 0x600 to 0x7FF
-           {"can_id": 0x701, "can_mask": 0x705},  # Covers 0x700 to 0x7FF
+           {"can_id": 0x000, "can_mask": 0x7FF},  # Covers 0x000 to 0x1FF  0101
+           {"can_id": 0x500, "can_mask": 0xF60},  # Covers 0x580 to 0x5FF  0101 0000 0000 
+           {"can_id": 0x600, "can_mask": 0xF60},  # Covers 0x600 to 0x7FF  0110 0000 0000 
+           {"can_id": 0x700, "can_mask": 0xF60},  # Covers 0x700 to 0x7FF  0111 0000 0000 
+           {"can_id": 0x800, "can_mask": 0xF60},  # Covers 0x700 to 0x7FF  0111 0000 0000 
        ]       
 bustype = ['socketcan',"pcan","ixxat","vector"]
 channel = 'can0'

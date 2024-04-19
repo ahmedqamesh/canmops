@@ -21,16 +21,18 @@ do
 	#while true; do cansend can1 600#DeadBeefDeadBeef; sleep 0.9; done
 	#candump -ta any -c
 	sudo ip link set can$bus type can restart
-	echo "Bringing the can$bus driver down if Up"
+	echo "-------------------------------"
+	echo "(1)Bringing the can$bus driver down if Up"
 	sudo -S ip link set down $CHANNEL$bus
-	echo "Configuring the SocketCAN interface with a bitrate of $BITRATE [Sample Point $SAMPLEPOINT]"	
+	echo "-------------------------------"
+	echo "(2)Configuring can$bus with a bitrate of $BITRATE [Sample Point $SAMPLEPOINT]"	
 	sudo -S ip link set $CHANNEL$bus type can bitrate $BITRATE sample-point $SAMPLEPOINT sjw $SJW phase-seg1 $PHASESEG1 phase-seg2 $PHASESEG2
-
-	echo "Bringing the  can$i driver  up"
+	echo "-------------------------------"
+	echo "(3)Bringing the  can$bus driver  up"
 	sudo -S ip link set up $CHANNEL$bus
 	ip -details link show $CHANNEL$bus
-	echo "=========================================================="
+	echo "========================================================================"
 done
-"echo ============================ Dumping CAN bus traffic ============================\n"
+echo "=========================Dumping CAN bus traffic ======================="
 candump any -t A -x -c -e
 

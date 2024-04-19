@@ -62,6 +62,8 @@ async def test_can_wrapper():
                               nodeId = NodeIds[0], # Node Id
                               csv_writer =csv_writer,
                               csv_file = csv_file,
+                              resistor_ratio = 40,
+                              ref_voltage = 0.85,
                               outputdir = output_dir) # Number of Iterations  
     
     #

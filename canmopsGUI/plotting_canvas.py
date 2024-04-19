@@ -8,7 +8,6 @@ from scipy.optimize import curve_fit
 import tables as tb
 from mpl_toolkits.mplot3d import Axes3D
 import itertools
-from mpl_toolkits.mplot3d import Axes3D  # @UnusedImport
 from math import pi, cos, sin
 from scipy.linalg import norm
 import os
@@ -43,11 +42,11 @@ from PyQt5 import *
 from PyQt5.QtWidgets import *
 from PyQt5.QtCore import *
 from matplotlib.figure import Figure
+from canmopsGUI.plot_style import *
 import pandas as pd
-log_format = '%(log_color)s[%(levelname)s]  - %(name)s -%(message)s'
-log_call = Logger(log_format = log_format,name = "Plotting  GUI",console_loglevel=logging.INFO, logger_file = False)
 
-colors = ['black', 'red', '#006381', "blue", '#33D1FF', '#F5A9BC', 'grey', '#7e0044', 'orange', "maroon", 'green', "magenta", '#33D1FF', '#7e0044', "yellow"]
+log_call = Logger(name = " Plotting ",console_loglevel=logging.INFO, logger_file = False)
+
 an = Analysis()
 class PlottingCanvas(FigureCanvas):     
 
@@ -113,12 +112,12 @@ class PlottingCanvas(FigureCanvas):
         self.logger.info("Plotting data from channel %i"%adc_value)
         self.ax.plot(respondant["Time"],respondant["ADCDataConverted"], label="ADC channel No.%i"%adc_value, color =self.get_color(adc_value))
         self.ax.ticklabel_format(useOffset=False)
-        self.ax.legend(loc="upper left", prop={'size': 8})
+        self.ax.legend(loc="upper left")
         self.ax.autoscale(enable=True, axis='x', tight=None)
         self.ax.grid(True)
-        self.ax.set_title("ADC data from channel %i"%adc_value, fontsize=12)
-        self.ax.set_ylabel(r'ADC value [V]', fontsize=12)
-        self.ax.set_xlabel("Time line [S]", fontsize=12)
+        self.ax.set_title("ADC data from channel %i"%adc_value)
+        self.ax.set_ylabel(r'ADC value [V]')
+        self.ax.set_xlabel("Time line [S]")
     
     def diode_calibration(self, test_file=None, tests=[0]):
         '''
@@ -143,7 +142,7 @@ class PlottingCanvas(FigureCanvas):
                     dose = np.append(dose, np.float(row[4]))  # Dose rate
                     current = np.append(current, np.float(row[2]))  # current
                     bkg = np.append(bkg, np.float(row[1]))
-            self.ax.errorbar(dose, current, xerr=0.0, yerr=0.0, fmt='o', color=colors[tests.index(test)], markersize=3)  # plot points
+            self.ax.errorbar(dose, current, xerr=0.0, yerr=0.0, fmt='o')  # plot points
             sig = [0.4 * current[k] for k in range(len(current))]
             popt, pcov = curve_fit(an.linear, dose, current, sigma=sig, absolute_sigma=True, maxfev=5000, p0=(1, 1))
             chisq = an.red_chisquare(np.array(current), an.linear(dose, *popt), np.array(sig), popt)
@@ -151,8 +150,7 @@ class PlottingCanvas(FigureCanvas):
             self.ax.text(0.9, 0.4, 'Calibration factor =%s'%str(factor_test),
                     horizontalalignment='right', verticalalignment='top', transform=self.ax.transAxes,
                     bbox=dict(boxstyle='round', facecolor='wheat', alpha=0.6))
-            self.ax.plot(dose, an.linear(dose, *popt), linestyle="--",
-                color=colors[tests.index(test)], label=line_fit_legend_entry)
+            self.ax.plot(dose, an.linear(dose, *popt), linestyle="--", label=line_fit_legend_entry)
         self.ax.set_ylabel('Dose rate [$Mrad(sio_2)/hr$]')
         self.ax.set_xlabel(r'Current [$\mu$ A]')
         self.ax.set_title('(Diode calibration at %s and %s)' % ("40kV", "50mA"), fontsize=11)
@@ -189,8 +187,7 @@ class PlottingCanvas(FigureCanvas):
                         std = np.append(std, float(row[3])*conversion)*1.04
                         self.ax.set_ylim(-1.5,0)
                         self.ax.set_xlim(-52,0)
-            self.ax.errorbar(v,mean,yerr=std, fmt='o', color=colors[tests.index(test)], markersize=5, 
-                        ecolor="black",label=("Diode %s " % test))
+            self.ax.errorbar(v,mean,yerr=std, fmt='o', ecolor="black",label=("Diode %s " % test))
             self.ax.plot(v,mean,color='black')
         self.ax.set_xlabel("Reverse Voltage [V]")
         self.ax.set_ylabel("Current [nA]")
@@ -214,8 +211,8 @@ class PlottingCanvas(FigureCanvas):
             time = temprature_dose["time"]
             current = temprature_dose["current"] * 10 ** 6
             temperature = temprature_dose["temprature"]
-        temp = ax2.errorbar(time, temperature, yerr=0.0, color=colors[0], fmt='-')
-        curr = ax.errorbar(time[1:], current[1:], fmt='-', color=colors[1])
+        temp = ax2.errorbar(time, temperature, yerr=0.0, fmt='-')
+        curr = ax.errorbar(time[1:], current[1:], fmt='-')
         ax2.set_ylabel('temperature[$^oC$]')
         ax.set_ylabel('Current [$\mu$ A]')
         ax.set_xlabel('Time [Seconds]')
@@ -392,11 +389,11 @@ class PlottingCanvas(FigureCanvas):
         sig = [stdev * y1[k] for k in range(len(y1))]
         popt1, pcov = curve_fit(an.Inverse_square, height, y1, sigma=sig, absolute_sigma=True, maxfev=500, p0=(300, 6, 0))
         # chisq1 = an.red_chisquare(np.array(y1), an.Inverse_square(np.array(height), *popt1), sig, popt1)
-        self.ax.errorbar(height, y1, yerr=sig, color=colors[1], fmt='o', label=tests[0], markersize='4')
+        self.ax.errorbar(height, y1, yerr=sig, fmt='o', label=tests[0], markersize='4')
         xfine = np.linspace(height[0], height[-1], 100)  # define values to plot the function
         a, b, c = popt1[0], popt1[1], popt1[2]
         a_err, b_err, c_err = np.absolute(pcov[0][0]) ** 0.5, np.absolute(pcov[1][1]) ** 0.5, np.absolute(pcov[2][2]) ** 0.5
-        self.ax.plot(xfine, an.Inverse_square(xfine, *popt1), colors[1], label='Fit parameters:\n a=%.2f$\pm$ %.2f\n b=%.2f$\pm$ %.2f\n c=%.2f$\pm$ %.2f\n' % (a, a_err, b, b_err, c, c_err))
+        self.ax.plot(xfine, an.Inverse_square(xfine, *popt1), label='Fit parameters:\n a=%.2f$\pm$ %.2f\n b=%.2f$\pm$ %.2f\n c=%.2f$\pm$ %.2f\n' % (a, a_err, b, b_err, c, c_err))
         
         self.ax.text(0.9, 0.56, r'$R= \frac{a}{(h+b)^2}-c$',
                 horizontalalignment='right', verticalalignment='top', transform=self.ax.transAxes,
@@ -444,11 +441,11 @@ class PlottingCanvas(FigureCanvas):
                         Factor = np.append(Factor, float(row[5]))
                         difference = np.append(difference, ((float(row[6])) * 100 / float(row[3])))  # (with-bkg) -(without-bkg)
                         
-                ax.errorbar(x1, difference, yerr=0.0, color=colors[Voltages.index(volt)], fmt='--', label="%s" % volt)
-            ax.set_title('Dose drop after Al filter at ' + depth[i], fontsize=12)
+                ax.errorbar(x1, difference, yerr=0.0, fmt='--', label="%s" % volt)
+            ax.set_title('Dose drop after Al filter at ' + depth[i])
             ax.set_ylabel('Dose rate drop [%]')
             ax.set_xlabel('Tube current [mA]')
-            ax.legend(prop={'size': 10})
+            ax.legend()
             ax.grid(True)
             plt.savefig(Directory + subdirectory + 'dose_current_drop' + depth[i] + ".png", bbox_inches='tight')
             PdfPages.savefig()
