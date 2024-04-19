@@ -238,7 +238,7 @@ class CanWrapper(object):#READSocketcan):#Instead of object
             if (not all(m is None for m in _frame[0:2])):
                 cobid_ret, msg_ret, dlc, flag, respmsg, responsereg, t, error_frame = _frame
                 self.dumpMessage(cobid_ret, msg_ret, dlc, flag, t,error_frame)
-                if data[0] == 0x85 or data[0] == 0x05:
+                if msg_ret[0] == 0x85 or msg_ret[0] == 0x05:
                     self.logger_file.info(f'Trimming MOPS in channel {channel} has been verified.')
                     wait_trim = True
                 else: self.logger_file.warning(f'Trimming MOPS in channel {channel} has been failed.')

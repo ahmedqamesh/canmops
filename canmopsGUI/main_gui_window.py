@@ -49,7 +49,6 @@ class MainWindow(QMainWindow):
         conf = AnalysisUtils().open_yaml_file(file=config_yaml, directory=lib_dir)
         self.__appName      = conf["Application"]["app_name"] 
         self.__devices      = conf["Application"]["Devices"]
-        self.trim_mode      = conf["Application"]["trim_mode"] 
         self.__wait_time      = conf["Application"]["wait_time"]
         self.__appVersion   = conf['Application']['app_version']
         self.__appIconDir   = conf["Application"]["app_icon_dir"]
@@ -1455,12 +1454,6 @@ class MainWindow(QMainWindow):
         device_config = "mops"
         self.set_busId(self.busIdbox.text())
         _busId = self.get_busId()
-        try:
-            if self.trim_mode == True:
-                asyncio.run(self.wrapper.trim_nodes(channel=int(_channel))) 
-            asyncio.run(self.wrapper.confirm_nodes(channel=int(_channel),nodeIds = _nodeItems, trim =self.trim_mode, busId = int(_busId)))
-        except Exception:
-            pass
         self.channelValueBox, self.trendingBox , self.monValueBox , self.progressBar,  self._wait_label = mops_child_window.MopsChildWindow(mainWindow = self).device_child_window(childWindow=self.deviceWindow, 
                                                                                                                                                                   device =self.__deviceName,
                                                                                                                                                                   device_config =device_config,
