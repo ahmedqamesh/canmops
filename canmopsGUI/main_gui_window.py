@@ -1219,45 +1219,6 @@ class MainWindow(QMainWindow):
         except Exception:
             pass
         
-    def initiate_trending_figure(self, subindex=None, n_channels=None):
-        '''
-        The function defines a PlotWidget [data holder] for all ADC channels, 
-        This widget provides a contained canvas on which plots of any type can be added and configured. 
-        '''
-        # prepare a PlotWidget
-        self.graphWidget = [pg.PlotWidget(background="w") for i in np.arange(n_channels)]
-        self.correct_range = 0
-        for s in np.arange(n_channels): 
-            # Add Title
-            self.graphWidget[s].setTitle("Online data monitoring for ADC channel %s" % str(s + 3))
-            # Add Axis Labels
-            self.graphWidget[s].setLabel('left', "<span style=\"color:black; font-size:15px\">Voltage[V]</span>")
-            self.graphWidget[s].setLabel('bottom', "<span style=\"color:black; font-size:15px\">Time line [Steps]</span>")
-    
-            # Add grid
-            self.graphWidget[s].showGrid(x=True, y=True)
-            self.graphWidget[s].getAxis("bottom").setStyle(tickTextOffset=15)
-            
-            # set style
-            self.graphWidget[s].setStyleSheet("background-color: black;"
-                                    "color: black;"
-                                    "border-width: 1.5px;"
-                                    "border-color: black;"
-                                    "margin:0.0px;"
-                                    "solid black;")      
-        return self.graphWidget
-    
-    def update_figure(self, data=None, subindex=None):
-        '''
-        The function will update the graphWidget with ADC data.
-        '''  
-        s = int(subindex) - 3  # the first ADC channel is channel 3 
-        data_line = self.graphWidget[s].plot(self.x[s], self.y[s], pen=pg.mkPen(color=self.get_color(s), width=3), name="Ch%i" % subindex)
-        self.x[s] = np.append(self.x[s], self.x[s][-1] + 1)  # Add a new value 1 higher than the last
-        self.y[s].append(data)  # Add a new value.
-        data_line.setData(self.x[s][1:], self.y[s][1:])  # Update the data line.
-
-
                      
     def update_adc_channels(self):
         '''

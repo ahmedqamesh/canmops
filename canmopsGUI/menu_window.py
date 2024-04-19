@@ -22,7 +22,8 @@ class MenuWindow(QWidget):
         super(MenuWindow, self).__init__(parent)
         self.MainWindow = main_gui_window.MainWindow()
         self.logger = log_call.setup_main_logger()
-    
+        self.adcItems= [str(k) for k in np.arange(3,35)] 
+        
     def stop(self):
         return self.MainWindow.stop_server()
     
@@ -66,7 +67,7 @@ class MenuWindow(QWidget):
         def show_adc_plotting_window():
             self.plotWindow = QMainWindow()
             plottingWindow = child_window.ChildWindow(parent = self.plotWindow)
-            plottingWindow.plot_adc_window(adcItems=[str(k) for k in np.arange(35)],
+            plottingWindow.plot_adc_window(adcItems=self.adcItems,
                                         name_prefix="adc_data_1",
                                         plot_prefix="adc_data")
             plottingWindow.show()

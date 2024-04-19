@@ -18,15 +18,12 @@ import time
 import datetime
 import keyboard
 import atexit
-#import numba
 import sys
 import os
 from threading import Thread, Event, Lock
 import subprocess
 import threading
 import numpy as np
-#from pip._internal.cli.cmdoptions import pre
-#from lxml.html.builder import PRE
 from socket import socket
 from asyncio.tasks import sleep
 try:
@@ -47,7 +44,6 @@ import logging
 import csv
 import asyncio
 import queue
-from bs4 import BeautifulSoup #virtual env
 from typing import List, Any
 from random import randint
 logger   = Logger(name = " Lib Check ",console_loglevel=logging.INFO, logger_file = False).setup_main_logger()
@@ -138,7 +134,7 @@ class CanWrapper(object):#READSocketcan):#Instead of object
                 ]
         self.__filter_canlib = [
             #{"can_id": 0x000, "can_mask": 0x7FF},  # Covers 0x000 to 0x1FF
-            {"can_id": 0x580, "can_mask": 0x500},  # Covers 0x580 to 0x5FF
+            {"can_id": 0x500, "can_mask": 0x540},  # Covers 0x580 to 0x5FF
             # {"can_id": 0x600, "can_mask": 0x770},  # Covers 0x600 to 0x7FF
         ]
         

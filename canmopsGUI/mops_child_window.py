@@ -33,6 +33,7 @@ class MopsChildWindow(QWidget):
        max_bus_num = 4
        self.loop_thread = LoopThread(mainWindow)
        self.adcItems= [str(k) for k in np.arange(3,35)] 
+       
     def bus_child_window(self,childWindow):      
         mopsBotton = [k for k in np.arange(max_mops_num)]
         BusGroupBox = [k for k in np.arange(max_bus_num)]

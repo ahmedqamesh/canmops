@@ -2,8 +2,8 @@
 from canlib import canlib, Frame
 
 __filter_canlib = [
-            {"can_id": 0x000, "can_mask": 0x7FF},  # Covers 0x000 to 0x1FF
-            {"can_id": 0x500, "can_mask": 0x660},  # Covers 0x580 to 0x5FF
+            #{"can_id": 0x000, "can_mask": 0x7FF},  # Covers 0x000 to 0x1FF
+            {"can_id": 0x500, "can_mask": 0x540},  # Covers 0x580 to 0x5FF
             # {"can_id": 0x600, "can_mask": 0x770},  # Covers 0x600 to 0x7FF
         ]
 __ignore_ids = [{"can_id": 0x555, "can_mask": 0x7FF}]  
@@ -49,10 +49,12 @@ def read_sdo_can(SDO_TX =0x600,index = 0x1000 ,subindex =0 ,NodeIds = [3]):
         print(f'(RX) ID: {cobid_ret:03X}; Data: {data_ret.hex()}, DLC: {dlc_ret}, Flag: {flag_ret}, Time: {t_ret}')
         frame_ret = ch0.read(500)
         print('Searching any Frames')
+        print(frame_ret)
     except (canlib.canNoMsg) as ex:
         pass
     except (canlib.canError) as ex:
         print(ex)
+    print('---------------------------------------')
     return Frame
 
 ch0 = set_channelConnection(channel=0)  
