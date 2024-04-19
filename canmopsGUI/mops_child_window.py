@@ -561,10 +561,12 @@ class MopsChildWindow(QWidget):
         
         ResistorRatioLabel = QLabel()
         ResistorRatioLabel.setText("R ratio:")
+        ResistorRatioLabel.setStatusTip('Resistor ratio') 
         ResistorRatioLineEdit = QLabel()#QLineEdit()
         ResistorRatioLineEdit.setText(str(self.__resistor_ratio))
         ReferenceVoltageLabel = QLabel()
         ReferenceVoltageLabel.setText("Vref [V]:")
+        ReferenceVoltageLabel.setStatusTip('Reference Voltage = VBANDGAP x Factor') 
         ReferenceVoltageLineEdit = QLabel()#QLineEdit()
         ReferenceVoltageLineEdit.setText(str(self.__ref_voltage))
         

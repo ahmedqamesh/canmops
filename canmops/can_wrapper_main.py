@@ -139,7 +139,7 @@ class CanWrapper(object):#READSocketcan):#Instead of object
            {"can_id": 0x800, "can_mask": 0xF60},  # Covers 0x700 to 0x7FF  0111 0000 0000 
                 ]
         self.__filter_canlib = [
-            {"can_id": 0x000, "can_mask": 0x7FF},  # Covers 0x000 to 0x1FF
+            #{"can_id": 0x000, "can_mask": 0x7FF},  # Covers 0x000 to 0x1FF
             {"can_id": 0x500, "can_mask": 0x660},  # Covers 0x580 to 0x5FF
             # {"can_id": 0x600, "can_mask": 0x770},  # Covers 0x600 to 0x7FF
         ]

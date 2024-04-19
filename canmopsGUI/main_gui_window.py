@@ -438,7 +438,7 @@ class MainWindow(QMainWindow):
             byteLabel.setText("Bytes")
             byteLabel.setAlignment(QtCore.Qt.AlignLeft | QtCore.Qt.AlignVCenter)
             graphicsview = QtWidgets.QGraphicsView()
-            graphicsview.setStyleSheet("QWidget { background-color: rgba(255, 255, 255, 10);  margin:0.0px; }")
+            graphicsview.setStyleSheet("background-color: rgba(255, 255, 255, 10);  margin:0.0px;")
             graphicsview.setFixedSize(20, 100)
             proxy = QtWidgets.QGraphicsProxyWidget()
             proxy.setWidget(byteLabel)
@@ -467,6 +467,7 @@ class MainWindow(QMainWindow):
         row = [str(i) for i in np.arange(n_bytes - 1, -1, -1)]
         # RXTables       
         self.hexRXTable = QTableWidget()  # Create a table
+        self.hexRXTable.setStyleSheet("font-size: 12px;")
         self.hexRXTable.setColumnCount(1)  # Set n columns
         self.hexRXTable.setRowCount(n_bytes)  # and n rows
         self.hexRXTable.resizeColumnsToContents()  # Do the resize of the columns by content
@@ -474,13 +475,14 @@ class MainWindow(QMainWindow):
         self.hexRXTable.setHorizontalHeaderLabels(["Hex"])
         self.hexRXTable.verticalHeader().hide()
         self.hexRXTable.horizontalHeader().setSectionResizeMode(QtWidgets.QHeaderView.Stretch)
-        self.hexRXTable.resizeColumnsToContents()
+        #self.hexRXTable.resizeColumnsToContents()
         self.hexRXTable.clearContents()  # clear cells
         self.hexRXTable.setVerticalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
         self.hexRXTable.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
         self.hexRXTable.setEditTriggers(QAbstractItemView.NoEditTriggers)
         
         self.decRXTable = QTableWidget()  # Create a table
+        self.decRXTable.setStyleSheet("font-size: 12px;")
         self.decRXTable.setColumnCount(1)  # Set n columns
         self.decRXTable.setRowCount(n_bytes)  # and n rows
         self.decRXTable.resizeColumnsToContents()  # Do the resize of the columns by content
@@ -491,13 +493,14 @@ class MainWindow(QMainWindow):
         self.decRXTable.setVerticalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
         self.decRXTable.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
         self.decRXTable.setEditTriggers(QAbstractItemView.NoEditTriggers)
-        self.decRXTable.resizeColumnsToContents()
+        #self.decRXTable.resizeColumnsToContents()
         self.decRXTable.clearContents()  # clear cells
           
         self.RXTable = QTableWidget()  # Create a table
+        self.RXTable.setStyleSheet("font-size: 12px;")
         self.RXTable.setColumnCount(n_bytes)  # Set n columns
         self.RXTable.setRowCount(n_bytes)  # and n rows
-        # Do the resize of the columns by content
+        
         self.RXTable.resizeColumnsToContents()
         self.RXTable.setVerticalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
         self.RXTable.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
@@ -507,7 +510,7 @@ class MainWindow(QMainWindow):
         self.RXTable.setSizeAdjustPolicy(QtWidgets.QAbstractScrollArea.AdjustToContents)
         self.RXTable.setVisible(False)
         self.RXTable.verticalScrollBar().setValue(0)
-        self.RXTable.resizeColumnsToContents()
+        #self.RXTable.resizeColumnsToContents()
         self.RXTable.setVisible(True)
         
         line = QFrame()
@@ -517,6 +520,7 @@ class MainWindow(QMainWindow):
         
         # TXTables
         self.hexTXTable = QTableWidget()  # Create a table
+        self.hexTXTable.setStyleSheet("font-size: 12px;")
         self.hexTXTable.setColumnCount(1)  # Set n columns
         self.hexTXTable.setRowCount(n_bytes)  # and n rows
         self.hexTXTable.resizeColumnsToContents()  # Do the resize of the columns by content
@@ -524,13 +528,14 @@ class MainWindow(QMainWindow):
         self.hexTXTable.setHorizontalHeaderLabels(["Hex"])
         self.hexTXTable.verticalHeader().hide()
         self.hexTXTable.horizontalHeader().setSectionResizeMode(QtWidgets.QHeaderView.Stretch)
-        self.hexTXTable.resizeColumnsToContents()
+        #self.hexTXTable.resizeColumnsToContents()
         self.hexTXTable.setVerticalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
         self.hexTXTable.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
         self.hexTXTable.clearContents()  # clear cells
         self.hexTXTable.setEditTriggers(QAbstractItemView.NoEditTriggers)
         
-        self.decTXTable = QTableWidget(self)  # Create a table
+        self.decTXTable = QTableWidget()  # Create a table
+        self.decTXTable.setStyleSheet("font-size: 12px;")
         self.decTXTable.setColumnCount(1)  # Set n columns
         self.decTXTable.setRowCount(n_bytes)  # and n rows
         self.decTXTable.resizeColumnsToContents()  # Do the resize of the columns by content
@@ -540,13 +545,14 @@ class MainWindow(QMainWindow):
         self.decTXTable.setHorizontalHeaderLabels(["Decimal"])
         self.decTXTable.verticalHeader().hide()
         self.decTXTable.horizontalHeader().setSectionResizeMode(QtWidgets.QHeaderView.Stretch)
-        self.decTXTable.resizeColumnsToContents()
+        #self.decTXTable.resizeColumnsToContents()
         self.decTXTable.clearContents()  # clear cells
         self.decTXTable.setEditTriggers(QAbstractItemView.NoEditTriggers)  
-        self.TXTable = QTableWidget(self)  # Create a table
+        
+        self.TXTable = QTableWidget()  # Create a table
+        self.TXTable.setStyleSheet("font-size: 12px;")
         self.TXTable.setColumnCount(n_bytes)  # Set n columns
         self.TXTable.setRowCount(n_bytes)  # and n rows
-        # Do the resize of the columns by content
         self.TXTable.resizeColumnsToContents()
         self.TXTable.setVerticalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
         self.TXTable.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
@@ -556,7 +562,7 @@ class MainWindow(QMainWindow):
         self.TXTable.setSizeAdjustPolicy(QtWidgets.QAbstractScrollArea.AdjustToContents)
         self.TXTable.setVisible(False)
         self.TXTable.verticalScrollBar().setValue(0)
-        self.TXTable.resizeColumnsToContents()
+        #self.TXTable.resizeColumnsToContents()
         self.TXTable.setVisible(True)
         
         TXLayout = QHBoxLayout()
@@ -584,7 +590,7 @@ class MainWindow(QMainWindow):
                 
         gridLayout = QGridLayout()
         gridLayout.addLayout(TXLayout, 0 , 1)
-        gridLayout.addWidget(TXbitLabel, 1, 2)
+        gridLayout.addWidget(TXbitLabel, 1, 1)
         gridLayout.addWidget(TXgraphicsview, 2, 0)
         gridLayout.addWidget(self.TXTable, 2, 1)
         gridLayout.addWidget(self.hexTXTable, 2, 2)
@@ -593,8 +599,9 @@ class MainWindow(QMainWindow):
         gridLayout.addWidget(line, 2, 4, 2, 4)
                 
         gridLayout.addLayout(RXLayout, 0 , 6)        
-        gridLayout.addWidget(RXbitLabel, 1, 6)
+        gridLayout.addWidget(RXbitLabel, 1,6)
         gridLayout.addWidget(RXgraphicsview, 2, 5)
+        
         gridLayout.addWidget(self.RXTable, 2, 6)
         gridLayout.addWidget(self.hexRXTable, 2, 7)
         gridLayout.addWidget(self.decRXTable, 2, 8)
