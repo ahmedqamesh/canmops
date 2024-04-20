@@ -350,7 +350,7 @@ class MainWindow(QMainWindow):
         4. SubIndex
         All the options in every widget are defined in the file main_cfg.yml
         '''  
-        self.defaultMessageGroupBox = QGroupBox("SDO Message Settings [0x600]")
+        self.defaultMessageGroupBox = QGroupBox("SDO Message Settings")
         defaultMessageWindowLayout = QGridLayout()                        
         nodeLabel = QLabel()
         nodeLabel.setText("NodeId [H]")
@@ -1132,7 +1132,6 @@ class MainWindow(QMainWindow):
             
         try:
             # Disable the logger when reading ADC values [The exception statement is made to avoid user mistakes]
-            self.logger.notice("Disabling Main Logger")
             self.control_logger.disabled = True
         except Exception:
             pass
@@ -1176,7 +1175,7 @@ class MainWindow(QMainWindow):
         try:
             self.stop_adc_reading = False
             self.adc_timer.stop()
-            self.clear_bus_progress()
+            
             self.control_logger.disabled = False   
             self.logger.notice("Stop reading ADC data...")
         except Exception:

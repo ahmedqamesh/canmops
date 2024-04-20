@@ -1,42 +1,40 @@
-# CANMOPS for DCS Controller
-This Python package provides a set of functions and GUI to communicate with  the [<abbr title="Detector Control System">DCS</abbr>](https://twiki.cern.ch/twiki/bin/viewauth/Atlas/DetectorControlSystemMainPage "Only accessible with CERN account") ASIC: [Monitoring Of Pixel System (MOPS)](https://edms.cern.ch/ui/file/1909505/3/MOPS-specs-V3_docx_cpdf.pdf). It communicates with a <abbr title="Controller Area Network">CAN</abbr> interface and talks CANopen with connected MOPS. Currently CAN interfaces from [AnaGate](https://www.anagate.de/) (Ethernet), [Kvaser](https://www.kvaser.com/) (USB) and [SocketCAN Kernel](https://www.kernel.org/doc/html/latest/networking/can.html) are supported.
+# CANMOPS for MOPS Readout
 
-## Installation
-This Python package requires a working [Python 3.6](https://www.python.org/ "Official Python Homepage") Installation. I recommend the usage of [Anaconda](https://anaconda.org/ "Official Anaconda Homepage") which is available for all platforms and also easy to install and manage.
-```
-For more information contact ahmed.qamesh@cern.ch
-```
-## Dependencies
-All third-party Python packages that are needed can be found on the [Twiki](https://gitlab.cern.ch/aqamesh/canmops/-/wikis/home) page. The necessary AnaGate libraries are also included in this repository. For the use of Kvaser CAN interfaces you have to install the [Kvaser drivers](https://www.kvaser.com/downloads-kvaser/ "Kvaser download page") first which are avaiable for [Windows](https://www.kvaser.com/downloads-kvaser/?utm_source=software&utm_ean=7330130980013&utm_status=latest) and [Linux](https://www.kvaser.com/downloads-kvaser/?utm_source=software&utm_ean=7330130980754&utm_status=latest).
+CANMOPS is a free CAN bus monitor and general-purpose diagnostic tool available for Windows and Linux. The software package offers a comprehensive set of functions and a graphical user interface (GUI) to facilitate communication with the [DCS ASIC: Monitoring Of Pixel System (MOPS)](https://edms.cern.ch/ui/file/1909505/3/MOPS-specs-V3_docx_cpdf.pdf), supported by CAN interfaces from [AnaGate (Ethernet)](https://www.anagate.de/), [Kvaser (USB)](https://www.kvaser.com/), and [SocketCAN Kernel](https://www.kernel.org/doc/html/latest/networking/can.html).
+![CANMOPS](https://gitlab.cern.ch/mops/canmops/-/wikis/uploads/133057f8a2ba5ebd7f595cd72aa86547/phd_designs__9_.png)
 
-### System Requirements:
-Operating System: Windows and Linux
-### AnaGate interface
-If you are using an AnaGate Ethernet CAN interface you will probably need to manually set the IP address of your network card so that the interface is part of its network. The default IP address of an AnaGate CAN interface is *192.168.1.254*, so you should set the IP address of your network card to *192.168.1.1*.
-### Kvaser interface
-It has happened that the USB port was not correctly reset after the Kvaser interface has been disconnected so that the connection to other USB devices could not be established. As a workaround I recommend rebooting the system.
+## General Features
+- History list for sent messages.
+- Time-stamping of incoming and outgoing messages, displayed in both absolute and relative formats.
+- CAN bus statistics including number of messages and bus load.
+- Traffic generator to simulate heavy bus load conditions.
+- Capability to log data to a file.
 
-## Documentation
-Documentation can be found under: https://gitlab.cern.ch/aqamesh/canmops/-/wikis/home . </br>
-Under development: https://canmops.readthedocs.io/en/latest/installation.html
+## Installation and Usage
 
-### Installation and usage
-Clone the repository to get a copy of the source code (for developers):
+### System Requirements
+- **Operating System:** Windows, Linux
 
+### Required Python Packages
+- A [Python 3.9 or higher](https://www.python.org/) installation is necessary. [Anaconda](https://anaconda.org/) is recommended for easy installation and management across all platforms. Detailed installation instructions are available on the [CANMOPS Twiki page](https://gitlab.cern.ch/mops/canmops/-/wikis/CANMOPS-Twiki-page).
+
+### Getting Started
+Clone the repository to download the source code:
 ```
 ssh://git@gitlab.cern.ch:7999/mops/canmops.git
 ```
-Make sure that the CAN interface is connected and the needed software is installed.
-Simply in the home directory run:
+Ensure the CAN interface is connected and the required software is installed. To test the setup, run the following command in the home directory:
 
 ```
 python canmops_test.py
 ```
-### Scanning the Node Ids connected on the bus:
-In order to make sure that all the connected nodes [Mops] on the bus are healthy and ready for communication, the user need to know the exact pre-defined Node Id of the Node-under-test. 
+### Scanning Node IDs on the Bus:
+To verify that all nodes connected on the bus are operational and ready for communication, it is important to know the exact pre-defined Node ID for each node under test. Use the following command template to scan the Node IDs:
 
 ```
-python3.8 canmops/can_wrapper_main.py -S -b 111111 -sp 0.3 -sjw 4 -tseg1 5 -tseg2 6 -nodeid 0
+python canmops/can_wrapper_main.py -S -b 111111 -sp 0.3 -sjw 4 -tseg1 5 -tseg2 6 -nodeid 0
 ```
-Users should replace the argument -S according to the used interface [-S for socket, -K for Kvaser and -A for Anagate].
-remember to change the nodeid argument according to the specified node id of the chip.
+Replace the -S argument based on the interface used (-S for SocketCAN, -K for Kvaser, -A for AnaGate), and adjust the -nodeid argument according to the specific Node ID of the chip.
+
+## Contributing and Contact Information:
+We welcome contributions from the community please contact : `ahmed.qamesh@cern.ch`.
