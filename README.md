@@ -16,7 +16,7 @@ CANMOPS is a free CAN bus monitor and general-purpose diagnostic tool available 
 - **Operating System:** Windows, Linux
 
 ### Required Python Packages
-- A [Python 3.9 or higher](https://www.python.org/) installation is necessary. [Anaconda](https://anaconda.org/) is recommended for easy installation and management across all platforms. Detailed installation instructions are available on the [CANMOPS Twiki page](https://gitlab.cern.ch/mops/canmops/-/wikis/CANMOPS-Twiki-page).
+- A [Python 3.9 or higher](https://www.python.org/) installation is necessary. [Anaconda](https://anaconda.org/) is recommended for easy installation and management across all platforms. Detailed installation instructions are available on the [CANMOPS Twiki page](https://gitlab.cern.ch/mops/canmops/-/wikis/home).
 
 ### Getting Started
 Clone the repository to download the source code:

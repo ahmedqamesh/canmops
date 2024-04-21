@@ -245,7 +245,7 @@ class CanWrapper(object):#READSocketcan):#Instead of object
             else: i = i+1
             
             if i ==50 or wait_trim == True:
-                if wait_trim: self.logger_file.warning(f'Trimming MOPS in channel {channel} has been verified.') 
+                if wait_trim: self.logger_file.warning(f'Trimming process is Terminated.') 
                 else: self.logger_file.warning(f'Trimming MOPS in channel {channel} has been failed.') 
                 break
             time.sleep(0.25)
@@ -746,26 +746,24 @@ class CanWrapper(object):#READSocketcan):#Instead of object
             Message flag (|RTR|, etc.). Defaults to zero.
         """
         reqmsg = 0
-        if self.__interface == 'Kvaser':
-            frame = Frame(id_=cobid, data=data, timestamp=None, dlc=dlc , flags=canlib.MessageFlag.STD)
-            self.ch0.write(frame)  #writeWait(frame, 100) #
-            reqmsg = 1
-        elif self.__interface == 'AnaGate':
-            if not self.ch0.deviceOpen:
-                self.logger_file.notice('Reopening AnaGate CAN interface')
-            self.ch0.write(cobid, data, flag)
-            reqmsg = 1
-        else:
-            msg = can.Message(arbitration_id=cobid, data=data, is_extended_id=False, is_error_frame=False,dlc = dlc)
-            try:
+        try:
+            if self.__interface == 'Kvaser':
+                frame = Frame(id_=cobid, data=data, timestamp=None, dlc=dlc , flags=canlib.MessageFlag.STD)
+                self.ch0.write(frame)  #writeWait(frame, 100) #
+            elif self.__interface == 'AnaGate':
+                if not self.ch0.deviceOpen:
+                    self.logger_file.notice('Reopening AnaGate CAN interface')
+                self.ch0.write(cobid, data, flag)
+            else:
+                msg = can.Message(arbitration_id=cobid, data=data, is_extended_id=False, is_error_frame=False,dlc = dlc)
                 #timeout wait up to this many seconds for message to be ACK'ed or
                 # A timeout in the range of 10 milliseconds  with CAN bus speed of 125 kb/s
                 self.ch0.send(msg, 10) 
-                reqmsg = 1
-            except:  # can.CanError:
-                self.__cnt['Not_active_bus'] += 1
-                self.logger_file.error("An Error occurred, The bus is not active")
-        self.__cnt['tx_msg'] += 1
+            reqmsg = 1
+            self.__cnt['tx_msg'] += 1
+        except:  # can.CanError:
+            self.__cnt['Not_active_bus'] += 1
+            self.logger_file.error("An Error occurred, The bus is not active")
         return reqmsg
     
     def can_setup(self, channel: int, interface : str):
@@ -863,6 +861,7 @@ class CanWrapper(object):#READSocketcan):#Instead of object
         
         #self.__pill2kill = Event()
         _interface = self.__interface;
+        respmsg = 0
         while not self.__pill2kill.is_set(): 
             try:
                 if _interface == 'Kvaser':
@@ -882,7 +881,6 @@ class CanWrapper(object):#READSocketcan):#Instead of object
                 else:
                     frame = self.ch0.recv(0.01)
                     if frame is not None:
-                        # raise can.CanError
                         cobid, data, dlc, flag, t , error_frame = (frame.arbitration_id, frame.data,
                                                                    frame.dlc, frame.is_extended_id,
                                                                    frame.timestamp, frame.is_error_frame)
@@ -891,19 +889,19 @@ class CanWrapper(object):#READSocketcan):#Instead of object
                         self.__pill2kill.set()
                         respmsg = 0
                         # raise can.CanError
-                    try:
-                        responsereg = Analysis().binToHexa(bin(cobid)[2:].zfill(11)+
-                                                           bin(data[0])[2:].zfill(8)+
-                                                           bin(data[1])[2:].zfill(8)+
-                                                           bin(data[2])[2:].zfill(8)+
-                                                           bin(data[3])[2:].zfill(8)+
-                                                           bin(data[4])[2:].zfill(8)+
-                                                           bin(data[5])[2:].zfill(8)+
-                                                           bin(data[6])[2:].zfill(8)+
-                                                           bin(data[7])[2:].zfill(8))
-                            
-                    except: 
-                        responsereg = 0
+                try:
+                    responsereg = Analysis().binToHexa(bin(cobid)[2:].zfill(11)+
+                                                       bin(data[0])[2:].zfill(8)+
+                                                       bin(data[1])[2:].zfill(8)+
+                                                       bin(data[2])[2:].zfill(8)+
+                                                       bin(data[3])[2:].zfill(8)+
+                                                       bin(data[4])[2:].zfill(8)+
+                                                       bin(data[5])[2:].zfill(8)+
+                                                       bin(data[6])[2:].zfill(8)+
+                                                       bin(data[7])[2:].zfill(8))
+                        
+                except: 
+                    responsereg = 0
                 
                 with self.__lock:
                     self.__canMsgQueue.appendleft((cobid, data, dlc, flag, t , error_frame))
@@ -911,7 +909,7 @@ class CanWrapper(object):#READSocketcan):#Instead of object
                 self.dumpMessage(cobid, data, dlc, flag, t , error_frame)
                 self.__cnt['rx_msg'] += 1
                 return cobid, data, dlc, flag, t, error_frame
-            except:  # (canlib.CanNoMsg, analib.CanNoMsg,can.CanError):
+            except:
                self.__pill2kill = Event()
                return None, None, None, None, None, None
 
