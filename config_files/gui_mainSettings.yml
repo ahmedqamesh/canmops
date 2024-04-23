@@ -1,0 +1,15 @@
+Application:
+  Devices:
+  - MOPS
+  app_icon_dir: canmopsGUI/icons/icon_mops.png
+  app_name: CANMOPS
+  app_version: v1.2
+  user: Ahmed Qamesh
+  multi_mode: False
+  mopshub_mode: False
+  mopshub_communication_mode: CAN
+  refresh_rate: 500 #in ms
+  wait_time: 0.0 #in s
+channel_ports:
+  "0":
+  "1":

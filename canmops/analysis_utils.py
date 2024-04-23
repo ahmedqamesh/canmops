@@ -2,7 +2,6 @@ from __future__ import division
 import logging
 import os
 import yaml
-import tables as tb
 import numpy as np
 import pandas as pd
 import csv
@@ -10,6 +9,7 @@ from pathlib import Path
 import coloredlogs as cl
 import socket
 import ipaddress
+
 
 class AnalysisUtils(object):
     
@@ -30,6 +30,7 @@ class AnalysisUtils(object):
         return cfg
     
     def dump_yaml_file(self,directory=None , file=None, loaded = None):
+        
         filename = os.path.join(directory, file)
         with open(filename, 'w') as ymlfile:
             yaml.dump(loaded, ymlfile, sort_keys=False)#default_flow_style=False
@@ -69,35 +70,24 @@ class AnalysisUtils(object):
         subindex_items = index_item[0][subindex]
         return subindex_items.keys()
     
-    def get_project_root(self) -> Path:
-        """Returns project root folder."""
-        return Path(__file__).parent.parent
-    
-    def open_csv_file(self,outname=None, directory=None, fieldnames = ['TimeStamp', 'Channel', "Id", "ADCChannel", "ADCData" , "ADCDataConverted"]):
+    def open_csv_file(self,outputname=None, directory=None, fieldnames = ['A', 'B']):
         if not os.path.exists(directory):
             os.mkdir(directory)
-        filename = os.path.join(directory, outname) 
+        filename = os.path.join(directory, outputname) 
+        
         out_file_csv = open(filename + '.csv', 'w+')
         return out_file_csv
-    
-    def save_adc_data(self,directory = None,channel = None):
-        File = tb.open_file(directory + "ch_"+str(channel)+ ".h5", 'w')
-        description = np.zeros((1,), dtype=np.dtype([("TimeStamp", "f8"), ("Channel", "f8"), ("Id", "f8"), ("Flg", "f8"), ("DLC", "f8"), ("ADCChannel", "f8"), ("ADCData", "f8"),("ADCDataConverted", "f8")])).dtype
-        table = File.create_table(File.root, name='ADC_results', description=description)
-        table.flush()
-        row = table.row
-    #     for i in np.arange(length_v):
-    #         row["TimeStamp"] = voltage_array[i]
-    #         row["Channel"] = mean
-    #         row["Id"] = std
-    #         row["DLC"] = voltage_array[i]
-    #         row["ADCChannel"] = mean
-    #         row["ADCData"] = std
-    #         row["ADCDataConverted"] = std
-    #         row.append()
-        File.create_array(File.root, 'ADC results', ADC_results, "ADC results")
-        File.close()
-        logging.info("Start creating table")     
+
+    def build_data_base(self,fieldnames=["A","B"],outputname = False, directory = False, secondary_fieldnames=False):
+        out_file_csv =self.open_csv_file(outputname=outputname, directory=directory)
+        
+        writer = csv.DictWriter(out_file_csv, fieldnames=fieldnames)
+         
+        csv_writer = csv.writer(out_file_csv)  # , delimiter=',', quotechar='"', quoting=csv.QUOTE_MINIMAL)     
+        if secondary_fieldnames: csv_writer.writerow(secondary_fieldnames)
+        writer.writeheader()     
+        return csv_writer, out_file_csv 
+  
     
     def get_ip_device_address(self):
         s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)

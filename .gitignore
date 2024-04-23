@@ -1,7 +1,12 @@
+/output_data/*
+!/output_data/
+/log/*
+!/log/
+
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]
-
+*$py.class
 # C extensions
 *.so
 
@@ -19,7 +24,6 @@ var/
 *.egg-info/
 .installed.cfg
 *.egg
-
 # Installer logs
 pip-log.txt
 pip-delete-this-directory.txt
@@ -31,25 +35,19 @@ pip-delete-this-directory.txt
 nosetests.xml
 coverage.xml
 
-# Translations
 *.mo
-
-# Mr Developer
 .mr.developer.cfg
 .project
 .pydevproject
-
-# Rope
+.settings
+*DS_Store
+__pycashe__
 .ropeproject
-
-# Django stuff:
-*.log
 *.pot
 *.kafe
 *.vscode
-*.pydevproject
-*.project
-*DS_Store
-__pycashe__
+
+
+*__pycashe__
 # Sphinx documentation
 docs/_build/

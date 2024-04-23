@@ -25,26 +25,28 @@ test:software:
       - export PATH=$HOME/miniconda/bin:$PATH
       - conda init bash  # https://github.com/ContinuumIO/docker-images/issues/89
       - source ~/.bashrc  # since ==> For changes to take effect, close and re-open your current shell. <==
-      - conda activate  # to link properly to pytest
+      - conda activate  # to link properly to pytestgb
       - conda update --yes conda
-      - conda install --yes python=3.7 bitarray contextlib2 cython ipython matplotlib mock nose numba numpy pyqt pyserial pytables pyyaml pyzmq qtpy scipy
-      - conda install -c bioconda aenum
-      - conda install -c bioconda/label/cf201901 aenum
-      - pip install lxml tqdm kafe seaborn aenum verboselogs qtawesome coloredlogs termcolor progressbar-latest pyvisa pyvisa-py pyqtgraph
-    # Installing CAN packages
+     # - conda install --yes python=3.9 bitarray contextlib2 cython ipython matplotlib mock nose pyqt pyserial pytables pyyaml pyzmq qtpy scipy pyqtgraph pandas numpy colorlog coloredlogs verboselogs termcolor numba lxml seaborn aenum
+      #- conda install -c anaconda graphviz python-graphviz
+      #- conda install -c bioconda aenum
+      #- conda install -c bioconda/label/cf201901 aenum
+      #- pip install kafe BeautifulSoup4 event-notifier colorama QGraphViz
+      # Installing CAN packages
       #Installing SocketCAN devices
       #Installing python-can package
-      - pip install python-can
+      #- pip install python-can
       #Installing libsocketcan package
-      - git clone https://git.pengutronix.de/git/tools/libsocketcan
-      - cd libsocketcan
-      - ./autogen.sh
-      - ./configure  #--disable-dependency-tracking
-      - make CFLAGS='-fPIC' # to compile the package
-      - make install #to install the programs and any data files
-      - cd ..
+      #- pip install socketcan
+      #- git clone https://git.pengutronix.de/git/tools/libsocketcan
+      #- cd libsocketcan
+      #- ./autogen.sh
+      #- ./configure  #--disable-dependency-tracking
+      #- make CFLAGS='-fPIC' # to compile the package
+      #- make install #to install the programs and any data files
+      #- cd ..
       #Installing SocketCAN can-utils
-      - sudo apt-get install can-utils
+      #- sudo apt-get install can-utils
       #Installing Canlib package
       - cd packages
      # - tar -xf linuxcan.tar.gz
@@ -70,7 +72,8 @@ test:software:
       - cd ..
     script:
       - sudo apt-get install -y build-essential
-      #- python CANMOPS_test.py
+      - pip install --upgrade pip setuptools
+      - pip install symbol-please
+      #- python canmops_test.py
       #- python CANMOPS_GUI.py
-      # Try to activate conda evironment in the newest broken miniconda docker
 

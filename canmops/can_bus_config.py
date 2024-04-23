@@ -1,6 +1,5 @@
 # This File is setting up the CAN Channels on the RPI on the beginning
 # Possible updates: Watchdog on Channel Health while system is running
-
 import logging
 try:
     import can
@@ -19,20 +18,23 @@ except:
     from .analysis_utils import AnalysisUtils
     from .watchdog_can_interface import WATCHCan
 
+log_call = Logger(name = "CAN Config ",console_loglevel=logging.INFO, logger_file = False)
 
-config_file = "socketcan_CANSettings.yml"
+
+
 rootdir = os.path.dirname(os.path.abspath(__file__))
-config_dir = "config"
+config_dir = "config_files/"
 lib_dir = rootdir[:-8]
+config_file = "socketcan_CANSettings.yml"
+
 class CanConfig(WATCHCan):
     """description of class"""
     def __init__(self, file='socketcan_CANSettings.yml', directory=config_dir):
 
         WATCHCan.__init__(self)
         self._file = file
-        self._directory = directory
-        #self.logger = logging.getLogger('CAN config')
-        self.logger = Logger().setup_main_logger(name = "CAN Config ",console_loglevel=logging.INFO, logger_file = False)
+        self._directory = lib_dir+"/"+directory
+        self.logger = log_call.setup_main_logger()
         
         _canSettings = AnalysisUtils().open_yaml_file(file=self._file, directory=self._directory)
         self._can_channels = list(_canSettings)[1:]#['channel0', 'channel1']
@@ -214,4 +216,4 @@ class CanConfig(WATCHCan):
         return self.__interface
 
 can_config = CanConfig()
-can_config.watchdog_notifier.subscribe("restart Interface", can_config.can_setup)
+#can_config.watchdog_notifier.subscribe("restart Interface", can_config.can_setup)
