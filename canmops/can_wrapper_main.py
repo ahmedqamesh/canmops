@@ -124,7 +124,6 @@ class CanWrapper(object):#READSocketcan):#Instead of object
                             self.can_1_settings[f'{value}'] = _canSettings[ch][f'{value}']
         else:
             pass
-        
 
         self.__filter = [
            {"can_id": 0x000, "can_mask": 0xFFF},  # Covers 0x000 to 0x1FF  0101
