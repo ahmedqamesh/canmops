@@ -1124,8 +1124,7 @@ class MainWindow(QMainWindow):
         '''
         The function will  update the GUI with the ADC data ach period in ms.
         ''' 
-        self.stop_adc_reading = True
-  
+        self.stop_adc_reading = True  
         try:
             # Disable the logger when reading ADC values [The exception statement is made to avoid user mistakes]
             self.control_logger.disabled = True
@@ -1160,7 +1159,7 @@ class MainWindow(QMainWindow):
         def exit_handler():
         # This function will be called on script termination
             self.logger.warning("Script interrupted. Closing the program.")
-            sys.exit(0)
+            sys.exit(1)
         atexit.register(exit_handler)  
         try:
             self.stop_adc_reading = False
