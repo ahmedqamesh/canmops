@@ -1160,7 +1160,7 @@ class MainWindow(QMainWindow):
         def exit_handler():
         # This function will be called on script termination
             self.logger.warning("Script interrupted. Closing the program.")
-            sys.exit(0)
+            sys.exit(1)
         atexit.register(exit_handler)  
         try:
             self.stop_adc_reading = False
