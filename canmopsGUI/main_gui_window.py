@@ -744,8 +744,8 @@ class MainWindow(QMainWindow):
         ''' 
         try:
             self.logger.notice("Closing the Graphical Interface...") 
-            self.stop_adc_timer()
             self.clear_bus_progress()
+            self.stop_adc_timer()
             self.wrapper.stop()
             self.MessageWindow.close()
             self.SettingsWindow.close()
@@ -1125,11 +1125,7 @@ class MainWindow(QMainWindow):
         The function will  update the GUI with the ADC data ach period in ms.
         ''' 
         self.stop_adc_reading = True
-        def exit_handler():
-        # This function will be called on script termination
-            self.logger.warning("Script interrupted. Closing the program.")
-            sys.exit(0)
-            
+  
         try:
             # Disable the logger when reading ADC values [The exception statement is made to avoid user mistakes]
             self.control_logger.disabled = True
@@ -1140,7 +1136,7 @@ class MainWindow(QMainWindow):
         self.__mon_time = time.time()
         # A possibility to save the data into a file
         self.__default_file = self.get_default_file()
-        atexit.register(exit_handler)
+        
         if len(self.__default_file) != 0:
             self.logger.notice("Preparing an output file [%s]..." % (output_dir+self.__default_file))
             fieldnames = ['Time', 'Channel', "nodeId", "ADCChannel", "ADCData" , "ADCDataConverted"]
@@ -1148,23 +1144,12 @@ class MainWindow(QMainWindow):
             self.csv_writer, self.out_file_csv = AnalysisUtils().build_data_base(fieldnames=fieldnames,
                                                                                  outputname=self.__default_file[:-4],
                                                                                   directory=output_dir,
-                                                                                  secondary_fieldnames = secondary_fieldnames)
-            try:    
-                eventTimer = mops_child_window.EventTimer()
-                self.adc_timer = eventTimer.initiate_timer()
-                self.adc_timer.setInterval(int(self.__refresh_rate))
-                self.adc_timer.timeout.connect(self.update_adc_channels)
-                self.adc_timer.timeout.connect(self.update_monitoring_values)
-            except (KeyboardInterrupt):
-                self.logger.warning("User interrupted. Closing the program.")             
-                self.csv_writer.writerow((str(time.time()-self.__mon_time),
-                             str(None),
-                             str(None),
-                             str(None), 
-                             str(None), 
-                             "End of Test"))  
-                self.out_file_csv.close()
-                self.logger.notice("ADC data are saved to %s" % (output_dir))
+                                                                                  secondary_fieldnames = secondary_fieldnames)   
+            eventTimer = mops_child_window.EventTimer()
+            self.adc_timer = eventTimer.initiate_timer()
+            self.adc_timer.setInterval(int(self.__refresh_rate))
+            self.adc_timer.timeout.connect(self.update_adc_channels)
+            self.adc_timer.timeout.connect(self.update_monitoring_values)
         else:
             self.error_message("Please add an output file name")
              
@@ -1172,10 +1157,24 @@ class MainWindow(QMainWindow):
         '''
         The function will  stop the adc_timer.
         '''        
+        def exit_handler():
+        # This function will be called on script termination
+            self.logger.warning("Script interrupted. Closing the program.")
+            sys.exit(0)
+        atexit.register(exit_handler)  
         try:
             self.stop_adc_reading = False
             self.adc_timer.stop()
-            
+            self.logger.warning("User interrupted. Closing the program.")             
+            # self.csv_writer.writerow((str(None),
+            #              str(None),
+            #              str(None),
+            #              str(None), 
+            #              str(None), 
+            #              "End of Test") ) 
+            # self.out_file_csv.flush() # Flush the buffer to update the file
+            self.out_file_csv.close()
+            self.logger.notice("ADC data are saved to %s" % (output_dir))
             self.control_logger.disabled = False   
             self.logger.notice("Stop reading ADC data...")
         except Exception:
@@ -1265,8 +1264,6 @@ class MainWindow(QMainWindow):
                                          str(data_point),
                                          str(self.__adc_converted)))
                     self.out_file_csv.flush() # Flush the buffer to update the file
-                        
-                   
                     if self.trendingBox[s] == True and self.__adc_converted is not None:
                         # Monitor a window of 100 points is enough to avoid Memory issues
                         if len(self.x[s]) >= 100:
@@ -1275,7 +1272,9 @@ class MainWindow(QMainWindow):
 
         except (KeyboardInterrupt):
             #Handle Ctrl+C to gracefully exit the loop
+            
             self.logger.warning("User interrupted. Closing the program.")
+            self.stop_adc_timer()
             sys.exit(1) 
         return self.__adc_converted
 

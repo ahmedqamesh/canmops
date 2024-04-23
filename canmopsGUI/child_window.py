@@ -747,7 +747,7 @@ class ChildWindow(QtWidgets.QMainWindow):
         if "yaml" in  file_name:  
             design = design_diagram.DesignDiagram(file_path =file_path, file_name = file_name[:-5])
             fig_path = design.process_yaml(path=file_path,file_name =file_name[:-5],graphid_name = "MopsHub", file_end = ".yaml")
-        if "yml" in  file_name:  
+        elif "yml" in  file_name:  
             design = design_diagram.DesignDiagram(file_path =file_path, file_name = file_name[:-4])
             fig_path = design.process_yaml(path=file_path,file_name =file_name[:-4],graphid_name = "MopsHub", file_end = ".yml")
         else:
@@ -784,18 +784,22 @@ class ChildWindow(QtWidgets.QMainWindow):
            adc_value = self.adcListBox.currentItem().text()
             
         try:
-            fig =  plotting_canvas.PlottingCanvas(test_file=self.filetextboxValue, tests=[int(adc_value)], plot_prefix = plot_prefix)
-            adc_state = True 
-            toolbar = Navi(fig,self.plotframe)
-            self.adcPlotGridLayout.addWidget(toolbar,4,1,1,1)
-            self.activeAdcCheckBox.setChecked(adc_state)
-            self.adcListBox.setEnabled(adc_state)
+            if self.filetextboxValue.endswith('.csv'): 
+                fig =  plotting_canvas.PlottingCanvas(test_file=self.filetextboxValue, tests=[int(adc_value)], plot_prefix = plot_prefix)
+                toolbar = Navi(fig,self.plotframe)
+                adc_state = True 
+                self.adcPlotGridLayout.addWidget(toolbar,4,1,1,1)
+                self.adcPlotGridLayout.addWidget(fig,5,1,4,4)                
+            else: 
+                fig = self.plot_yaml_file() 
+                adc_state = False 
         except:
             if self.filetextboxValue.endswith('.csv'):
                 adc_state = False    
                 fig =  plotting_canvas.PlottingCanvas(test_file=self.filetextboxValue, plot_prefix = "trial_plot")
                 toolbar = Navi(fig,self.plotframe)
-                self.adcPlotGridLayout.addWidget(toolbar,4,1,1,1)                
+                self.adcPlotGridLayout.addWidget(toolbar,4,1,1,1) 
+                self.adcPlotGridLayout.addWidget(fig,5,1,4,4)               
             elif self.filetextboxValue.endswith('.yaml'):
                 adc_state = False
                 fig = self.plot_yaml_file()     
@@ -806,11 +810,9 @@ class ChildWindow(QtWidgets.QMainWindow):
             else:
                 adc_state = False
                 fig = QLabel() 
-                pass
-            
-            self.activeAdcCheckBox.setChecked(adc_state)
-            self.adcListBox.setEnabled(adc_state)
-        self.adcPlotGridLayout.addWidget(fig,5,1,4,4)
+                pass   
+        self.activeAdcCheckBox.setChecked(adc_state)
+        self.adcListBox.setEnabled(adc_state)
     
     def get_config_file(self, object = None, directory =None):
         file_to_open = QFileDialog.getOpenFileName(directory = directory)[0]#filter = "csv (*.csv)",

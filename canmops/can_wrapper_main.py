@@ -228,7 +228,7 @@ class CanWrapper(object):#READSocketcan):#Instead of object
         wait_trim = False
         i = 0
         while True:  
-            self.logger_file.notice(f'Sending Trimming messages' + "." * i)
+            self.logger_file.notice(f'Send Trimming messages' + "." * i)
             await self.write_can_message(cobid = 0x555, 
                                          data = [0xAA, 0xAA, 0xAA, 0xAA, 0xAA, 0xAA, 0xAA, 0xAA],
                                          flag =0, 
@@ -590,13 +590,13 @@ class CanWrapper(object):#READSocketcan):#Instead of object
             with self.__lock:
                 # check the message validity [nodid, msg size,...]
                 for i, (cobid_ret, msg_ret, dlc, flag, t , error_frame) in zip(range(len(self.__canMsgQueue)), self.__canMsgQueue):
-                    data_ret, messageValid, errorResponse  = await self.return_valid_message(nodeId, index, subindex, cobid_ret, msg_ret, dlc, error_frame, SDO_TX, SDO_RX)
+                    data_ret, messageValid, errorResponse  = await self.check_valid_message(nodeId, index, subindex, cobid_ret, msg_ret, dlc, error_frame, SDO_TX, SDO_RX)
                     if (messageValid or errorResponse): 
                         del self.__canMsgQueue[i]
                     self.__canMsgThread.join()#Dominic to join the thread with Pill 2 kill  
         return cobid_ret, data_ret
     
-    async def return_valid_message(self, nodeId, index, subindex, cobid_ret, data_ret, dlc, error_frame, SDO_TX, SDO_RX, print_sdo = None):
+    async def check_valid_message(self, nodeId = None, index = None, subindex = None, cobid_ret = None, data_ret = None, dlc = None, error_frame = None, SDO_TX = None, SDO_RX = None, print_sdo = None):
         # The following are the only expected response
         messageValid  = False
         errorSignal   = False  # check any reset signal from the chip
@@ -712,7 +712,7 @@ class CanWrapper(object):#READSocketcan):#Instead of object
         
         if (not all(m is None for m in _frame[0:2])):
            cobid_ret, msg_ret, dlc, flag, respmsg, responsereg, t, error_frame = _frame
-           data_ret, messageValid, errorResponse  = await self.return_valid_message(nodeId, index, subindex, cobid_ret, msg_ret, dlc, error_frame, SDO_TX, SDO_RX)
+           data_ret, messageValid, errorResponse  = await self.check_valid_message(nodeId, index, subindex, cobid_ret, msg_ret, dlc, error_frame, SDO_TX, SDO_RX)
            if messageValid: status=1;
            else:  status =0;
            # Check command byte
@@ -750,16 +750,18 @@ class CanWrapper(object):#READSocketcan):#Instead of object
             if self.__interface == 'Kvaser':
                 frame = Frame(id_=cobid, data=data, timestamp=None, dlc=dlc , flags=canlib.MessageFlag.STD)
                 self.ch0.write(frame)  #writeWait(frame, 100) #
+                reqmsg = 1
             elif self.__interface == 'AnaGate':
                 if not self.ch0.deviceOpen:
                     self.logger_file.notice('Reopening AnaGate CAN interface')
                 self.ch0.write(cobid, data, flag)
+                reqmsg = 1
             else:
                 msg = can.Message(arbitration_id=cobid, data=data, is_extended_id=False, is_error_frame=False,dlc = dlc)
                 #timeout wait up to this many seconds for message to be ACK'ed or
                 # A timeout in the range of 10 milliseconds  with CAN bus speed of 125 kb/s
                 self.ch0.send(msg, 10) 
-            reqmsg = 1
+                reqmsg = 1
             self.__cnt['tx_msg'] += 1
         except:  # can.CanError:
             self.__cnt['Not_active_bus'] += 1
