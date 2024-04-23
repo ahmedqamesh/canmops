@@ -1165,7 +1165,8 @@ class MainWindow(QMainWindow):
         try:
             self.stop_adc_reading = False
             self.adc_timer.stop()
-            self.logger.warning("User interrupted. Closing the program.")             
+            self.logger.warning("User interrupted. Closing the program.")       
+                  
             # self.csv_writer.writerow((str(None),
             #              str(None),
             #              str(None),
