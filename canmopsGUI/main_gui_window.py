@@ -64,6 +64,7 @@ class MainWindow(QMainWindow):
         self.__interfaceItems = list(["AnaGate", "Kvaser", "socketcan"]) 
         self.__channelPorts = list(conf["channel_ports"])
         self.__interface = None
+        self.__ref_voltage = None
         self.__channel = None
         self.__ipAddress = None
         self.__bitrate = None
@@ -657,7 +658,7 @@ class MainWindow(QMainWindow):
             deviceLabel.setText("[" + self.__devices[0] + "]")
             deviceName, version, icon_dir, nodeIds, dictionary_items, adc_channels_reg,\
             self.__adc_index, self.__chipId, self.__index_items, self.__conf_index, \
-            self.__mon_index,self.__resistor_ratio, self.__ref_voltage =  mops_child.update_device_box(device = self.__devices[0], mainWindow = self)
+            self.__mon_index,self.__resistor_ratio, self.__BG_voltage, self.__ref_voltage  =  mops_child.update_device_box(device = self.__devices[0], mainWindow = self)
         
         self.set_deviceName(deviceName)
         self.configureDeviceBoxLayout.addWidget(deviceLabel)
@@ -692,7 +693,7 @@ class MainWindow(QMainWindow):
         Second: Communication with CAN wrapper will begin
         ''' 
         icon_red = icon_location+"icon_red.png"
-        icon_green = icon_location+"icon_green.png" 
+        icon_green = icon_location+"icon_green.png"
         if self.connectButton.isChecked():
             _interface = self.get_interface()   
             _default_channel = self.get_channel()
@@ -714,7 +715,8 @@ class MainWindow(QMainWindow):
                 self.connectButton.setEnabled(True)
                 self.update_bus_status_box(on=True)
                 self.statusBoxVar.setText("ON") 
-                self.connectButton.setIcon(QIcon(icon_location+'icon_connect.jpg'))          
+                self.connectButton.setIcon(QIcon(icon_location+'icon_connect.jpg'))     
+                self.logger.notice(f"Loading Reference Voltage settings: VREF = {round(self.__ref_voltage, 3)} [V]")     
             except:
                 self.connectButton.setIcon(QIcon(icon_location+'icon_disconnect.jpg'))
                 self.update_bus_status_box(on=False)
@@ -793,9 +795,7 @@ class MainWindow(QMainWindow):
         _canSettings["channel" + str(_channels[0])]["timeout"] = self.__wait_time
         
         AnalysisUtils().dump_yaml_file(directory=lib_dir, file=config_dir+_interface + "_CANSettings.yml", loaded=_canSettings)
-        # Set the channel
-        #self.logger.info("Please restart your bus from the tools menu (Interface >> %s >> Reset_%s_interface )to apply the new settings " % (_interface, _interface))
-        
+
         self.hardware_config(bitrate=int(_bitrate),
                                      interface=_interface,
                                      sjw=int(_sjw),
@@ -910,9 +910,7 @@ class MainWindow(QMainWindow):
         _index = int(self.get_index(), 16)
         _subIndex = int(self.get_subIndex(), 16)
         _nodeId = int(self.get_nodeId())
-        #_interface = self.get_interface()
         _busId = self.get_busId()
-
         data_RX,_,_,_,_,_,_ = asyncio.run(self.wrapper.read_sdo_can(nodeId = _nodeId,
                                                                   index = _index, 
                                                                   subindex = _subIndex, 
@@ -981,7 +979,11 @@ class MainWindow(QMainWindow):
             # printing TX   
             self.set_textBox_message(comunication_object="SDO_RX", msg=str([hex(m)[2:] for m in RX_response]), cobid=str(hex(cobid_RX) + " "))
             # print decoded response
-            converted_response = Analysis().adc_conversion("V", response_from_node, self.__resistor_ratio, self.__ref_voltage)
+            converted_response = Analysis().adc_conversion(adc_channels_reg = "V", 
+                                                             value = response_from_node,
+                                                             resistor_ratio =  self.__resistor_ratio,
+                                                             ref_voltage = self.__ref_voltage)
+                    
             decoded_response = f'{response_from_node:03X}'
             self.set_textBox_message(comunication_object="Decoded", msg=decoded_response, cobid=str(hex(cobid_RX) + ": Hex value = "))
             self.set_textBox_message(comunication_object="ADC", msg=f'{round(converted_response,3)}', cobid=str(hex(cobid_RX) + ": ADC value = "))
@@ -1140,7 +1142,7 @@ class MainWindow(QMainWindow):
         if len(self.__default_file) != 0:
             self.logger.notice("Preparing an output file [%s]..." % (output_dir+self.__default_file))
             fieldnames = ['Time', 'Channel', "nodeId", "ADCChannel", "ADCData" , "ADCDataConverted"]
-            secondary_fieldnames = [f"resistor_ratio:{self.__resistor_ratio}",f"ref_voltage:{self.__ref_voltage}V"]
+            secondary_fieldnames = [f"resistor_ratio:{self.__resistor_ratio}",f"BG_voltage:{self.__BG_voltage}V"]
             self.csv_writer, self.out_file_csv = AnalysisUtils().build_data_base(fieldnames=fieldnames,
                                                                                  outputname=self.__default_file[:-4],
                                                                                   directory=output_dir,
@@ -1217,7 +1219,7 @@ class MainWindow(QMainWindow):
         except Exception:
             pass
         
-                     
+                      
     def update_adc_channels(self):
         '''
         The function will will send a CAN message to read the ADC channels using the function read_sdo_can and
@@ -1227,7 +1229,6 @@ class MainWindow(QMainWindow):
         _adc_channels_reg = self.get_adc_channels_reg()
         _dictionary = self.__dictionary_items
         _adc_indices = list(self.__adc_index)
-        #data_point = [0] * 33
         try:
             for i in np.arange(len(_adc_indices)):
                 _subIndexItems = list(AnalysisUtils().get_subindex_yaml(dictionary=_dictionary, index=_adc_indices[i], subindex="subindex_items"))
@@ -1248,10 +1249,11 @@ class MainWindow(QMainWindow):
                         self.__adc_converted = None
                         self.channelValueBox[s].setText(str(self.__adc_converted))
                     else:
-                        self.__adc_converted = Analysis().adc_conversion(_adc_channels_reg[str(subindex)], 
-                                                                                       data_point, 
-                                                                                       self.__resistor_ratio,
-                                                                                       self.__ref_voltage)
+                        self.__adc_converted = Analysis().adc_conversion(adc_channels_reg = _adc_channels_reg[str(subindex)], 
+                                                                           value = data_point, 
+                                                                           resistor_ratio =self.__resistor_ratio,
+                                                                            ref_voltage = self.__ref_voltage)
+                     
                         self.set_adc_converted(self.__adc_converted)
                         self.channelValueBox[s].setText(str(round(self.__adc_converted, 3)))
                     
@@ -1304,6 +1306,7 @@ class MainWindow(QMainWindow):
                     if   s == 0: resistor_ratio = 1
                     elif s == 1: resistor_ratio = 2.5
                     elif s == 2: resistor_ratio = 1  
+
                     self.__adc_converted = Analysis().adc_conversion(adc_channels_reg = "V", 
                                                                      value = data_point,
                                                                      resistor_ratio = resistor_ratio,
@@ -1602,7 +1605,22 @@ class MainWindow(QMainWindow):
     
     def set_tseg2(self, x):
         self.__tseg2 = int(x)
-    
+
+    def set_ref_voltage(self, value= None, index = None, subindex = None, adc_gain = None , adc_offset = None):
+        _sdo_tx = hex(0x600)
+        self.set_canId_tx(str(_sdo_tx))     
+        index = list(index)[0]
+        self.set_index(index)  # set index for later usage
+        self.set_subIndex(str(subindex))
+        ADCBG = self.read_sdo_can()  # _thread(print_sdo=False)
+        factor = 4096/ADCBG
+        if adc_gain and adc_offset is not None:
+            self.logger.report(f"Reference Voltage = {ref_voltage} based on Gain: {adc_gain} and Offset: {adc_offset}") 
+        else:
+            ref_voltage = factor*self.__BG_voltage
+            self.__ref_voltage = ref_voltage
+            self.logger.report(f"Reference Voltage = {ref_voltage} based on factor : {factor} and VBANDGAP = {self.__BG_voltage}[V]") 
+        return ref_voltage
     def set_sample_point(self, x):
         self.__sample_point = float(x) / 100
             
@@ -1732,8 +1750,12 @@ class MainWindow(QMainWindow):
         return self.__interface
 
     def get_channel(self):
-        return self.__channel       
+        return self.__channel     
 
+    def get_ref_voltage(self):
+        return self.__ref_voltage     
+
+    
     def get_color(self, i):
         '''
         The function returns named colors supported in matplotlib

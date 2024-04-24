@@ -1,6 +1,9 @@
 Hardware:
   resistor_ratio: 40.0
-  ref_voltage: 0.85
+  BG_voltage: 0.6
+  adc_gain: 0.9
+  adc_offset: 0.0
+  ref_voltage: 0.839344262295082
 Application:
   chipId: '1'
   device_name: MOPS
