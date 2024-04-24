@@ -88,9 +88,12 @@ class MopsChildWindow(QWidget):
         self.__mon_index = dev["adc_channels_reg"]["mon_index"] 
         self.__conf_index = dev["adc_channels_reg"]["conf_index"] 
         self.__resistor_ratio = dev["Hardware"]["resistor_ratio"]
-        self.__ref_voltage = dev["Hardware"]["ref_voltage"] 
+        self.__BG_voltage = dev["Hardware"]["BG_voltage"] 
+        self.__adc_gain = dev["Hardware"]["adc_gain"] 
+        self.__adc_offset = dev["Hardware"]["adc_offset"] 
+        self.__ref_voltage = dev["Hardware"]["ref_voltage"]         
         return  self.__deviceName, self.__version, self.__appIconDir,self.__nodeIds, self.__dictionary_items, self.__adc_channels_reg,\
-            self.__adc_index, self.__chipId, self.__index_items, self.__conf_index, self.__mon_index, self.__resistor_ratio, self.__ref_voltage
+            self.__adc_index, self.__chipId, self.__index_items, self.__conf_index, self.__mon_index, self.__resistor_ratio, self.__BG_voltage, self.__adc_gain, self.__adc_offset, self.__ref_voltage
 
 
                    
@@ -125,11 +128,11 @@ class MopsChildWindow(QWidget):
             pass         
         
         return  self.__deviceName, self.__version, self.__appIconDir,self.__nodeIds, self.__dictionary_items, self.__adc_channels_reg,\
-            self.__adc_index, self.__chipId, self.__index_items, self.__conf_index, self.__mon_index, self.__resistor_ratio, self.__ref_voltage  
+            self.__adc_index, self.__chipId, self.__index_items, self.__conf_index, self.__mon_index, self.__resistor_ratio, self.__BG_voltage, self.__ref_voltage    
 
     
                              
-    def define_object_dict_window(self,connected_node = None, mainWindow = None):
+    def define_object_dict_window(self,mainWindow = None):
         def __set_bus():
             try:
                 _nodeid = self.deviceNodeComboBox.currentText()
@@ -288,10 +291,10 @@ class MopsChildWindow(QWidget):
         '''
         #mainWindow.set_deviceName(device)
         try:
-            self.MenuBar.create_device_menuBar(childWindow,device_config)
+            self.MenuBar.create_device_menuBar(childWindow,mainWindow,device_config)
         except Exception:
             self.MenuBar = menu_window.MenuWindow(self)
-            self.MenuBar.create_device_menuBar(childWindow,device_config)
+            self.MenuBar.create_device_menuBar(childWindow,mainWindow,device_config)
             
         self.DataMonitoring = data_monitoring.DataMonitoring(self)    
         _spacing = 400
@@ -336,7 +339,7 @@ class MopsChildWindow(QWidget):
             mainWindow.set_nodeList(nodeItems)
             for item in list(map(str, nodeItems)): self.deviceNodeComboBox.addItem(item)
             
-            _connectedNode = self.deviceNodeComboBox.currentText()
+            #_connectedNode = self.deviceNodeComboBox.currentText()
 
             busLabel = QLabel()
             busLabel.setText("Connected bus :")
@@ -381,7 +384,7 @@ class MopsChildWindow(QWidget):
             self.deviceNodeComboBox.currentIndexChanged.connect(_set_default_file)
             self.deviceBusComboBox.currentIndexChanged.connect(_set_default_file)
                         
-            objectDictLayout, self._wait_label = self.define_object_dict_window(connected_node = _connectedNode, mainWindow = mainWindow)
+            objectDictLayout, self._wait_label = self.define_object_dict_window(mainWindow = mainWindow)
             self.tab1.setLayout(objectDictLayout) 
             nodeHLayout = QHBoxLayout()
             nodeHLayout.addWidget(nodeLabel)
@@ -567,20 +570,50 @@ class MopsChildWindow(QWidget):
         ResistorRatioLineEdit.setText(str(self.__resistor_ratio))
         ReferenceVoltageLabel = QLabel()
         ReferenceVoltageLabel.setText("Vref [V]:")
-        ReferenceVoltageLabel.setStatusTip('Reference Voltage = VBANDGAP x Factor') 
-        ReferenceVoltageLineEdit = QLabel()#QLineEdit()
-        ReferenceVoltageLineEdit.setText(str(self.__ref_voltage))
+        factor = self.__ref_voltage/ self.__BG_voltage
+        ReferenceVoltageLabel.setStatusTip(f'Reference Voltage = VBANDGAP x {round(factor, 3)}') 
+        ReferenceVoltageLineEdit = QLabel()
+        ReferenceVoltageLineEdit.setText(str(round(self.__ref_voltage, 3)))
+
+        BGVoltageLabel = QLabel()
+        BGVoltageLabel.setText("VBANDGAP [V]:")
+        BGVoltageLabel.setStatusTip(f'Given BANDGAP voltage') 
+        BGVoltageLineEdit = QLabel()
+        BGVoltageLineEdit.setText(str(round(self.__BG_voltage, 3)))
+
+
+
+        ADCGainLabel = QLabel()
+        ADCGainLabel.setText("ADC Gain:")
+        ADCGainLineEdit = QLabel()
+        ADCGainLineEdit.setText(str(round(self.__adc_gain, 3)))
+        
+        ADCOffsetLabel = QLabel()
+        ADCOffsetLabel.setText("ADC Offset:")
+        ADCOffsetLineEdit = QLabel()
+        ADCOffsetLineEdit.setText(str(round(self.__adc_offset, 3)))
         
         ReferenceVoltageLineEdit.setFont(newfont)
         ResistorRatioLineEdit.setFont(newfont)
+        ADCOffsetLineEdit.setFont(newfont)
+        ADCGainLineEdit.setFont(newfont)
+        BGVoltageLineEdit.setFont(newfont)
         
+                         
         hardwareLayout.addWidget(ResistorRatioLabel,0,0)
         hardwareLayout.addWidget(ResistorRatioLineEdit,0,1)
         hardwareLayout.addWidget(ReferenceVoltageLabel,1,0)
         hardwareLayout.addWidget(ReferenceVoltageLineEdit,1,1)
-             
+        hardwareLayout.addWidget(BGVoltageLabel,2,0)
+        hardwareLayout.addWidget(BGVoltageLineEdit,2,1)        
+        hardwareLayout.addWidget(ADCGainLabel,3,0)
+        hardwareLayout.addWidget(ADCGainLineEdit,3,1)
+        hardwareLayout.addWidget(ADCOffsetLabel,4,0)
+        hardwareLayout.addWidget(ADCOffsetLineEdit,4,1)
+                     
         chipLayout.addWidget(chipIdLabel)
         chipLayout.addWidget(chipIdTextBox)
+        
         deviceInfoGridLayout.addLayout(iconLayout, 0, 0)
         deviceInfoGridLayout.addLayout(chipLayout, 2, 0) 
         deviceInfoGridLayout.addLayout(hardwareLayout, 3, 0) 

@@ -27,11 +27,11 @@ class MenuWindow(QWidget):
     def stop(self):
         return self.MainWindow.stop_server()
     
-    def create_device_menuBar(self, mainwindow,device_config):
-        menuBar = mainwindow.menuBar()
+    def create_device_menuBar(self,devicewindow ,mainWindow,device_config):
+        menuBar = devicewindow.menuBar()
         menuBar.setNativeMenuBar(False)  # only for MacOS   
-        self.set_device_settings_menu(menuBar, mainwindow,device_config)
-        self.set_plotting_menu(menuBar, mainwindow)
+        self.set_device_settings_menu(menuBar, devicewindow,mainWindow, device_config)
+        self.set_plotting_menu(menuBar, devicewindow)
         
     def create_opcua_menuBar(self,mainwindow,config_yaml):
         menuBar = mainwindow.menuBar()
@@ -107,14 +107,15 @@ class MenuWindow(QWidget):
         settingsMenu.addAction(BrowseServer)
         settingsMenu.addAction(BrowseClient)
                 
-    def set_device_settings_menu(self, menuBar, mainwindow,device_config):      
+    def set_device_settings_menu(self, menuBar,  devicewindow,mainWindow,device_config):      
         settingsMenu = menuBar.addMenu('&Settings')
         conf = AnalysisUtils().open_yaml_file(file=config_dir + device_config + "_config.yml" , directory=lib_dir)
         self.__appIconDir = conf["Application"]["icon_dir"]
         self.__device = conf["Application"]["device_name"].lower()
         def show_edit_device_settings():
             self.NodeWindow = QMainWindow()
-            self.edit_device_settings(self.NodeWindow, conf)
+            self.NodeWindow.setFixedSize(400, 450)#x,y
+            self.edit_device_settings(self.NodeWindow, mainWindow, conf)
             self.NodeWindow.show()
         
         def show_edit_adc():            
@@ -122,11 +123,11 @@ class MenuWindow(QWidget):
             self.edit_adc_window(self.adcWindow, conf)
             self.adcWindow.show()
 
-        DeviceSettings = QAction(QIcon('graphics_Utils/icons/icon_nodes.png'),'Edit Device Settings', mainwindow)
+        DeviceSettings = QAction(QIcon('graphics_Utils/icons/icon_nodes.png'),'Edit Device Settings', devicewindow)
         DeviceSettings.setStatusTip("Add Nodes to the Node menu")
         DeviceSettings.triggered.connect(show_edit_device_settings)
 
-        ADCNodes = QAction(QIcon('graphics_Utils/icons/icon_nodes.png'),'Edit MOPS ADC Settings', mainwindow)
+        ADCNodes = QAction(QIcon('graphics_Utils/icons/icon_nodes.png'),'Edit MOPS ADC Settings', devicewindow)
         ADCNodes.setStatusTip("Edit ADC settings [e.g. Parameters]")
         ADCNodes.triggered.connect(show_edit_adc)
     
@@ -423,7 +424,7 @@ class MenuWindow(QWidget):
         ADCGroup.setLayout(adc_mainLayout)
         plotframe.setLayout(mainLayout) 
 
-    def edit_device_settings(self, childWindow, conf):
+    def edit_device_settings(self, childWindow, mainWindow, conf):
         #check the conf file
         NodeGroup= QGroupBox("Node Info")
         ChipGroup= QGroupBox("Chip Info")
@@ -435,7 +436,12 @@ class MenuWindow(QWidget):
         childWindow.setGeometry(200, 200, 100, 100)
         def_chipId = conf["Application"]["chipId"]
         def_resistorRatio = conf["Hardware"]["resistor_ratio"]
-        def_refernceVoltage = conf["Hardware"]["ref_voltage"]
+        def_BGVoltage = conf["Hardware"]["BG_voltage"]
+        def_adc_gain = conf["Hardware"]["adc_gain"]
+        def_adc_offset = conf["Hardware"]["adc_offset"]
+        def_mon_index = conf["adc_channels_reg"]["mon_index"]
+        def_nodeIds = conf["Application"]["nodeIds"] 
+        
         mainLayout = QGridLayout()
         # Define a frame for that group
         plotframe = QFrame()
@@ -477,6 +483,46 @@ class MenuWindow(QWidget):
         iconLayout.addSpacing(30)
         iconLayout.addWidget(icon)    
         
+        def _add_item():
+            node = nodeSpinBox.value()
+            nodeListBox.addItem(str(int(node)))
+        
+        def _clear_item():
+            _row = nodeListBox.currentRow()
+            nodeListBox.takeItem(_row)
+        def _calibrate_items():
+            _connectedNode = self.deviceNodeComboBox.currentText()
+            _connectedbusId = self.deviceBusComboBox.currentText()
+            mainWindow.set_nodeId(_connectedNode)
+            mainWindow.set_busId(_connectedbusId)
+            self.logger.notice("Calculating the Reference Voltage...") 
+            ref_voltage = mainWindow.set_ref_voltage(value = def_BGVoltage, index = def_mon_index, subindex = 1, adc_gain = None , adc_offset = None)
+
+        def _save_items():
+            _chipId = str(chipIdLineEdit.text())
+            _resistorRatio = str(ResistorRatioLineEdit.text())
+            BG_voltage = str(ReferenceVoltageLineEdit.text())
+            ref_voltage =str(mainWindow.get_ref_voltage())
+            adc_gain = str(ADCGainLineEdit.text())
+            adc_offset = str(ADCOffsetLineEdit.text())
+            conf["Application"]["chipId"] = _chipId
+            conf["Hardware"]["resistor_ratio"] = float(_resistorRatio)
+            conf["Hardware"]["BG_voltage"]  = float(BG_voltage)
+            conf["Hardware"]["ref_voltage"] = float(ref_voltage)
+            conf["Hardware"]["adc_offset"]  = float(adc_offset)
+            conf["Hardware"]["adc_gain"] = float(adc_gain)
+            
+            if (nodeListBox.count() != 0):
+                _nodes = [nodeListBox.item(x).text() for x in range(nodeListBox.count())]
+                conf["Application"]["nodeIds"] = _nodes
+                file = config_dir + self.__device + "_config.yml"
+                AnalysisUtils().dump_yaml_file(file=file,
+                                               loaded = conf,
+                                               directory=lib_dir)
+                self.logger.info("Saving Information to the file %s"%file)
+            else:
+                self.logger.error("No Node Info to be saved.....")
+                        
         chipLayout = QHBoxLayout()
         chipIdLabel = QLabel()
         chipIdLabel.setText("Chip Id:")
@@ -494,44 +540,57 @@ class MenuWindow(QWidget):
         ResistorRatioLineEdit.setText(str(def_resistorRatio))
         
         ReferenceVoltageLabel = QLabel()
-        ReferenceVoltageLabel.setText("Reference Voltage:")
+        ReferenceVoltageLabel.setText("BandGap Voltage:")
         ReferenceVoltageLineEdit = QLineEdit()
-        ReferenceVoltageLineEdit.setText(str(def_refernceVoltage))
+        ReferenceVoltageLineEdit.setText(str(def_BGVoltage))
         
+        ADCGainLabel = QLabel()
+        ADCGainLabel.setText("ADC Gain:")
+        ADCGainLineEdit = QLineEdit()
+        ADCGainLineEdit.setText(str(def_adc_gain))
         
+        ADCOffsetLabel = QLabel()
+        ADCOffsetLabel.setText("ADC Offset:")
+        ADCOffsetLineEdit = QLineEdit()
+        ADCOffsetLineEdit.setText(str(def_adc_offset))
+
+        calibrate_button = QPushButton("Calibrate")
+        calibrate_button.setIcon(QIcon(icon_location+'icon_linear.svg'))
+        calibrate_button.clicked.connect(_calibrate_items) 
+           
+        nodeLabel.setText("Selected ID :")
+        self.deviceNodeComboBox = QComboBox()
+        for item in list(map(str, def_nodeIds)): self.deviceNodeComboBox.addItem(item)
+        
+        busLabel = QLabel()
+        busLabel.setText("Connected bus :")
+        self.deviceBusComboBox = QComboBox()
+        busItems = [0]
+        for item in list(map(str, busItems)): self.deviceBusComboBox.addItem(item)  
+                   
+                                    
         hardwareLayout.addWidget(ResistorRatioLabel,0,0)
         hardwareLayout.addWidget(ResistorRatioLineEdit,0,1)
         hardwareLayout.addWidget(ReferenceVoltageLabel,1,0)
         hardwareLayout.addWidget(ReferenceVoltageLineEdit,1,1)
-                            
+        
+        hardwareLayout.addWidget(ADCGainLabel,2,0)
+        hardwareLayout.addWidget(ADCGainLineEdit,2,1)
+        hardwareLayout.addWidget(ADCOffsetLabel,3,0)
+        hardwareLayout.addWidget(ADCOffsetLineEdit,3,1) 
+
+        hardwareLayout.addWidget(nodeLabel,4,0)
+        hardwareLayout.addWidget(self.deviceNodeComboBox,4,1) 
+
+        hardwareLayout.addWidget(busLabel,5,0)
+        hardwareLayout.addWidget(self.deviceBusComboBox,5,1) 
+                        
+        hardwareLayout.addWidget(calibrate_button,6,1)  
+              
+                                    
         infoLayout.addLayout(iconLayout)
         infoLayout.addLayout(chipLayout)
 
-        def _add_item():
-            node = nodeSpinBox.value()
-            nodeListBox.addItem(str(int(node)))
-        
-        def _clear_item():
-            _row = nodeListBox.currentRow()
-            nodeListBox.takeItem(_row)
-        
-        def _save_items():
-            _chipId = str(chipIdLineEdit.text())
-            _resistorRatio = str(ResistorRatioLineEdit.text())
-            ref_voltage = str(ReferenceVoltageLineEdit.text())
-            conf["Application"]["chipId"] = _chipId
-            conf["Hardware"]["resistor_ratio"] = float(_resistorRatio)
-            conf["Hardware"]["ref_voltage"] = float(ref_voltage)
-            if (nodeListBox.count() != 0):
-                _nodes = [nodeListBox.item(x).text() for x in range(nodeListBox.count())]
-                conf["Application"]["nodeIds"] = _nodes
-                file = config_dir + self.__device + "_config.yml"
-                AnalysisUtils().dump_yaml_file(file=file,
-                                               loaded = conf,
-                                               directory=lib_dir)
-                self.logger.info("Saving Information to the file %s"%file)
-            else:
-                self.logger.error("No Node Info to be saved.....")
                 
         add_button.clicked.connect(_add_item)
         clear_button.clicked.connect(_clear_item)
