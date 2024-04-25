@@ -66,7 +66,7 @@ test:software:
       #- pip install canlib-1.6.615-py2.py3-none-any.whl
       # Installing AnaGate CAN interface
       #- pip install anagate-0.1.0-py3-none-any.whl
-      #- cd ..
+      - cd ..
     script:
       - sudo apt-get install -y build-essential
       - pip install --upgrade pip setuptools
