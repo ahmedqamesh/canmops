@@ -68,17 +68,17 @@ test:software:
       #- pip install anagate-0.1.0-py3-none-any.whl
       - cd ..
     script:
-	- sudo apt-get install -y build-essential
-      	- pip install --upgrade pip setuptools
-      	- pip install symbol-please
-      	- cd canmops
-      	- ls
-      	- sudo -S lsmod | grep can
- 	- sudo -S ip link set down 
-	- sudo -S ip link set can0 type can bitrate 125000 sample-point 0.5 sjw 4 phase-seg1 4 phase-seg2 3      
-	- sudo -S ip link set up can0
-	- ip -details link show can0        
-      	- python canmops/can_wrapper_main.py -S -b 125000 -sp 0.5 -sjw 4 -tseg1 5 -tseg2 6 -nodeid 1
+      - sudo apt-get install -y build-essential
+      - pip install --upgrade pip setuptools
+      - pip install symbol-please
+      - cd canmops
+      - ls
+      - sudo -S lsmod | grep can
+      - sudo -S ip link set down 
+      - sudo -S ip link set can0 type can bitrate 125000 sample-point 0.5 sjw 4 phase-seg1 4 phase-seg2 3      
+      - sudo -S ip link set up can0
+      - ip -details link show can0        
+      - python canmops/can_wrapper_main.py -S -b 125000 -sp 0.5 -sjw 4 -tseg1 5 -tseg2 6 -nodeid 1
       
       #- python canmops_test.py
 
