@@ -32,29 +32,28 @@ test:software:
       
       # Installing CAN packages
       #Installing SocketCAN devices
-      #Installing python-can package
-      - pip install python-can
+
       #Installing libsocketcan package
       - pip install socketcan
-      #- git clone https://git.pengutronix.de/git/tools/libsocketcan
-      #- cd libsocketcan
-      #- ./autogen.sh
-      #- ./configure  #--disable-dependency-tracking
-      #- make CFLAGS='-fPIC' # to compile the package
-      #- make install #to install the programs and any data files
+      - git clone https://git.pengutronix.de/git/tools/libsocketcan
+      - cd libsocketcan
+      - ./autogen.sh
+      - ./configure  #--disable-dependency-tracking
+      - make CFLAGS='-fPIC' # to compile the package
+      - make install #to install the programs and any data files
       #- cd ..
       #Installing SocketCAN can-utils
       #- sudo apt-get install can-utils
       #Installing Canlib package
-      - cd packages
-     # - tar -xf linuxcan.tar.gz
-     # - cd linuxcan
+      #- cd packages
+      # - tar -xf linuxcan.tar.gz
+      # - cd linuxcan
       #- make 
       #- sudo make install #to install all drivers
       # install canlib
       #- cd canlib
-     # - make 
-     # - make install #to install all drivers
+      # - make 
+      # - make install #to install all drivers
       #- cd ..
       # install Kvcommon
       #- cd common
@@ -65,9 +64,9 @@ test:software:
       # install extra libraries of canlib
       #- cd ..
       #- pip install canlib-1.6.615-py2.py3-none-any.whl
-     # Installing AnaGate CAN interface
+      # Installing AnaGate CAN interface
       #- pip install anagate-0.1.0-py3-none-any.whl
-      - cd ..
+      #- cd ..
     script:
       - sudo apt-get install -y build-essential
       - pip install --upgrade pip setuptools
