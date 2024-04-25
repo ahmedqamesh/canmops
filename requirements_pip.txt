@@ -27,7 +27,7 @@ entrypoints
 enum34
 folium
 gnupg
-http-parser
+#http-parser
 humanfriendly
 idna
 importlib-metadata
