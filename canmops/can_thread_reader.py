@@ -1,6 +1,6 @@
 import queue
 import time
-from symbol import except_clause
+#from symbol import except_clause
 
 try:
     from .logger_main import Logger
