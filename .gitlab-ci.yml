@@ -29,12 +29,13 @@ test:software:
       #- conda install -c bioconda aenum
       #- conda install -c bioconda/label/cf201901 aenum
       #- pip install kafe BeautifulSoup4 event-notifier colorama QGraphViz
+      
       # Installing CAN packages
       #Installing SocketCAN devices
       #Installing python-can package
-      #- pip install python-can
+      - pip install python-can
       #Installing libsocketcan package
-      #- pip install socketcan
+      - pip install socketcan
       #- git clone https://git.pengutronix.de/git/tools/libsocketcan
       #- cd libsocketcan
       #- ./autogen.sh
@@ -71,5 +72,6 @@ test:software:
       - sudo apt-get install -y build-essential
       - pip install --upgrade pip setuptools
       - pip install symbol-please
+      - python canmops/can_wrapper_main.py -S -b 125000 -sp 0.5 -sjw 4 -tseg1 5 -tseg2 6 -nodeid 1
       #- python canmops_test.py
 
