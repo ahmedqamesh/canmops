@@ -35,12 +35,12 @@ test:software:
 
       #Installing libsocketcan package
       - pip install socketcan
-      - git clone https://git.pengutronix.de/git/tools/libsocketcan
-      - cd libsocketcan
-      - ./autogen.sh
-      - ./configure  #--disable-dependency-tracking
-      - make CFLAGS='-fPIC' # to compile the package
-      - make install #to install the programs and any data files
+      #- git clone https://git.pengutronix.de/git/tools/libsocketcan
+      #- cd libsocketcan
+      #- ./autogen.sh
+      #- ./configure  #--disable-dependency-tracking
+      #- make CFLAGS='-fPIC' # to compile the package
+      #- make install #to install the programs and any data files
       #- cd ..
       #Installing SocketCAN can-utils
       - sudo apt-get install can-utils
