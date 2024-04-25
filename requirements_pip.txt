@@ -45,7 +45,7 @@ latexmk.py
 libcst
 llvmlite
 lxml
-MarkupSafe 
+#MarkupSafe 
 #mistune 
 mkl-fft
 mkl-random 
