@@ -5,7 +5,7 @@ test:software:
       # https://gitlab.cern.ch/silab/bdaq53/issues/293
       GIT_STRATEGY: clone
     tags:  # tags to differentiate runners able to run the job
-      - docker  # Use CERN shared runners
+      - k8s-cvmfs  # Use CERN shared runners
     image: continuumio/miniconda3:latest  # Ubuntu based miniconda image
     
     before_script:
