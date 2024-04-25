@@ -45,11 +45,11 @@ latexmk.py
 libcst
 llvmlite
 lxml
-#MarkupSafe 
+MarkupSafe 
 #mistune 
-mkl-fft
-mkl-random 
-mkl-service 
+#mkl-fft
+#mkl-random 
+#mkl-service 
 mock 
 multiprocess 
 mypy-extensions 
