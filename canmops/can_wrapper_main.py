@@ -48,15 +48,15 @@ from typing import List, Any
 from random import randint
 logger   = Logger(name = " Lib Check ",console_loglevel=logging.INFO, logger_file = False).setup_main_logger()
 
+#try:
+import can
 try:
-    import can
-    try:
-        from .can_bus_config import can_config
-        from .can_thread_reader import READSocketcan
-    except (ImportError, ModuleNotFoundError):
-        from can_bus_config import can_config
-        from can_thread_reader import READSocketcan          
-except: logger.warning("SocketCAN Package is not installed....."+"[Please ignore the warning if No SocketCAN drivers used.]")
+    from .can_bus_config import can_config
+    from .can_thread_reader import READSocketcan
+except (ImportError, ModuleNotFoundError):
+    from can_bus_config import can_config
+    from can_thread_reader import READSocketcan          
+#except: logger.warning("SocketCAN Package is not installed....."+"[Please ignore the warning if No SocketCAN drivers used.]")
 
 # Import canlib for Kvaser
 try:
