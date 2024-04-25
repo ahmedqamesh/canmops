@@ -43,7 +43,7 @@ test:software:
       - make install #to install the programs and any data files
       #- cd ..
       #Installing SocketCAN can-utils
-      #- sudo apt-get install can-utils
+      - sudo apt-get install can-utils
       #Installing Canlib package
       #- cd packages
       # - tar -xf linuxcan.tar.gz
