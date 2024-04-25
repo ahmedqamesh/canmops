@@ -1,8 +1,5 @@
-# Tests using RD53 and FPGA co-simulation
 test:software:
     variables:
-      # Otherwise lock file of cancelled runs might stall future check outs
-      # https://gitlab.cern.ch/silab/bdaq53/issues/293
       GIT_STRATEGY: clone
     tags:  # tags to differentiate runners able to run the job
       - k8s-cvmfs  # Use CERN shared runners
@@ -17,7 +14,6 @@ test:software:
       - sudo apt-get install  -y autoconf
       - sudo apt-get install -y libtool
       - sudo apt-get install -y build-essential
-      #- git clone git@gitlab.com:nvidia/container-images/driver.git
       #- cd driver
       # Installing Required Packages
       - curl -L https://repo.continuum.io/miniconda/Miniconda3-latest-Linux-x86_64.sh -o miniconda.sh
@@ -27,6 +23,7 @@ test:software:
       - source ~/.bashrc  # since ==> For changes to take effect, close and re-open your current shell. <==
       - conda activate  # to link properly to pytestgb
       - conda update --yes conda
+      - pip install -r requirements_pip.txt
      # - conda install --yes python=3.9 bitarray contextlib2 cython ipython matplotlib mock nose pyqt pyserial pytables pyyaml pyzmq qtpy scipy pyqtgraph pandas numpy colorlog coloredlogs verboselogs termcolor numba lxml seaborn aenum
       #- conda install -c anaconda graphviz python-graphviz
       #- conda install -c bioconda aenum
@@ -75,5 +72,4 @@ test:software:
       - pip install --upgrade pip setuptools
       - pip install symbol-please
       #- python canmops_test.py
-      #- python CANMOPS_GUI.py
 
