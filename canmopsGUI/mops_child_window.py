@@ -1,3 +1,12 @@
+########################################################
+"""
+    This file is part of the MOPS-Hub project.
+    Author: Ahmed Qamesh (University of Wuppertal)
+    email: ahmed.qamesh@cern.ch  
+    Date: 01.05.2020
+"""
+########################################################
+
 from matplotlib.backends.qt_compat import QtCore, QtWidgets
 from matplotlib.backends.backend_qt5agg import FigureCanvas
 from PyQt5.QtCore import QThread, pyqtSignal

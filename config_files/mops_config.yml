@@ -1,3 +1,10 @@
+########################################################
+   #  Dictionary for MOPS configurations
+   # Author: Ahmed Qamesh (University of Wuppertal)
+   # email: ahmed.qamesh@cern.ch  
+   # Date: 01.02.2020
+########################################################
+
 Hardware:
   resistor_ratio: 40.0
   BG_voltage: 0.6

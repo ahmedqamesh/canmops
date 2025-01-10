@@ -1,3 +1,12 @@
+########################################################
+"""
+    This file is part of the MOPS-Hub project.
+    Author: Ahmed Qamesh (University of Wuppertal)
+    email: ahmed.qamesh@cern.ch  
+    Date: 01.05.2020
+"""
+########################################################
+
 import subprocess
 import time
 from threading import Thread
