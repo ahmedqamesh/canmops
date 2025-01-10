@@ -1,3 +1,11 @@
+########################################################
+"""
+    This file is part of the MOPS-Hub project.
+    Author: Ahmed Qamesh (University of Wuppertal)
+    email: ahmed.qamesh@cern.ch  
+    Date: 01.05.2020
+"""
+########################################################
 import queue
 import time
 #from symbol import except_clause

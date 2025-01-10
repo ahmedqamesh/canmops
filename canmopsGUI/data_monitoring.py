@@ -1,3 +1,11 @@
+########################################################
+"""
+    This file is part of the MOPS-Hub project.
+    Author: Ahmed Qamesh (University of Wuppertal)
+    email: ahmed.qamesh@cern.ch  
+    Date: 01.05.2020
+"""
+########################################################
 from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
 from matplotlib.backends.backend_qt5agg import NavigationToolbar2QT as NavigationToolbar
 import matplotlib.animation as animation

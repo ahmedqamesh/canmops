@@ -1,3 +1,11 @@
+########################################################
+"""
+    This file is part of the MOPS-Hub project.
+    Author: Ahmed Qamesh (University of Wuppertal)
+    email: ahmed.qamesh@cern.ch  
+    Date: 01.05.2020
+"""
+########################################################
 #pip install pyvisa
 #The script is dedicated for Agilent E364xA  https://www.tme.eu/Document/9f3996689f24777703b84ff64b156944/E3646-90001.pdf
 import visa

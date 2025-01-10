@@ -1,3 +1,11 @@
+########################################################
+"""
+    This file is part of the MOPS-Hub project.
+    Author: Ahmed Qamesh (University of Wuppertal)
+    email: ahmed.qamesh@cern.ch  
+    Date: 01.05.2020
+"""
+########################################################
 #from __future__ import annotations
 from matplotlib.backends.qt_compat import QtCore, QtWidgets
 
@@ -49,11 +57,11 @@ class MainWindow(QMainWindow):
         conf = AnalysisUtils().open_yaml_file(file=config_yaml, directory=lib_dir)
         self.__appName      = conf["Application"]["app_name"] 
         self.__devices      = conf["Application"]["Devices"]
-        self.__wait_time      = conf["Application"]["wait_time"]
         self.__appVersion   = conf['Application']['app_version']
         self.__appIconDir   = conf["Application"]["app_icon_dir"]
         self.__multi_mode   = conf["Application"]["multi_mode"]
         self.__refresh_rate = conf["Application"]["refresh_rate"] #millisecondsrefresh_rate
+        self.__wait_time      = conf["Application"]["wait_time"]
         self.__mopshub_mode = conf["Application"]["mopshub_mode"]
         self.__mopshub_communication_mode = conf["Application"]["mopshub_communication_mode"]
 
@@ -65,6 +73,7 @@ class MainWindow(QMainWindow):
         self.__channelPorts = list(conf["channel_ports"])
         self.__interface = None
         self.__ref_voltage = None
+        self.__NTC_resistor = None
         self.__channel = None
         self.__ipAddress = None
         self.__bitrate = None
@@ -658,7 +667,7 @@ class MainWindow(QMainWindow):
             deviceLabel.setText("[" + self.__devices[0] + "]")
             deviceName, version, icon_dir, nodeIds, dictionary_items, adc_channels_reg,\
             self.__adc_index, self.__chipId, self.__index_items, self.__conf_index, \
-            self.__mon_index,self.__resistor_ratio, self.__BG_voltage, self.__ref_voltage  =  mops_child.update_device_box(device = self.__devices[0], mainWindow = self)
+            self.__mon_index,self.__resistor_ratio, self.__BG_voltage, self.__ref_voltage,self.__NTC_resistor  =  mops_child.update_device_box(device = self.__devices[0], mainWindow = self)
         
         self.set_deviceName(deviceName)
         self.configureDeviceBoxLayout.addWidget(deviceLabel)
@@ -1455,12 +1464,16 @@ class MainWindow(QMainWindow):
         device_config = "mops"
         self.set_busId(self.busIdbox.text())
         _busId = self.get_busId()
-        self.channelValueBox, self.trendingBox , self.monValueBox , self.progressBar,  self._wait_label = mops_child_window.MopsChildWindow(mainWindow = self).device_child_window(childWindow=self.deviceWindow, 
-                                                                                                                                                                  device =self.__deviceName,
-                                                                                                                                                                  device_config =device_config,
-                                                                                                                                                                  mainWindow= self,
-                                                                                                                                                                  mopshub_mode = self.__mopshub_mode,
-                                                                                                                                                                  mopshub_communication_mode = self.__mopshub_communication_mode)
+        self.channelValueBox, \
+        self.trendingBox , \
+        self.monValueBox ,\
+        self.progressBar,  \
+        self._wait_label = mops_child_window.MopsChildWindow(mainWindow = self).device_child_window(childWindow=self.deviceWindow, 
+                                                                                                  device =self.__deviceName,
+                                                                                                  device_config =device_config,
+                                                                                                  mainWindow= self,
+                                                                                                  mopshub_mode = self.__mopshub_mode,
+                                                                                                  mopshub_communication_mode = self.__mopshub_communication_mode)
         self.graphWidget = self.DataMonitoring.initiate_trending_figure(n_channels=n_channels)
         self.deviceWindow.show()
     '''
@@ -1606,19 +1619,22 @@ class MainWindow(QMainWindow):
         self.__tseg2 = int(x)
 
     def set_ref_voltage(self, value= None, index = None, subindex = None, adc_gain = None , adc_offset = None):
+        ref_voltage = None
         _sdo_tx = hex(0x600)
         self.set_canId_tx(str(_sdo_tx))     
         index = list(index)[0]
         self.set_index(index)  # set index for later usage
         self.set_subIndex(str(subindex))
         ADCBG = self.read_sdo_can()  # _thread(print_sdo=False)
-        factor = 4096/ADCBG
-        if adc_gain and adc_offset is not None:
-            self.logger.report(f"Reference Voltage = {ref_voltage} based on Gain: {adc_gain} and Offset: {adc_offset}") 
-        else:
-            ref_voltage = factor*self.__BG_voltage
-            self.__ref_voltage = ref_voltage
-            self.logger.report(f"Reference Voltage = {ref_voltage} based on factor : {factor} and VBANDGAP = {self.__BG_voltage}[V]") 
+        if ADCBG is not None: 
+            factor = 4096/ADCBG
+            if adc_gain and adc_offset is not None:
+                self.logger.report(f"Reference Voltage = {ref_voltage} based on Gain: {adc_gain} and Offset: {adc_offset}") 
+            else: 
+                ref_voltage = factor*self.__BG_voltage
+                self.__ref_voltage = ref_voltage
+                self.logger.report(f"Reference Voltage = {ref_voltage} based on factor : {factor} and VBANDGAP = {self.__BG_voltage}[V]") 
+        else: pass
         return ref_voltage
     def set_sample_point(self, x):
         self.__sample_point = float(x) / 100

@@ -1,5 +1,12 @@
+########################################################
+   #  Dictionary for MOPS configurations
+   # Author: Ahmed Qamesh (University of Wuppertal)
+   # email: ahmed.qamesh@cern.ch  
+   # Date: 01.02.2020
+########################################################
 Hardware:
   resistor_ratio: 40.0
+  NTC_resistor: 1.0
   BG_voltage: 0.6
   adc_gain: 0.9
   adc_offset: 0.0
@@ -118,6 +125,9 @@ Application:
         1F: <html><u>subindex 1F</u>:Ch33</html>
         '20': <html><u>subindex 20</u>:Ch34</html>
   nodeIds:
+  - '0'
+  - '1'
+  - '2'
   - '3'
 adc_channels_reg:
   adc_channels:

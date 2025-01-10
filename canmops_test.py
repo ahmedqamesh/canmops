@@ -1,3 +1,11 @@
+########################################################
+"""
+    This file is part of the MOPS-Hub project.
+    Author: Ahmed Qamesh (University of Wuppertal)
+    email: ahmed.qamesh@cern.ch  
+    Date: 01.05.2020
+"""
+########################################################
 # -*- coding: utf-8 -*-
 import sys 
 import os
@@ -103,7 +111,7 @@ async def test_can_wrapper():
     
 if __name__=='__main__':
     channel = 0
-    #wrapper = canWrapper.CanWrapper(interface = "AnaGate",channel = channel, load_config = True, trim_mode = True)
+    #wrapper = CanWrapper(interface = "AnaGate",channel = channel, load_config = True, trim_mode = True)
     wrapper = CanWrapper(interface = "socketcan",channel = channel, load_config = True, trim_mode = False)
     #wrapper =  CanWrapper(interface = "Kvaser",channel = channel, load_config = True, trim_mode = True)
     loop = asyncio.new_event_loop()

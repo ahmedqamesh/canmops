@@ -1,5 +1,10 @@
-# This File is setting up the CAN Channels on the RPI on the beginning
-# Possible updates: Watchdog on Channel Health while system is running
+########################################################
+"""
+    This file is part of the MOPS-Hub project.
+    Author: Ahmed Qamesh (University of Wuppertal)
+    email: ahmed.qamesh@cern.ch  
+    Date: 01.05.2020
+"""
 import logging
 try:
     import can

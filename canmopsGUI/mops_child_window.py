@@ -1,3 +1,11 @@
+########################################################
+"""
+    This file is part of the MOPS-Hub project.
+    Author: Ahmed Qamesh (University of Wuppertal)
+    email: ahmed.qamesh@cern.ch  
+    Date: 01.05.2020
+"""
+########################################################
 from matplotlib.backends.qt_compat import QtCore, QtWidgets
 from matplotlib.backends.backend_qt5agg import FigureCanvas
 from PyQt5.QtCore import QThread, pyqtSignal
@@ -92,8 +100,9 @@ class MopsChildWindow(QWidget):
         self.__adc_gain = dev["Hardware"]["adc_gain"] 
         self.__adc_offset = dev["Hardware"]["adc_offset"] 
         self.__ref_voltage = dev["Hardware"]["ref_voltage"]         
+        self.__NTC_resistor = dev["Hardware"]["NTC_resistor"]    
         return  self.__deviceName, self.__version, self.__appIconDir,self.__nodeIds, self.__dictionary_items, self.__adc_channels_reg,\
-            self.__adc_index, self.__chipId, self.__index_items, self.__conf_index, self.__mon_index, self.__resistor_ratio, self.__BG_voltage, self.__adc_gain, self.__adc_offset, self.__ref_voltage
+            self.__adc_index, self.__chipId, self.__index_items, self.__conf_index, self.__mon_index, self.__resistor_ratio, self.__BG_voltage, self.__adc_gain, self.__adc_offset, self.__ref_voltage, self.__NTC_resistor
 
 
                    
@@ -128,10 +137,9 @@ class MopsChildWindow(QWidget):
             pass         
         
         return  self.__deviceName, self.__version, self.__appIconDir,self.__nodeIds, self.__dictionary_items, self.__adc_channels_reg,\
-            self.__adc_index, self.__chipId, self.__index_items, self.__conf_index, self.__mon_index, self.__resistor_ratio, self.__BG_voltage, self.__ref_voltage    
+            self.__adc_index, self.__chipId, self.__index_items, self.__conf_index, self.__mon_index, self.__resistor_ratio, self.__BG_voltage, self.__ref_voltage, self.__NTC_resistor 
 
-    
-                             
+                       
     def define_object_dict_window(self,mainWindow = None):
         def __set_bus():
             try:
@@ -650,12 +658,15 @@ class MopsChildWindow(QWidget):
                 labelChannel[s].setStatusTip('ADC channel %s [index = %s & subIndex = %s]' % (subindex_description_item[25:29],
                                                                                             _adc_indices[i],
                                                                                              _subIndexItems[s_correction]))  # show when move mouse to the icon
-                labelChannel[s].setText(subindex_description_item[25:29] + " [V]:")
+                
                 icon = QLabel(self)
                 if _adc_channels_reg[str(subindex)] == "V": 
                     icon_dir = icon_location+'icon_voltage.png'
+                    channel_label = subindex_description_item[25:29] + " [V]:"
                 else: 
                     icon_dir = icon_location+'icon_thermometer.png'
+                    channel_label = subindex_description_item[25:29] + " [T]:"
+                labelChannel[s].setText(channel_label)
                 pixmap = QPixmap(icon_dir)
                 icon.setPixmap(pixmap.scaled(20, 20))
                 self.trendingBotton[s] = QPushButton()
