@@ -1,6 +1,9 @@
 # CANMOPS for MOPS Readout
 
-CANMOPS is a free CAN bus monitor and general-purpose diagnostic tool available for Windows and Linux. The software package offers a comprehensive set of functions and a graphical user interface (GUI) to facilitate communication with the [DCS ASIC: Monitoring Of Pixel System (MOPS)](https://edms.cern.ch/ui/file/1909505/3/MOPS-specs-V3_docx_cpdf.pdf), supported by CAN interfaces from [AnaGate (Ethernet)](https://www.anagate.de/), [Kvaser (USB)](https://www.kvaser.com/), and [SocketCAN Kernel](https://www.kernel.org/doc/html/latest/networking/can.html).
+CANMOPS is a free CAN bus monitor and general-purpose diagnostic tool available for Windows and Linux. It provides a comprehensive set of features and an intuitive graphical user interface (GUI) designed to facilitate communication with CAN-based embedded systems and controllers.
+
+This tool has been successfully used in multiple projects involving distributed control systems, embedded devices, and ASIC-based subsystems (e.g. [DCS ASIC: Monitoring Of Pixel System (MOPS)](https://edms.cern.ch/ui/file/1909505/3/MOPS-specs-V3_docx_cpdf.pdf)), demonstrating its flexibility and robustness in real-world environments.
+THe package supports [AnaGate (Ethernet)](https://www.anagate.de/), [Kvaser (USB)](https://www.kvaser.com/), and [SocketCAN Kernel](https://www.kernel.org/doc/html/latest/networking/can.html).
 ![CANMOPS](https://gitlab.cern.ch/mops/canmops/-/wikis/uploads/133057f8a2ba5ebd7f595cd72aa86547/phd_designs__9_.png)
 
 ## General Features
@@ -37,4 +40,4 @@ python canmops/can_wrapper_main.py -S -b 111111 -sp 0.3 -sjw 4 -tseg1 5 -tseg2 6
 Replace the -S argument based on the interface used (-S for SocketCAN, -K for Kvaser, -A for AnaGate), and adjust the -nodeid argument according to the specific Node ID of the chip.
 
 ## Contributing and Contact Information:
-We welcome contributions from the community please contact : `ahmed.qamesh@cern.ch`.
+We welcome contributions from the community please contact : `ahmed.qamesh@gmail.com`.
