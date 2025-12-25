@@ -1,4 +1,4 @@
-# CANMOPS for MOPS Readout
+# About the Project
 
 CANMOPS is a free CAN bus monitor and general-purpose diagnostic tool available for Windows and Linux. It provides a comprehensive set of features and an intuitive graphical user interface (GUI) designed to facilitate communication with CAN-based embedded systems and controllers.
 
